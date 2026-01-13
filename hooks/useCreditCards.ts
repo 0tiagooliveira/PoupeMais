@@ -1,0 +1,64 @@
+import { useState, useEffect } from 'react';
+import { db } from '../services/firebase';
+import { useAuth } from '../contexts/AuthContext';
+import { CreditCard } from '../types';
+
+export const useCreditCards = () => {
+  const { currentUser } = useAuth();
+  const [cards, setCards] = useState<CreditCard[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    setLoading(true);
+
+    const query = db.collection('users')
+      .doc(currentUser.uid)
+      .collection('credit_cards')
+      .orderBy('createdAt', 'asc');
+
+    const unsubscribe = query.onSnapshot((snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CreditCard[];
+      
+      setCards(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching credit cards:", error);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, [currentUser]);
+
+  const addCard = async (data: Omit<CreditCard, 'id' | 'createdAt'>) => {
+    if (!currentUser) throw new Error("No user logged in");
+    
+    await db.collection('users')
+      .doc(currentUser.uid)
+      .collection('credit_cards')
+      .add({
+        ...data,
+        createdAt: new Date().toISOString()
+      });
+  };
+
+  const deleteCard = async (id: string) => {
+    if (!currentUser) throw new Error("No user logged in");
+    await db.collection('users')
+      .doc(currentUser.uid)
+      .collection('credit_cards')
+      .doc(id)
+      .delete();
+  };
+
+  return {
+    cards,
+    loading,
+    addCard,
+    deleteCard
+  };
+};

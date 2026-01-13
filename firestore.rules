@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated and accessing their own data
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Regras para Transações (subcoleção)
+      match /transactions/{transactionId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Regras para Contas (subcoleção)
+      match /accounts/{accountId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Regras para Cartões de Crédito (subcoleção)
+      // Esta regra corrige o erro "Missing or insufficient permissions" ao salvar cartões
+      match /credit_cards/{cardId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}
