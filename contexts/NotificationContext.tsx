@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { NotificationContextType, NotificationItem, NotificationType } from '../types';
 
@@ -98,7 +99,7 @@ const Toast: React.FC<{ notification: NotificationItem; onClose: () => void }> =
     success: 'border-green-100 bg-white/95 text-green-800 shadow-green-100',
     error: 'border-red-100 bg-white/95 text-red-800 shadow-red-100',
     warning: 'border-amber-100 bg-white/95 text-amber-800 shadow-amber-100',
-    info: 'border-blue-100 bg-white/95 text-blue-800 shadow-blue-100',
+    info: 'border-emerald-100 bg-white/95 text-emerald-800 shadow-emerald-100',
     finance: 'border-emerald-100 bg-white/95 text-emerald-800 shadow-emerald-100'
   };
 
@@ -106,7 +107,7 @@ const Toast: React.FC<{ notification: NotificationItem; onClose: () => void }> =
     success: 'text-green-500',
     error: 'text-red-500',
     warning: 'text-amber-500',
-    info: 'text-blue-500',
+    info: 'text-emerald-500',
     finance: 'text-emerald-500'
   };
 
@@ -114,7 +115,7 @@ const Toast: React.FC<{ notification: NotificationItem; onClose: () => void }> =
     success: 'bg-green-500',
     error: 'bg-red-500',
     warning: 'bg-amber-500',
-    info: 'bg-blue-500',
+    info: 'bg-emerald-500',
     finance: 'bg-emerald-500'
   };
 

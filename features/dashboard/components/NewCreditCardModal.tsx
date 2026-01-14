@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
@@ -116,12 +117,12 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
               onClick={() => handleBankSelect(bank)}
               className={`flex flex-col items-center justify-center py-2 rounded-xl transition-all border ${
                   selectedBank === bank.name 
-                  ? 'border-slate-800 bg-slate-50' 
+                  ? 'border-primary bg-success/5 shadow-sm' 
                   : 'border-slate-50 bg-white hover:bg-slate-50'
               }`}
             >
               <BankLogo name={bank.name} color={bank.color} size="sm" />
-              <span className={`text-[8px] font-bold mt-1 truncate w-full text-center ${selectedBank === bank.name ? 'text-slate-900' : 'text-slate-400'}`}>
+              <span className={`text-[8px] font-bold mt-1 truncate w-full text-center ${selectedBank === bank.name ? 'text-primary' : 'text-slate-400'}`}>
                   {bank.name}
               </span>
             </button>
@@ -178,7 +179,7 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
           <Button 
             type="submit" 
             isLoading={loading} 
-            className="flex-1 rounded-2xl font-bold text-sm bg-slate-800 hover:bg-slate-900 shadow-lg h-12"
+            className="flex-1 rounded-2xl font-bold text-sm bg-primary hover:bg-emerald-600 shadow-xl shadow-success/20 text-white h-12"
           >
             Salvar
           </Button>

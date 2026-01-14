@@ -117,10 +117,10 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
                 onClick={() => handleBankSelect(bank)}
                 className="group flex flex-col items-center gap-2 transition-all active:scale-90"
               >
-                <div className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${name === bank.name ? 'ring-[3px] ring-slate-800 ring-offset-2 scale-110 shadow-lg' : 'ring-1 ring-slate-100 hover:ring-slate-300'}`}>
+                <div className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${name === bank.name ? 'ring-[3px] ring-primary ring-offset-2 scale-110 shadow-lg' : 'ring-1 ring-slate-100 hover:ring-slate-300'}`}>
                     <BankLogo name={bank.name} color={bank.color} size="md" />
                     {name === bank.name && (
-                        <div className="absolute -top-1 -right-1 bg-slate-800 text-white rounded-full h-5 w-5 flex items-center justify-center shadow-md border-2 border-white z-20">
+                        <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full h-5 w-5 flex items-center justify-center shadow-md border-2 border-white z-20">
                             <span className="material-symbols-outlined text-[12px] font-bold">check</span>
                         </div>
                     )}
@@ -153,7 +153,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
                 onClick={() => setType(t)}
                 className={`rounded-xl px-4 py-2.5 text-xs font-bold tracking-tight transition-all ${
                     type === t 
-                    ? 'bg-slate-800 text-white shadow-lg' 
+                    ? 'bg-primary text-white shadow-lg shadow-success/20' 
                     : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                 }`}
               >
@@ -186,7 +186,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
           <Button 
             type="submit" 
             isLoading={loading} 
-            className="flex-1 rounded-2xl font-bold text-sm shadow-2xl py-4 bg-slate-800 hover:bg-slate-900"
+            className="flex-1 rounded-2xl font-bold text-sm shadow-2xl py-4 bg-primary hover:bg-emerald-600 text-white"
           >
             {accountToEdit ? 'Atualizar' : 'Concluir'}
           </Button>

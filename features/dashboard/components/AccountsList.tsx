@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Account } from '../../../types';
 import { Button } from '../../../components/ui/Button';
@@ -112,7 +113,7 @@ export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccou
                 variant="primary" 
                 size="md" 
                 onClick={onAddAccount}
-                className="rounded-2xl font-bold text-xs bg-slate-800"
+                className="rounded-2xl font-bold text-xs bg-primary hover:bg-emerald-600 shadow-lg shadow-success/20"
             >
                 + Adicionar conta
             </Button>

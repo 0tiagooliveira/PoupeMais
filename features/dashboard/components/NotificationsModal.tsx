@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -15,14 +16,16 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
     success: 'check_circle',
     error: 'cancel',
     warning: 'error',
-    info: 'info'
+    info: 'info',
+    finance: 'account_balance_wallet'
   };
 
   const colors = {
     success: 'bg-green-50 text-green-600',
     error: 'bg-red-50 text-red-600',
     warning: 'bg-amber-50 text-amber-600',
-    info: 'bg-blue-50 text-blue-600'
+    info: 'bg-emerald-50 text-emerald-600',
+    finance: 'bg-emerald-50 text-emerald-600'
   };
 
   return (
@@ -40,7 +43,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
           history.map((n) => (
             <div 
                 key={n.id} 
-                className={`group flex items-start gap-4 p-4 rounded-2xl border transition-all hover:shadow-sm ${n.read ? 'bg-white border-gray-100 opacity-70' : 'bg-blue-50/20 border-blue-100 shadow-sm'}`}
+                className={`group flex items-start gap-4 p-4 rounded-2xl border transition-all hover:shadow-sm ${n.read ? 'bg-white border-gray-100 opacity-70' : 'bg-emerald-50/20 border-emerald-100 shadow-sm'}`}
             >
               <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${colors[n.type]}`}>
                 <span className="material-symbols-outlined text-2xl">

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -9,6 +10,7 @@ import { Dashboard } from './features/dashboard/Dashboard';
 import { TransactionsPage } from './features/transactions/TransactionsPage';
 import { ChartsPage } from './features/charts/ChartsPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { CreditCardsPage } from './features/credit-cards/CreditCardsPage';
 import { Layout } from './components/layout/Layout';
 
 const App: React.FC = () => {
@@ -29,7 +31,7 @@ const App: React.FC = () => {
                   <Route path="/expenses" element={<TransactionsPage title="Despesas" filterType="expense" />} />
                   <Route path="/charts" element={<ChartsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/credit-expenses" element={<TransactionsPage title="Despesas do Cartão" filterType="credit_card" />} />
+                  <Route path="/credit-cards" element={<CreditCardsPage />} />
                </Route>
             </Route>
 

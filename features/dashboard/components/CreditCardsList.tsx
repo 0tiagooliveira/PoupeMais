@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CreditCard } from '../../../types';
 import { Button } from '../../../components/ui/Button';
@@ -43,7 +44,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, onAddCa
       
       {cards.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[32px] border border-slate-100 bg-white p-10 text-center shadow-sm">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-300">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/5 text-success/40">
              <span className="material-symbols-outlined text-3xl">credit_card</span>
           </div>
           <h4 className="mb-2 text-sm font-bold text-slate-800 tracking-tight">Nenhum cartão cadastrado</h4>
@@ -52,7 +53,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, onAddCa
           </p>
           <Button 
             onClick={onAddCard}
-            className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-8 rounded-2xl h-11"
+            className="bg-primary hover:bg-emerald-600 text-white font-bold text-xs px-8 rounded-2xl h-11 shadow-lg shadow-success/20"
           >
             + Adicionar cartão
           </Button>

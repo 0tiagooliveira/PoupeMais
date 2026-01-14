@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -18,7 +19,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props 
 }) => {
   const variants = {
-    primary: 'bg-primary text-white hover:bg-blue-700 shadow-sm',
+    primary: 'bg-primary text-white hover:bg-emerald-600 shadow-sm shadow-success/20',
     secondary: 'bg-white text-secondary border border-gray-200 hover:bg-gray-50',
     danger: 'bg-danger text-white hover:bg-red-700',
     ghost: 'bg-transparent text-secondary hover:bg-gray-100',

@@ -182,7 +182,7 @@ export const LoginPage: React.FC = () => {
 
           <Button 
             type="submit" 
-            className="w-full py-5 rounded-[22px] shadow-xl shadow-success/20 mt-2 bg-slate-800 hover:bg-slate-900 font-bold text-sm tracking-tight" 
+            className="w-full py-5 rounded-[22px] shadow-xl shadow-success/20 mt-2 bg-success hover:bg-emerald-600 font-bold text-sm tracking-tight text-white" 
             isLoading={loading}
           >
             Acessar plataforma

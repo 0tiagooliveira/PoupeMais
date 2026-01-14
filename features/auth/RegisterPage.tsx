@@ -99,7 +99,7 @@ export const RegisterPage: React.FC = () => {
           <Input label="Crie uma senha" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required icon="key" className="rounded-2xl" />
           <Input label="Confirme a senha" type="password" placeholder="••••••••" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required icon="check_circle" className="rounded-2xl" />
 
-          <Button type="submit" className="w-full py-5 rounded-[22px] bg-slate-800 hover:bg-slate-900 shadow-xl mt-4 font-bold text-sm tracking-tight" isLoading={loading}>
+          <Button type="submit" className="w-full py-5 rounded-[22px] bg-primary hover:bg-emerald-600 shadow-xl shadow-success/20 mt-4 font-bold text-sm tracking-tight text-white" isLoading={loading}>
             Finalizar cadastro
           </Button>
         </form>

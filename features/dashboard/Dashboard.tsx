@@ -36,39 +36,6 @@ export const Dashboard: React.FC = () => {
   const { accounts, addAccount, updateAccount, deleteAccount } = useAccounts();
   const { cards, addCard, deleteCard } = useCreditCards();
 
-  useEffect(() => {
-    if (transactions.length > 0) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const next3Days = new Date();
-      next3Days.setDate(today.getDate() + 3);
-
-      const upcomingBills = transactions.filter(t => 
-        t.type === 'expense' && 
-        t.status === 'pending' && 
-        new Date(t.date) >= today && 
-        new Date(t.date) <= next3Days
-      );
-
-      if (upcomingBills.length > 0) {
-        upcomingBills.forEach(bill => {
-          const billDate = new Date(bill.date);
-          const daysLeft = Math.ceil((billDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          
-          const message = daysLeft === 0 
-            ? `Vence hoje: "${bill.description}" (${formatCurrency(bill.amount)})`
-            : `Vence em ${daysLeft} dias: "${bill.description}" (${formatCurrency(bill.amount)})`;
-          
-          const alreadyNotified = history.some(h => h.message === message);
-          if (!alreadyNotified) {
-            addNotification(message, 'finance', 8000, true);
-          }
-        });
-      }
-    }
-  }, [transactions.length, history, addNotification]);
-
   const { totalIncome, totalExpenses, incomeCategories, expenseCategories, recentIncomes, recentExpenses } = useMemo(() => {
     let income = 0;
     let expenses = 0;
@@ -148,11 +115,10 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-24">
-      {/* Header Estilizado conforme Referência */}
-      <div className="flex items-center justify-between bg-white border border-slate-50 p-4 rounded-[28px] shadow-sm">
+      {/* Header Animado */}
+      <div className="flex items-center justify-between bg-white border border-slate-50 p-4 rounded-[28px] shadow-sm animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="flex items-center gap-4">
-           {/* Avatar com Borda Sucesso */}
-           <div className="h-14 w-14 rounded-full border-2 border-success p-0.5 overflow-hidden flex-shrink-0 shadow-sm">
+           <div className="h-14 w-14 rounded-full border-2 border-success p-0.5 overflow-hidden flex-shrink-0 shadow-sm transition-transform hover:scale-110">
              <img 
                src={currentUser?.photoURL || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
                alt="Perfil" 
@@ -161,28 +127,27 @@ export const Dashboard: React.FC = () => {
            </div>
            
            <div className="flex flex-col">
-              <span className="text-sm font-medium text-slate-400">Bem-vindo de volta,</span>
+              <span className="text-sm font-medium text-secondary">Bem-vindo de volta,</span>
               <h2 className="text-lg font-bold text-slate-800 tracking-tight leading-tight">
                {currentUser?.displayName || 'Usuário'}
               </h2>
            </div>
         </div>
         
-        {/* Notificações no lado oposto */}
         <button 
            onClick={() => { setIsNotificationsOpen(true); markAllAsRead(); }}
-           className="relative flex h-12 w-12 items-center justify-center text-slate-400 hover:text-slate-600 transition-all rounded-full hover:bg-slate-50 active:scale-90"
+           className="relative flex h-12 w-12 items-center justify-center text-slate-400 hover:text-primary transition-all rounded-full hover:bg-success/5 active:scale-90"
         >
           <span className="material-symbols-outlined text-3xl">notifications</span>
           {unreadCount > 0 && (
-             <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white ring-2 ring-white shadow-md">
+             <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white ring-2 ring-white shadow-md animate-bounce">
                {unreadCount > 99 ? '99+' : unreadCount}
              </span>
           )}
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-1000 stagger-1">
         <BalanceCard 
           balance={globalBalance} 
           previousBalance={globalBalance} 
@@ -196,7 +161,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid gap-8 lg:grid-cols-2 pt-2">
+      <div className="grid gap-8 lg:grid-cols-2 pt-2 animate-in fade-in slide-in-from-bottom-12 duration-1000 stagger-2">
         <div className="flex flex-col gap-8">
           <AccountsList 
             accounts={accounts} 

@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface CardProps {
@@ -21,7 +22,7 @@ export const Card: React.FC<CardProps> = ({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {icon && (
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-primary">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success">
                 <span className="material-symbols-outlined text-lg">{icon}</span>
               </div>
             )}

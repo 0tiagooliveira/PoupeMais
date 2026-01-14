@@ -2,29 +2,27 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if user is authenticated and accessing their own data
+    // Helper: Verifica se o usuário está autenticado e é o dono dos dados
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Regras para a coleção de usuários e todas as suas subcoleções
     match /users/{userId} {
+      // Permite leitura e escrita no documento do próprio usuário
       allow read, write: if isOwner(userId);
-
-      // Regras para Transações (subcoleção)
-      match /transactions/{transactionId} {
+      
+      // Proteção Recursiva: 
+      // O curinga {allPaths=**} garante que transações, contas, cartões e 
+      // QUALQUER subcoleção futura herdem a mesma regra de proteção.
+      match /{allPaths=**} {
         allow read, write: if isOwner(userId);
       }
+    }
 
-      // Regras para Contas (subcoleção)
-      match /accounts/{accountId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Regras para Cartões de Crédito (subcoleção)
-      // Esta regra corrige o erro "Missing or insufficient permissions" ao salvar cartões
-      match /credit_cards/{cardId} {
-        allow read, write: if isOwner(userId);
-      }
+    // Bloqueio Global (Boa prática de segurança: negue tudo por padrão para outros caminhos)
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

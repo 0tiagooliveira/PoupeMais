@@ -1,374 +1,356 @@
-import React, { useState, useMemo } from 'react';
-import { useTransactions } from '../../hooks/useTransactions';
-import { useAccounts } from '../../hooks/useAccounts';
-import { formatCurrency } from '../../utils/formatters';
 
-type ChartMainTab = 'barras' | 'rosca' | 'linha';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useTransactions } from '../../hooks/useTransactions';
+import { formatCurrency } from '../../utils/formatters';
+import { BackButton } from '../../components/ui/BackButton';
+import { MonthSelector } from '../dashboard/components/MonthSelector';
+import { incomeCategories, expenseCategories } from '../dashboard/components/NewTransactionModal';
+
+type ChartTab = 'categories' | 'performance' | 'radar' | 'projection';
 
 export const ChartsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ChartMainTab>('barras');
-  const [activeMetric, setActiveMetric] = useState('Fluxo de caixa anual');
   const [currentDate, setCurrentDate] = useState(new Date());
-  
-  const { transactions } = useTransactions(currentDate);
-  const { accounts } = useAccounts();
+  const [activeTab, setActiveTab] = useState<ChartTab>('categories');
+  const [focusedItem, setFocusedItem] = useState<any>(null);
+  const { transactions, loading } = useTransactions(currentDate);
 
-  const metricsMap = {
-    barras: ['Balanço mensal', 'Fluxo de caixa anual', 'Despesas por dia'],
-    rosca: ['Despesas por categoria', 'Receitas por categoria', 'Saldos por conta'],
-    linha: ['Evolução de patrimônio', 'Tendência de gastos']
-  };
+  const analytics = useMemo(() => {
+    const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const expense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const balance = income - expense;
 
-  const handleTabChange = (tab: ChartMainTab) => {
-    setActiveTab(tab);
-    setActiveMetric(metricsMap[tab][0]);
-  };
+    // Radar Data - Pilares de Vida Financeira
+    const radarData = [
+      { axis: 'Essenciais', value: 0, icon: 'home', desc: 'Contas fixas e sobrevivência' },
+      { axis: 'Lazer', value: 0, icon: 'local_activity', desc: 'Estilo de vida e diversão' },
+      { axis: 'Futuro', value: 0, icon: 'trending_up', desc: 'Investimentos e reserva' },
+      { axis: 'Educação', value: 0, icon: 'school', desc: 'Cursos e crescimento' },
+      { axis: 'Imprevistos', value: 0, icon: 'medical_services', desc: 'Gastos não planejados' }
+    ];
 
-  const monthName = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const currentYear = currentDate.getFullYear();
+    transactions.forEach(t => {
+      if (t.type === 'expense') {
+        const cat = t.category;
+        if (['Moradia', 'Mercado', 'Transporte', 'Saúde', 'Energia', 'Água', 'Gás'].includes(cat)) radarData[0].value += t.amount;
+        else if (['Lazer', 'Viagem', 'Compras', 'Bem-estar'].includes(cat)) radarData[1].value += t.amount;
+        else if (['Poupança', 'Investimentos'].includes(cat)) radarData[2].value += t.amount;
+        else if (['Educação'].includes(cat)) radarData[3].value += t.amount;
+        else radarData[4].value += t.amount;
+      }
+    });
+
+    const maxRadar = Math.max(...radarData.map(d => d.value), 1);
+    const normalizedRadar = radarData.map(d => ({ ...d, percent: (d.value / maxRadar) * 100 }));
+
+    // History
+    const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+    const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const dayTrans = transactions.filter(t => new Date(t.date).getDate() === day);
+      const inc = dayTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+      const exp = dayTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+      return { day, income: inc, expense: exp, balance: inc - exp };
+    });
+
+    const sortedCategories = Array.from(
+      transactions.reduce((acc, t) => {
+        if (t.type === 'expense') {
+          acc.set(t.category, (acc.get(t.category) || 0) + t.amount);
+        }
+        return acc;
+      }, new Map<string, number>())
+    ).map(([name, amount]) => ({ 
+      name, 
+      amount, 
+      color: expenseCategories.find(c => c.name === name)?.color || '#94a3b8' 
+    })).sort((a, b) => b.amount - a.amount);
+
+    return { income, expense, balance, normalizedRadar, dailyData, sortedCategories };
+  }, [transactions, currentDate]);
+
+  useEffect(() => setFocusedItem(null), [activeTab]);
 
   return (
-    <div className="min-h-screen bg-background pb-20 animate-in fade-in duration-700">
-      {/* Header Estilizado */}
-      <div className="bg-primary px-6 py-5 flex items-center justify-between text-white sticky top-0 z-20 shadow-lg rounded-b-[32px] mb-6">
-        <div className="flex items-center gap-3">
-          <button onClick={() => window.history.back()} className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-white/10">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tight">Gráficos</h1>
-            <span className="text-[10px] font-bold text-white/70">Análise detalhada</span>
+    <div className="min-h-screen bg-[#FCFCFD] space-y-4 pb-32 px-2 md:px-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 py-4 animate-in fade-in duration-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <BackButton className="bg-white shadow-sm border border-slate-100" />
+            <h2 className="text-xl font-black text-slate-800 tracking-tight">Analytics</h2>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <button className="h-9 w-9 flex items-center justify-center bg-white/10 rounded-xl hover:bg-white/20 transition-all">
-            <span className="material-symbols-outlined text-xl">tune</span>
-          </button>
-          <button className="h-9 w-9 flex items-center justify-center bg-white/10 rounded-xl hover:bg-white/20 transition-all">
-            <span className="material-symbols-outlined text-xl">more_vert</span>
-          </button>
+          <MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} className="bg-white p-1 rounded-2xl shadow-sm border border-slate-50" />
         </div>
       </div>
 
-      {/* Seletor de Tipo de Gráfico (Tabs superiores) */}
-      <div className="flex justify-center gap-2 px-6 mb-6">
-        {(['barras', 'rosca', 'linha'] as ChartMainTab[]).map(tab => (
+      {/* Navigation */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+        {[
+          { id: 'categories', label: 'Gastos', icon: 'pie_chart' },
+          { id: 'performance', label: 'Histórico', icon: 'query_stats' },
+          { id: 'radar', label: 'Equilíbrio', icon: 'radar' },
+          { id: 'projection', label: 'Futuro', icon: 'auto_graph' }
+        ].map((tab) => (
           <button
-            key={tab}
-            onClick={() => handleTabChange(tab)}
-            className={`flex-1 flex flex-col items-center justify-center py-3 rounded-2xl transition-all border ${
-              activeTab === tab 
-              ? 'bg-primary text-white border-primary shadow-md' 
-              : 'bg-white text-slate-400 border-slate-100'
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as ChartTab)}
+            className={`flex-shrink-0 flex items-center gap-2 py-3 px-5 rounded-2xl text-[11px] font-black transition-all ${
+              activeTab === tab.id
+                ? 'bg-primary text-white shadow-lg shadow-success/20'
+                : 'bg-white text-slate-400 border border-slate-100'
             }`}
           >
-            <span className="text-xs font-bold capitalize">{tab}</span>
+            <span className="material-symbols-outlined text-base">{tab.icon}</span>
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Sub-métricas (Pills) */}
-      <div className="flex gap-2 px-6 overflow-x-auto no-scrollbar pb-6">
-        {metricsMap[activeTab].map(metric => (
-          <button
-            key={metric}
-            onClick={() => setActiveMetric(metric)}
-            className={`whitespace-nowrap px-5 py-2.5 rounded-full text-[11px] font-bold transition-all border ${
-              activeMetric === metric
-              ? 'bg-primary border-primary text-white shadow-sm'
-              : 'bg-white text-slate-400 border-slate-200'
-            }`}
-          >
-            {metric}
-          </button>
-        ))}
-      </div>
-
-      {/* Seletor de Ano/Mês */}
-      <div className="flex items-center justify-center gap-8 mb-6">
-        <button className="text-primary"><span className="material-symbols-outlined">chevron_left</span></button>
-        <span className="text-lg font-bold text-slate-800">{currentYear}</span>
-        <button className="text-primary"><span className="material-symbols-outlined">chevron_right</span></button>
-      </div>
-
-      {/* Container Principal do Gráfico */}
-      <div className="px-4">
-        <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 min-h-[420px] relative">
-          {activeMetric === 'Fluxo de caixa anual' && (
-            <YearlyCashFlow transactions={transactions} />
-          )}
-          {activeMetric === 'Balanço mensal' && (
-            <MonthlyBalance transactions={transactions} />
-          )}
-          {activeTab === 'rosca' && (
-            <DonutVisualizer metric={activeMetric} transactions={transactions} accounts={accounts} />
-          )}
-          {activeMetric === 'Despesas por dia' && (
-             <WeekdaySpending transactions={transactions} />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const YearlyCashFlow = ({ transactions }: { transactions: any[] }) => {
-  // Simulação de dados anuais baseados nas transações atuais para demonstração
-  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  const data = months.map((m, i) => ({
-    label: m,
-    income: i > 8 ? (Math.random() * 5000 + 1000) : 0,
-    expense: i > 8 ? (Math.random() * 4000 + 500) : 0,
-  }));
-
-  const maxVal = 12000;
-  
-  // Pontos para a linha de balanço
-  const linePoints = data.map((d, i) => {
-    const x = (i / 11) * 100;
-    const balance = d.income - d.expense;
-    const y = 50 - (balance / maxVal) * 40;
-    return `${x}% ${y}%`;
-  }).join(', ');
-
-  return (
-    <div className="w-full h-full flex flex-col">
-      <div className="relative h-64 w-full mt-4 flex items-end justify-between px-2">
-        {/* Grid Lines */}
-        <div className="absolute inset-0 flex flex-col justify-between opacity-5 pointer-events-none">
-          {[12, 10, 8, 6, 4, 2, 0, -2, -4, -6].map(v => (
-            <div key={v} className="w-full border-t border-slate-900 flex justify-start">
-               <span className="text-[8px] -mt-2 -ml-8 font-bold text-slate-900">R${v}.000</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Barras */}
-        {data.map((item, i) => (
-          <div key={i} className="flex flex-col items-center gap-1 w-[7%] h-full justify-end relative z-10">
-             <div className="flex gap-0.5 h-full items-end w-full">
-                <div 
-                  className="bg-success w-1/2 rounded-t-sm transition-all duration-1000" 
-                  style={{ height: `${(item.income / maxVal) * 100}%` }}
-                ></div>
-                <div 
-                  className="bg-danger w-1/2 rounded-t-sm transition-all duration-1000" 
-                  style={{ height: `${(item.expense / maxVal) * 100}%` }}
-                ></div>
-             </div>
+      {/* Stage */}
+      <div className="bg-white rounded-[40px] p-6 md:p-10 shadow-xl shadow-slate-200/40 border border-slate-50 min-h-[520px]">
+        {loading ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 z-10 rounded-[inherit]">
+            <div className="h-10 w-10 rounded-full border-4 border-slate-100 border-t-primary animate-spin"></div>
           </div>
-        ))}
+        ) : (
+          <div className="h-full flex flex-col">
+            {activeTab === 'categories' && (
+              <div className="flex-1 flex flex-col space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                <header>
+                  <h3 className="text-lg font-black text-slate-800">Para onde vai seu dinheiro?</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Distribuição por categorias</p>
+                </header>
 
-        {/* Linha de Balanço */}
-        <svg className="absolute inset-0 w-full h-full overflow-visible z-20 pointer-events-none">
-           <path 
-             d={`M ${data.map((d, i) => `${(i/11)*100}%,${50 - ((d.income - d.expense)/maxVal)*40}%`).join(' L ')}`}
-             fill="none"
-             stroke="#3b82f6"
-             strokeWidth="2"
-             strokeLinecap="round"
-             className="animate-dash"
-             style={{ transform: 'scale(0.95)', transformOrigin: 'center' }}
-           />
-           {data.map((d, i) => {
-             const x = (i/11)*100;
-             const balance = d.income - d.expense;
-             const y = 50 - (balance/maxVal)*40;
-             if (d.income === 0) return null;
-             return (
-               <circle key={i} cx={`${x}%`} cy={`${y}%`} r="3" fill="#3b82f6" stroke="white" strokeWidth="1" />
-             );
-           })}
-        </svg>
-      </div>
-
-      {/* Labels X */}
-      <div className="flex justify-between w-full mt-4 px-1">
-        {months.map(m => <span key={m} className="text-[9px] font-bold text-slate-400">{m}.</span>)}
-      </div>
-
-      {/* Legenda Estilizada */}
-      <div className="mt-10 flex flex-wrap justify-center gap-6">
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-blue-500"></div>
-          <span className="text-[10px] font-bold text-slate-500">(Receitas - Despesas)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-success"></div>
-          <span className="text-[10px] font-bold text-slate-500">Receitas</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-danger"></div>
-          <span className="text-[10px] font-bold text-slate-500">Despesas</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const MonthlyBalance = ({ transactions }: { transactions: any[] }) => {
-  // Visualização de balanço mensal agrupado por períodos
-  const periods = ['Nov de 2025', 'Dez de 2025', 'Jan de 2026'];
-  const data = periods.map(p => ({
-    label: p,
-    income: Math.random() * 2000 + 500,
-    expense: Math.random() * 6000 + 2000
-  }));
-
-  const maxVal = 6000;
-
-  return (
-    <div className="w-full flex flex-col items-center">
-      <div className="h-64 w-full flex items-end justify-around px-4 border-b border-slate-100 pb-2 relative">
-         {/* Grid background */}
-         <div className="absolute inset-0 flex flex-col justify-between opacity-5 py-2">
-            {[6, 5, 4, 3, 2, 1, 0].map(v => (
-              <div key={v} className="w-full border-t border-slate-900 flex justify-start">
-                 <span className="text-[8px] -mt-2 -ml-10 font-bold">R${v}.000</span>
-              </div>
-            ))}
-         </div>
-
-         {data.map((item, i) => (
-           <div key={i} className="flex flex-col items-center gap-4 w-1/4 h-full justify-end relative z-10 group">
-              <div className="flex items-end gap-2 h-full justify-center w-full">
-                 <div 
-                   className="bg-success w-8 rounded-t-lg shadow-sm transition-all duration-500 group-hover:brightness-110" 
-                   style={{ height: `${(item.income / maxVal) * 100}%` }}
-                 ></div>
-                 <div 
-                   className="bg-danger w-8 rounded-t-lg shadow-sm transition-all duration-500 group-hover:brightness-110" 
-                   style={{ height: `${(item.expense / maxVal) * 100}%` }}
-                 ></div>
-              </div>
-              <span className="text-[9px] font-bold text-slate-400 text-center">{item.label}</span>
-
-              {/* Tooltip Simulado no hover do grupo */}
-              {i === 0 && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full mb-8 z-30 bg-slate-800 text-white p-3 rounded-xl shadow-xl pointer-events-none">
-                  <p className="text-[10px] font-bold mb-1 border-b border-white/10 pb-1">{item.label}</p>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-success"></div>
-                    <p className="text-[10px] font-medium">Receitas: {formatCurrency(item.income)}</p>
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                  <div className="w-full max-w-[240px] aspect-square relative">
+                    <DonutChart data={analytics.sortedCategories} total={analytics.expense} />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">Total Saídas</p>
+                       <p className="text-xl font-black text-slate-800">{formatCurrency(analytics.expense)}</p>
+                    </div>
                   </div>
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-800"></div>
+
+                  {/* Legends */}
+                  <div className="flex-1 w-full space-y-3">
+                    {analytics.sortedCategories.slice(0, 4).map((cat, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color }}></div>
+                          <span className="text-xs font-black text-slate-700">{cat.name}</span>
+                        </div>
+                        <span className="text-xs font-black text-slate-800">{formatCurrency(cat.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
-           </div>
-         ))}
-      </div>
-      <div className="mt-8 flex gap-6">
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded-full bg-success"></div>
-          <span className="text-xs font-bold text-slate-500">Receitas</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded-full bg-danger"></div>
-          <span className="text-xs font-bold text-slate-500">Despesas</span>
-        </div>
+
+                {/* Insight de Economia */}
+                <div className="mt-4 p-5 rounded-3xl bg-amber-50 border border-amber-100 flex items-start gap-4">
+                   <div className="h-10 w-10 flex-shrink-0 rounded-xl bg-amber-500 text-white flex items-center justify-center">
+                      <span className="material-symbols-outlined">lightbulb</span>
+                   </div>
+                   <div>
+                      <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Dica de Economia</p>
+                      <p className="text-xs font-bold text-slate-700 leading-snug">
+                        {analytics.sortedCategories[0] 
+                          ? `Seus gastos em "${analytics.sortedCategories[0].name}" representam a maior fatia. Tente reduzir 10% nesta categoria para poupar ${formatCurrency(analytics.sortedCategories[0].amount * 0.1)} este mês.`
+                          : "Adicione despesas para receber dicas personalizadas."}
+                      </p>
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'performance' && (
+              <div className="flex-1 flex flex-col space-y-6 animate-in slide-in-from-right-4 duration-500">
+                <header className="flex justify-between items-end">
+                   <div>
+                    <h3 className="text-lg font-black text-slate-800">Fluxo de Caixa</h3>
+                    <div className="flex gap-4 mt-1">
+                      <div className="flex items-center gap-1.5 text-[9px] font-bold text-primary uppercase"><div className="h-2 w-2 rounded-full bg-primary"></div> Ganhos</div>
+                      <div className="flex items-center gap-1.5 text-[9px] font-bold text-danger uppercase"><div className="h-2 w-2 rounded-full bg-danger"></div> Gastos</div>
+                    </div>
+                   </div>
+                </header>
+                <div className="flex-1 min-h-[250px] pt-4">
+                  <FlowLineChart data={analytics.dailyData} onFocus={setFocusedItem} />
+                </div>
+                <div className="min-h-[70px] bg-slate-50 rounded-2xl p-4 flex items-center justify-center border border-slate-100">
+                  {focusedItem ? (
+                    <div className="w-full flex justify-between items-center animate-in fade-in">
+                       <p className="text-xs font-black text-slate-400">Dia {focusedItem.day}</p>
+                       <p className={`text-sm font-black ${focusedItem.balance >= 0 ? 'text-primary' : 'text-danger'}`}>
+                         Net: {formatCurrency(focusedItem.balance)}
+                       </p>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] font-bold text-slate-300 uppercase italic">Deslize para ver detalhes diários</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'radar' && (
+              <div className="flex-1 flex flex-col items-center animate-in zoom-in-95 duration-500 space-y-8 pt-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-black text-slate-800">Equilíbrio Financeiro</h3>
+                  <p className="text-xs font-bold text-slate-400">Como você distribui seu patrimônio</p>
+                </div>
+                
+                <div className="w-full max-w-[320px] aspect-square">
+                  <RadarChartWithLabels data={analytics.normalizedRadar} />
+                </div>
+
+                <div className="w-full grid grid-cols-1 gap-2">
+                   <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 px-2">Legenda dos Pilares</p>
+                   {analytics.normalizedRadar.map((d, i) => (
+                      <div key={i} className="flex items-center justify-between px-3 py-2 bg-slate-50/50 rounded-xl">
+                         <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-sm text-slate-400">{d.icon}</span>
+                            <span className="text-[11px] font-bold text-slate-600">{d.axis}</span>
+                         </div>
+                         <span className="text-[10px] font-black text-slate-400 italic truncate ml-4">{d.desc}</span>
+                      </div>
+                   ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'projection' && (
+              <div className="flex-1 flex flex-col items-center justify-center py-10 animate-in fade-in">
+                 <div className="h-24 w-24 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-6">
+                    <span className="material-symbols-outlined text-5xl">auto_graph</span>
+                 </div>
+                 <h3 className="text-lg font-black text-slate-800">Simulador de Futuro</h3>
+                 <p className="text-xs font-medium text-slate-400 text-center max-w-[240px] mt-2">
+                    Esta funcionalidade está sendo recalibrada para oferecer previsões baseadas em seu comportamento real. 
+                 </p>
+                 <button className="mt-8 px-8 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest">Avisar quando pronto</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const WeekdaySpending = ({ transactions }: { transactions: any[] }) => {
-  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  const data = days.map(d => ({ label: d, amount: Math.random() * 500 }));
-  const max = Math.max(...data.map(d => d.amount), 1);
+// --- COMPONENTES GRÁFICOS COM LEGENDAS ---
+
+const DonutChart = ({ data, total }: any) => {
+  let currentAngle = -Math.PI / 2;
+  const radius = 40;
+  const center = 50;
+  
+  return (
+    <svg viewBox="0 0 100 100" className="w-full h-full transform-gpu transition-transform hover:scale-105 duration-500">
+      {data.map((cat: any, i: number) => {
+        const sliceAngle = (cat.amount / (total || 1)) * 2 * Math.PI;
+        const x1 = center + radius * Math.cos(currentAngle);
+        const y1 = center + radius * Math.sin(currentAngle);
+        currentAngle += sliceAngle;
+        const x2 = center + radius * Math.cos(currentAngle);
+        const y2 = center + radius * Math.sin(currentAngle);
+        
+        const largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
+        const pathData = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
+        
+        return (
+          <path 
+            key={i} 
+            d={pathData} 
+            fill="none" 
+            stroke={cat.color} 
+            strokeWidth="12" 
+            className="animate-dash"
+            style={{ strokeDasharray: '252', strokeDashoffset: '252', animation: `dash 1.5s ease-out ${i * 0.1}s forwards` }}
+          />
+        );
+      })}
+    </svg>
+  );
+};
+
+const RadarChartWithLabels = ({ data }: any) => {
+  const points = data.map((d: any, i: number) => {
+    const angle = (i * 2 * Math.PI) / data.length - Math.PI / 2;
+    const r = d.percent * 0.35;
+    const x = 50 + r * Math.cos(angle);
+    const y = 50 + r * Math.sin(angle);
+    return `${x},${y}`;
+  }).join(' ');
 
   return (
-    <div className="w-full flex flex-col pt-10">
-      <h4 className="text-sm font-bold text-slate-700 mb-8 text-center">Gasto médio por dia da semana</h4>
-      <div className="flex items-end justify-between h-48 px-4">
-        {data.map((d, i) => (
-          <div key={i} className="flex flex-col items-center gap-3 w-full">
-            <div 
-              className="w-8 rounded-t-xl bg-slate-100 transition-all duration-700 relative group overflow-hidden"
-              style={{ height: `${(d.amount / max) * 100}%` }}
+    <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+      {[25, 50, 75, 100].map(r => (
+        <circle key={r} cx="50" cy="50" r={r * 0.35} fill="none" stroke="#f1f5f9" strokeWidth="0.5" />
+      ))}
+      {data.map((d: any, i: number) => {
+        const angle = (i * 2 * Math.PI) / data.length - Math.PI / 2;
+        const xAxis = 50 + 42 * Math.cos(angle);
+        const yAxis = 50 + 42 * Math.sin(angle);
+        return (
+          <g key={i}>
+            <line x1="50" y1="50" x2={xAxis} y2={yAxis} stroke="#f1f5f9" strokeWidth="0.5" />
+            <text 
+              x={50 + 46 * Math.cos(angle)} 
+              y={50 + 46 * Math.sin(angle)} 
+              fontSize="3.5" 
+              fontWeight="900" 
+              textAnchor="middle" 
+              fill="#94a3b8"
+              alignmentBaseline="middle"
+              className="uppercase"
             >
-               <div className="absolute inset-0 bg-primary opacity-20 transition-all group-hover:opacity-40"></div>
-               {i > 4 && <div className="absolute inset-0 bg-amber-400 opacity-20"></div>}
-            </div>
-            <span className="text-[10px] font-bold text-slate-400">{d.label}</span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-8 text-center text-[10px] font-medium text-slate-400 italic">
-        Dica: Seus maiores gastos ocorrem durante o fim de semana.
-      </p>
-    </div>
+              {d.axis}
+            </text>
+          </g>
+        );
+      })}
+      <polygon 
+        points={points} 
+        fill="rgba(33, 194, 94, 0.2)" 
+        stroke="#21C25E" 
+        strokeWidth="1.5" 
+        className="animate-dash"
+      />
+    </svg>
   );
 };
 
-const DonutVisualizer = ({ metric, transactions, accounts }: { metric: string, transactions: any[], accounts: any[] }) => {
-  const processed = useMemo(() => {
-    const map = new Map<string, number>();
-    let total = 0;
-    
-    if (metric.includes('Despesas')) {
-      transactions.filter(t => t.type === 'expense').forEach(t => {
-        map.set(t.category, (map.get(t.category) || 0) + t.amount);
-        total += t.amount;
-      });
-    } else if (metric.includes('Receitas')) {
-      transactions.filter(t => t.type === 'income').forEach(t => {
-        map.set(t.category, (map.get(t.category) || 0) + t.amount);
-        total += t.amount;
-      });
-    } else {
-      accounts.forEach(a => {
-        map.set(a.name, a.balance);
-        total += a.balance;
-      });
-    }
+const FlowLineChart = ({ data, onFocus }: any) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const max = Math.max(...data.map((d: any) => Math.max(d.income, d.expense)), 100);
 
-    const data = Array.from(map.entries()).map(([name, val]) => ({ name, val }));
-    return { data, total };
-  }, [transactions, accounts, metric]);
+  const handleInteraction = (e: any) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+    const idx = Math.round((x / rect.width) * (data.length - 1));
+    const item = data[Math.max(0, Math.min(data.length - 1, idx))];
+    if (item) onFocus(item);
+  };
 
-  const colors = ['#21C25E', '#FF4444', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'];
+  const getPath = (key: string) => data.map((d: any, i: number) => 
+    `${(i / (data.length - 1)) * 100},${100 - (d[key] / max) * 100}`
+  ).join(' L ');
 
   return (
-    <div className="flex flex-col items-center gap-10 pt-6">
-      <div className="relative w-56 h-56">
-        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-          <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f8fafc" strokeWidth="12" />
-          {processed.data.map((d, i) => {
-             const percentage = processed.total > 0 ? (d.val / processed.total) : 0;
-             const prevTotal = processed.data.slice(0, i).reduce((acc, curr) => acc + curr.val, 0);
-             const offset = processed.total > 0 ? (prevTotal / processed.total) : 0;
-             return (
-                <circle 
-                  key={i}
-                  cx="50" cy="50" r="40" fill="transparent" 
-                  stroke={colors[i % colors.length]} strokeWidth="12" 
-                  strokeDasharray={`${percentage * 251.2} 251.2`} 
-                  strokeDashoffset={-offset * 251.2}
-                  className="transition-all duration-1000 ease-out"
-                />
-             );
-          })}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-          <span className="text-[10px] font-bold text-slate-400">Total</span>
-          <span className="text-xl font-bold text-slate-800 tracking-tighter leading-none">{formatCurrency(processed.total)}</span>
-        </div>
-      </div>
-      
-      <div className="w-full space-y-3">
-        {processed.data.slice(0, 6).map((d, i) => (
-          <div key={i} className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: colors[i % colors.length] }}></div>
-              <span className="text-xs font-bold text-slate-600">{d.name}</span>
-            </div>
-            <div className="flex items-center gap-3">
-               <span className="text-xs font-bold text-slate-800">{formatCurrency(d.val)}</span>
-               <span className="text-[10px] font-bold text-slate-300">{((d.val/processed.total)*100).toFixed(1)}%</span>
-            </div>
-          </div>
+    <div 
+      ref={containerRef} 
+      className="w-full h-full touch-none"
+      onMouseMove={handleInteraction}
+      onTouchMove={handleInteraction}
+    >
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+        <path d={`M 0,100 L ${getPath('income')}`} fill="none" stroke="#21C25E" strokeWidth="2.5" strokeLinecap="round" className="animate-dash" />
+        <path d={`M 0,100 L ${getPath('expense')}`} fill="none" stroke="#FF4444" strokeWidth="2.5" strokeLinecap="round" className="animate-dash" />
+        
+        {/* Day Markers */}
+        {[0, 10, 20, 30].map(d => (
+           <text key={d} x={(d/30)*100} y="110" fontSize="4" fontWeight="bold" fill="#cbd5e1" textAnchor="middle">{d || 1}</text>
         ))}
-      </div>
+      </svg>
     </div>
   );
 };

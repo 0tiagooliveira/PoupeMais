@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTransactions } from '../../hooks/useTransactions';
@@ -39,10 +40,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
     primary: isIncome ? 'text-success' : (isExpense ? 'text-danger' : 'text-primary'),
     bg: isIncome ? 'bg-success/10' : (isExpense ? 'bg-danger/10' : 'bg-slate-50'),
     gradient: selectedAccount 
-      ? `bg-gradient-to-br from-slate-800 to-slate-950` // Estilo premium para conta única
+      ? `bg-gradient-to-br from-emerald-600 to-emerald-900` // Estilo premium verde para conta única
       : isIncome 
         ? 'bg-gradient-to-br from-success to-[#1AA851]' 
-        : (isExpense ? 'bg-gradient-to-br from-danger to-[#D63A3A]' : 'bg-gradient-to-br from-slate-700 to-slate-900'),
+        : (isExpense ? 'bg-gradient-to-br from-danger to-[#D63A3A]' : 'bg-gradient-to-br from-emerald-500 to-emerald-700'),
     icon: selectedAccount ? 'account_balance' : (isIncome ? 'trending_up' : (isExpense ? 'trending_down' : 'receipt_long'))
   };
 
@@ -159,7 +160,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
             <p className="mt-1 text-xs text-slate-400 font-medium">Não encontramos registros para este período nesta conta.</p>
             <Button 
                 onClick={handleAddNew} 
-                className={`mt-6 rounded-2xl font-bold px-8 py-3 text-sm tracking-tight ${theme.primary.replace('text', 'bg')} text-white hover:opacity-90`}
+                className={`mt-6 rounded-2xl font-bold px-8 py-3 text-sm tracking-tight ${theme.primary.replace('text', 'bg')} text-white hover:opacity-90 shadow-lg shadow-success/20`}
             >
                 Adicionar lançamento
             </Button>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -266,7 +267,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                     onClick={() => { setCategory(cat.name); setIsPickerOpen(false); }} 
                     className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 transition-all duration-200 active:scale-95 ${
                         category === cat.name 
-                        ? 'bg-slate-800 text-white shadow-lg' 
+                        ? 'bg-primary text-white shadow-lg' 
                         : 'bg-slate-50 border border-transparent hover:bg-slate-100'
                     }`}
                 >
