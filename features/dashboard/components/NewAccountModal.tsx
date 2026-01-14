@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
@@ -75,7 +76,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={accountToEdit ? "Editar Conta" : "Conectar Instituição"}>
+    <Modal isOpen={isOpen} onClose={onClose} title={accountToEdit ? "Editar conta" : "Conectar instituição"}>
       {/* Visual Preview */}
       <div className="mb-8 flex flex-col items-center px-1">
         <div 
@@ -90,12 +91,12 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
               <BankLogo name={name} color={color} size="lg" />
             </div>
             <div className="drop-shadow-sm">
-               <p className="text-sm font-black leading-none mb-1">{name || 'Minha Conta'}</p>
-               <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">{type}</p>
+               <p className="text-sm font-bold leading-none mb-1">{name || 'Minha conta'}</p>
+               <p className="text-[10px] font-bold opacity-70 tracking-tight">{type}</p>
             </div>
           </div>
           <div className="text-right relative z-10 drop-shadow-sm">
-             <span className="block text-xl font-black tracking-tighter">
+             <span className="block text-xl font-bold tracking-tighter">
                R$ {parseFloat(balance || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
              </span>
           </div>
@@ -107,7 +108,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div>
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-5 block px-1">Selecione o seu Banco</label>
+          <label className="text-xs font-bold text-slate-400 mb-5 block px-1">Selecione o seu banco</label>
           <div className="grid grid-cols-4 gap-y-6 gap-x-2">
             {BANKS.map(bank => (
               <button
@@ -120,13 +121,13 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
                     <BankLogo name={bank.name} color={bank.color} size="md" />
                     {name === bank.name && (
                         <div className="absolute -top-1 -right-1 bg-slate-800 text-white rounded-full h-5 w-5 flex items-center justify-center shadow-md border-2 border-white z-20">
-                            <span className="material-symbols-outlined text-[12px] font-black">check</span>
+                            <span className="material-symbols-outlined text-[12px] font-bold">check</span>
                         </div>
                     )}
                 </div>
                 <div className="flex flex-col items-center text-center mt-1">
-                    <span className={`text-[10px] font-black leading-tight ${name === bank.name ? 'text-slate-800' : 'text-slate-500'}`}>{bank.name}</span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">BANCO {bank.code}</span>
+                    <span className={`text-[10px] font-bold leading-tight ${name === bank.name ? 'text-slate-800' : 'text-slate-500'}`}>{bank.name}</span>
+                    <span className="text-[8px] font-bold text-slate-400 tracking-tighter">Banco {bank.code}</span>
                 </div>
               </button>
             ))}
@@ -134,8 +135,8 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
         </div>
 
         <Input 
-          label="Nome da Conta" 
-          placeholder="Ex: Nubank Pessoal, Carteira..." 
+          label="Nome da conta" 
+          placeholder="Ex: Nubank pessoal, carteira..." 
           value={name}
           onChange={e => setName(e.target.value)}
           required
@@ -143,14 +144,14 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
         />
 
         <div>
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 block">Tipo</label>
+          <label className="text-xs font-bold text-slate-400 mb-2 block">Tipo</label>
           <div className="flex flex-wrap gap-2">
             {ACCOUNT_TYPES.map(t => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`rounded-xl px-4 py-2.5 text-[10px] font-black tracking-widest uppercase transition-all ${
+                className={`rounded-xl px-4 py-2.5 text-xs font-bold tracking-tight transition-all ${
                     type === t 
                     ? 'bg-slate-800 text-white shadow-lg' 
                     : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
@@ -163,9 +164,9 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
         </div>
 
         <div className="rounded-3xl bg-slate-50 p-6 border border-slate-100">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 block">Saldo Disponível</label>
+            <label className="text-xs font-bold text-slate-400 mb-2 block">Saldo disponível</label>
             <div className="flex items-center gap-3">
-                <span className="text-2xl font-black text-slate-300">R$</span>
+                <span className="text-2xl font-bold text-slate-300">R$</span>
                 <input 
                     type="number" 
                     step="0.01" 
@@ -173,21 +174,21 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
                     value={balance}
                     onChange={e => setBalance(e.target.value)}
                     required
-                    className="w-full bg-transparent text-4xl font-black tracking-tighter text-slate-800 outline-none placeholder:text-slate-100"
+                    className="w-full bg-transparent text-4xl font-bold tracking-tighter text-slate-800 outline-none placeholder:text-slate-100"
                 />
             </div>
         </div>
 
         <div className="flex gap-4 pt-4">
-          <Button type="button" variant="ghost" onClick={onClose} className="flex-1 rounded-2xl font-black text-[11px] tracking-widest uppercase py-4">
-            CANCELAR
+          <Button type="button" variant="ghost" onClick={onClose} className="flex-1 rounded-2xl font-bold text-sm py-4">
+            Cancelar
           </Button>
           <Button 
             type="submit" 
             isLoading={loading} 
-            className="flex-1 rounded-2xl font-black text-[11px] tracking-widest uppercase shadow-2xl py-4 bg-slate-800 hover:bg-slate-900"
+            className="flex-1 rounded-2xl font-bold text-sm shadow-2xl py-4 bg-slate-800 hover:bg-slate-900"
           >
-            {accountToEdit ? 'ATUALIZAR' : 'CONCLUIR'}
+            {accountToEdit ? 'Atualizar' : 'Concluir'}
           </Button>
         </div>
       </form>

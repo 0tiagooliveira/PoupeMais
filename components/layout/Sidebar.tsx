@@ -7,11 +7,12 @@ export const Sidebar: React.FC = () => {
     { to: '/transactions', icon: 'receipt_long', label: 'Transações' },
     { to: '/incomes', icon: 'trending_up', label: 'Receitas' },
     { to: '/expenses', icon: 'trending_down', label: 'Despesas' },
-    // { to: '/credit-expenses', icon: 'credit_card', label: 'Desp. Cartão' }, // Futuro
+    { to: '/charts', icon: 'bar_chart', label: 'Gráficos' },
+    { to: '/settings', icon: 'settings', label: 'Ajustes' },
   ];
 
   return (
-    <aside className="hidden w-64 flex-col border-r border-gray-200 bg-surface md:flex">
+    <aside className="hidden w-64 flex-col border-r border-gray-100 bg-surface md:flex">
       <div className="flex h-full flex-col px-4 py-6">
         <nav className="flex-1 space-y-1">
           {links.map((link) => (
@@ -19,10 +20,10 @@ export const Sidebar: React.FC = () => {
               key={link.to}
               to={link.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold tracking-tight transition-all ${
                   isActive
-                    ? 'bg-blue-50 text-primary'
-                    : 'text-secondary hover:bg-gray-50 hover:text-slate-800'
+                    ? 'bg-slate-800 text-white shadow-lg shadow-slate-200'
+                    : 'text-secondary hover:bg-slate-50 hover:text-slate-800'
                 }`
               }
             >
@@ -32,11 +33,11 @@ export const Sidebar: React.FC = () => {
           ))}
         </nav>
         
-        <div className="mt-auto rounded-xl bg-gradient-to-br from-primary to-blue-600 p-4 text-white">
-            <h4 className="font-bold text-sm mb-1">Poup+ Premium</h4>
-            <p className="text-xs text-blue-100 mb-3">Desbloqueie gráficos avançados e sincronização bancária.</p>
-            <button className="w-full rounded-lg bg-white/20 py-1.5 text-xs font-semibold hover:bg-white/30 transition-colors">
-                Em breve
+        <div className="mt-auto rounded-3xl bg-gradient-to-br from-success to-emerald-700 p-5 text-white shadow-xl shadow-success/20">
+            <h4 className="font-bold text-sm mb-1 tracking-tight">Poup+ Pro</h4>
+            <p className="text-[10px] font-bold text-white/80 mb-4 leading-tight">Inteligência artificial e gráficos avançados.</p>
+            <button className="w-full rounded-2xl bg-white/20 py-2.5 text-xs font-bold hover:bg-white/30 transition-all active:scale-95">
+                Saiba mais
             </button>
         </div>
       </div>

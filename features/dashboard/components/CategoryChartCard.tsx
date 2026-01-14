@@ -70,10 +70,10 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
           </svg>
           
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className={`text-xl font-black leading-none ${textColor}`}>
+            <span className={`text-xl font-bold leading-none ${textColor}`}>
               {formatCurrency(total)}
             </span>
-            <span className="mt-1 text-[10px] font-bold tracking-widest text-slate-400 uppercase">TOTAL</span>
+            <span className="mt-1 text-[10px] font-bold text-slate-400">Total</span>
           </div>
         </div>
 
@@ -98,7 +98,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
                     <div className="flex justify-between items-end mb-1">
                       <span className="text-sm font-bold text-slate-700 truncate">{cat.name}</span>
                       <div className="text-right">
-                        <span className="text-sm font-black text-slate-800 block leading-tight">
+                        <span className="text-sm font-bold text-slate-800 block leading-tight">
                           {formatCurrency(cat.amount)}
                         </span>
                         <span className="text-[11px] font-bold text-slate-400">{percentage.toFixed(0)}%</span>

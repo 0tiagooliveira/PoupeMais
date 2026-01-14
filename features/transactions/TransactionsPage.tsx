@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { useTransactions } from '../../hooks/useTransactions';
 import { Transaction, TransactionType } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
@@ -13,7 +14,8 @@ interface TransactionsPageProps {
   filterType?: TransactionType | 'credit_card';
 }
 
-export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filterType }) => {
+export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseTitle, filterType }) => {
+  const { accountId } = useParams<{ accountId: string }>();
   const [currentDate, setCurrentDate] = useState(new Date());
   const { transactions, loading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(currentDate);
   const { accounts } = useAccounts();
@@ -21,16 +23,27 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
+  const selectedAccount = useMemo(() => {
+    return accounts.find(a => a.id === accountId);
+  }, [accounts, accountId]);
+
+  const displayTitle = useMemo(() => {
+    if (selectedAccount) return `Extrato: ${selectedAccount.name}`;
+    return baseTitle;
+  }, [selectedAccount, baseTitle]);
+
   const isIncome = filterType === 'income';
   const isExpense = filterType === 'expense';
   
   const theme = {
     primary: isIncome ? 'text-success' : (isExpense ? 'text-danger' : 'text-primary'),
     bg: isIncome ? 'bg-success/10' : (isExpense ? 'bg-danger/10' : 'bg-slate-50'),
-    gradient: isIncome 
-      ? 'bg-gradient-to-br from-success to-[#1AA851]' 
-      : (isExpense ? 'bg-gradient-to-br from-danger to-[#D63A3A]' : 'bg-gradient-to-br from-slate-700 to-slate-900'),
-    icon: isIncome ? 'trending_up' : (isExpense ? 'trending_down' : 'receipt_long')
+    gradient: selectedAccount 
+      ? `bg-gradient-to-br from-slate-800 to-slate-950` // Estilo premium para conta única
+      : isIncome 
+        ? 'bg-gradient-to-br from-success to-[#1AA851]' 
+        : (isExpense ? 'bg-gradient-to-br from-danger to-[#D63A3A]' : 'bg-gradient-to-br from-slate-700 to-slate-900'),
+    icon: selectedAccount ? 'account_balance' : (isIncome ? 'trending_up' : (isExpense ? 'trending_down' : 'receipt_long'))
   };
 
   const accountsMap = useMemo(() => {
@@ -41,13 +54,25 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
   }, [accounts]);
 
   const filteredTransactions = useMemo(() => {
-    if (!filterType) return transactions;
-    if (filterType === 'credit_card') return []; 
-    return transactions.filter(t => t.type === filterType);
-  }, [transactions, filterType]);
+    let result = transactions;
+    
+    if (accountId) {
+      result = result.filter(t => t.accountId === accountId);
+    }
+    
+    if (filterType) {
+      if (filterType === 'credit_card') return []; 
+      result = result.filter(t => t.type === filterType);
+    }
+    
+    return result;
+  }, [transactions, filterType, accountId]);
 
   const totalAmount = useMemo(() => {
-    return filteredTransactions.reduce((acc, curr) => acc + curr.amount, 0);
+    return filteredTransactions.reduce((acc, curr) => {
+      if (curr.type === 'income') return acc + curr.amount;
+      return acc - curr.amount;
+    }, 0);
   }, [filteredTransactions]);
 
   const getCategoryInfo = (category: string) => {
@@ -72,7 +97,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
             <BackButton className="bg-white border border-slate-100 shadow-sm" />
             <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold tracking-tight text-slate-800">{title}</h2>
+                    <h2 className="text-xl font-bold tracking-tight text-slate-800">{displayTitle}</h2>
                     <button 
                         onClick={handleAddNew}
                         className={`flex h-6 w-6 items-center justify-center rounded-full transition-transform active:scale-90 ${theme.bg} ${theme.primary}`}
@@ -80,7 +105,9 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
                         <span className="material-symbols-outlined text-sm font-bold">add</span>
                     </button>
                 </div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em]">Visão Geral do Mês</p>
+                <p className="text-[10px] text-slate-400 font-bold tracking-tight">
+                  {selectedAccount ? `Conta ${selectedAccount.type}` : 'Visão geral do mês'}
+                </p>
             </div>
         </div>
         <MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} />
@@ -93,17 +120,17 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
           
           <div className="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
               <div>
-                  <div className="flex items-center gap-2 text-white/70 text-[11px] font-bold uppercase tracking-widest mb-3">
+                  <div className="flex items-center gap-2 text-white/70 text-[11px] font-bold tracking-tight mb-3">
                       <span className="material-symbols-outlined text-sm">{theme.icon}</span>
-                      Balanço Total
+                      {selectedAccount ? 'Saldo projetado' : 'Balanço total'}
                   </div>
                   <div className="text-5xl font-bold tracking-tighter">
-                      {formatCurrency(totalAmount)}
+                      {formatCurrency(selectedAccount ? selectedAccount.balance : totalAmount)}
                   </div>
               </div>
               <div className="flex items-center gap-2">
                   <div className="rounded-2xl bg-white/10 px-4 py-2 backdrop-blur-md border border-white/10">
-                      <p className="text-[10px] font-bold text-white/60 uppercase tracking-tighter mb-0.5">Lançamentos</p>
+                      <p className="text-[10px] font-bold text-white/60 tracking-tight mb-0.5">Lançamentos</p>
                       <p className="text-lg font-bold">{filteredTransactions.length}</p>
                   </div>
               </div>
@@ -112,7 +139,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
 
       <div className="overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm">
         <div className="flex items-center justify-between bg-slate-50/50 px-6 py-4 border-b border-slate-50">
-            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Histórico Detalhado</h3>
+            <h3 className="text-[10px] font-bold text-slate-400 tracking-tight">Histórico detalhado</h3>
         </div>
 
         {loading ? (
@@ -121,7 +148,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
                 <div className="h-10 w-10 rounded-full border-2 border-slate-100"></div>
                 <div className="absolute top-0 h-10 w-10 animate-spin rounded-full border-t-2 border-primary"></div>
              </div>
-             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sincronizando...</p>
+             <p className="text-[10px] font-bold text-slate-400 tracking-tight">Sincronizando...</p>
           </div>
         ) : filteredTransactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-20 text-center">
@@ -129,12 +156,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
                 <span className={`material-symbols-outlined text-4xl ${theme.primary} opacity-30`}>{theme.icon}</span>
             </div>
             <p className="text-lg font-bold text-slate-800">Nada por aqui ainda</p>
-            <p className="mt-1 text-xs text-slate-400 font-medium">Não encontramos registros para este período.</p>
+            <p className="mt-1 text-xs text-slate-400 font-medium">Não encontramos registros para este período nesta conta.</p>
             <Button 
                 onClick={handleAddNew} 
-                className={`mt-6 rounded-2xl font-bold px-8 py-3 text-sm tracking-tight ${isIncome ? 'bg-success hover:opacity-90' : 'bg-danger hover:opacity-90'}`}
+                className={`mt-6 rounded-2xl font-bold px-8 py-3 text-sm tracking-tight ${theme.primary.replace('text', 'bg')} text-white hover:opacity-90`}
             >
-                Criar Primeiro Registro
+                Adicionar lançamento
             </Button>
           </div>
         ) : (
@@ -162,20 +189,24 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
                       <div className="flex items-center gap-1.5">
                         <p className="font-semibold text-slate-700 text-sm leading-snug">{transaction.description}</p>
                         {isParcelado && (
-                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${itemIsExpense ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'}`}>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${itemIsExpense ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'}`}>
                             {transaction.installmentNumber}/{transaction.totalInstallments}
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                      <div className="mt-1 flex items-center gap-2 text-[10px] font-bold text-slate-400 tracking-tight">
                         <span className="text-slate-300">{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
                         <span className="h-1 w-1 rounded-full bg-slate-200"></span>
                         <span>{transaction.category}</span>
-                        <span className="h-1 w-1 rounded-full bg-slate-200"></span>
-                        <div className="flex items-center gap-1 opacity-60">
-                            <span className="material-symbols-outlined text-[12px]">account_balance_wallet</span>
-                            {accountsMap[transaction.accountId]}
-                        </div>
+                        {!accountId && (
+                          <>
+                            <span className="h-1 w-1 rounded-full bg-slate-200"></span>
+                            <div className="flex items-center gap-1 opacity-60">
+                                <span className="material-symbols-outlined text-[12px]">account_balance_wallet</span>
+                                {accountsMap[transaction.accountId]}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

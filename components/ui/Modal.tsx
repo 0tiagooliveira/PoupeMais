@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -16,7 +17,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
     
     if (isOpen) {
       document.addEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'hidden'; // Prevent background scrolling
+      document.body.style.overflow = 'hidden'; 
     }
     
     return () => {
@@ -35,19 +36,19 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
         onClick={onClose}
       />
       
-      {/* Content */}
-      <div className="relative w-full max-w-sm scale-100 rounded-3xl bg-surface p-5 shadow-2xl transition-transform border border-gray-100">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+      {/* Content - Optimized Size */}
+      <div className="relative w-full max-w-[340px] scale-100 rounded-[32px] bg-surface p-6 shadow-2xl transition-transform border border-white/10 overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="text-base font-bold text-slate-800 tracking-tight">{title}</h3>
           <button 
             onClick={onClose}
-            className="rounded-full p-1.5 text-secondary hover:bg-gray-100 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 transition-colors"
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
         
-        <div className="custom-scrollbar max-h-[80vh] overflow-y-auto pr-1">
+        <div className="custom-scrollbar max-h-[75vh] overflow-y-auto overflow-x-hidden">
           {children}
         </div>
       </div>

@@ -7,6 +7,8 @@ import { LoginPage } from './features/auth/LoginPage';
 import { RegisterPage } from './features/auth/RegisterPage';
 import { Dashboard } from './features/dashboard/Dashboard';
 import { TransactionsPage } from './features/transactions/TransactionsPage';
+import { ChartsPage } from './features/charts/ChartsPage';
+import { SettingsPage } from './features/settings/SettingsPage';
 import { Layout } from './components/layout/Layout';
 
 const App: React.FC = () => {
@@ -15,26 +17,22 @@ const App: React.FC = () => {
       <NotificationProvider>
         <HashRouter>
           <Routes>
-            {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
                <Route element={<Layout />}>
                   <Route path="/" element={<Dashboard />} />
-                  
-                  {/* Novas Rotas de Listagem */}
                   <Route path="/transactions" element={<TransactionsPage title="Todas as Transações" />} />
+                  <Route path="/transactions/account/:accountId" element={<TransactionsPage title="Extrato da Conta" />} />
                   <Route path="/incomes" element={<TransactionsPage title="Receitas" filterType="income" />} />
                   <Route path="/expenses" element={<TransactionsPage title="Despesas" filterType="expense" />} />
-                  
-                  {/* Rota para Despesas de Cartão (Placeholder para futura implementação de vínculo com cartão) */}
+                  <Route path="/charts" element={<ChartsPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/credit-expenses" element={<TransactionsPage title="Despesas do Cartão" filterType="credit_card" />} />
                </Route>
             </Route>
 
-            {/* Catch all */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>

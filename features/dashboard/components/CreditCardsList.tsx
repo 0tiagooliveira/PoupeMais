@@ -10,19 +10,18 @@ interface CreditCardsListProps {
   onDeleteCard: (id: string) => void;
 }
 
+const getBankInfo = (name: string) => {
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes('nubank')) return { color: '#820ad1', logo: 'https://poup-beta.web.app/Icon/Nubank.svg' };
+  if (lowerName.includes('bradesco')) return { color: '#cc092f', logo: 'https://poup-beta.web.app/Icon/bradesco.svg' };
+  if (lowerName.includes('itaú') || lowerName.includes('itau')) return { color: '#ec7000', logo: 'https://poup-beta.web.app/Icon/itau.svg' };
+  if (lowerName.includes('inter')) return { color: '#ff7a00', logo: 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20Inter%20S.A/inter.svg' };
+  if (lowerName.includes('santander')) return { color: '#ec0000', logo: 'https://poup-beta.web.app/Icon/santander.svg' };
+  return { color: '#64748b', logo: null };
+};
+
 export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, onAddCard, onDeleteCard }) => {
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
-  
-  const getBankColor = (name: string, defaultColor: string) => {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes('nubank')) return '#820ad1';
-    if (lowerName.includes('bradesco')) return '#cc092f';
-    if (lowerName.includes('itaú') || lowerName.includes('itau')) return '#ec7000';
-    if (lowerName.includes('inter')) return '#ff7a00';
-    if (lowerName.includes('santander')) return '#ec0000';
-    if (lowerName.includes('xp')) return '#000000';
-    return defaultColor || '#64748b';
-  };
 
   const handleDeleteConfirm = () => {
     if (cardToDelete) {
@@ -33,74 +32,79 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, onAddCa
 
   return (
     <div className="flex flex-col">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-bold text-slate-800">Cartões de Crédito</h3>
+      <div className="mb-5 flex items-center justify-between px-1">
+        <h3 className="text-xl font-bold text-slate-800 tracking-tight">Cartões de crédito</h3>
         {cards.length > 0 && (
-          <button className="text-sm font-medium text-success hover:text-green-700 hover:underline">
+          <button className="text-xs font-bold text-success hover:opacity-80 transition-opacity">
             Ver todos
           </button>
         )}
       </div>
       
       {cards.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-100 bg-surface p-8 text-center shadow-sm">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-50 text-secondary">
-             <span className="material-symbols-outlined text-3xl text-gray-400">credit_card</span>
+        <div className="flex flex-col items-center justify-center rounded-[32px] border border-slate-100 bg-white p-10 text-center shadow-sm">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-300">
+             <span className="material-symbols-outlined text-3xl">credit_card</span>
           </div>
-          <h4 className="mb-2 text-lg font-bold text-slate-800">Nenhum cartão cadastrado</h4>
-          <p className="mb-6 max-w-sm text-sm text-secondary">
-            Adicione seus cartões de crédito para ter um controle completo das suas finanças
+          <h4 className="mb-2 text-sm font-bold text-slate-800 tracking-tight">Nenhum cartão cadastrado</h4>
+          <p className="mb-6 max-w-[220px] text-xs font-bold text-slate-400">
+            Adicione seus cartões para controlar seus limites e faturas de forma inteligente.
           </p>
           <Button 
             onClick={onAddCard}
-            className="bg-[#10b981] hover:bg-[#059669] text-white font-medium px-6"
-            icon="add"
+            className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-8 rounded-2xl h-11"
           >
-            Adicionar cartão
+            + Adicionar cartão
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {cards.map((card) => {
-            const color = getBankColor(card.name, card.color);
+            const info = getBankInfo(card.name);
             return (
               <div 
                 key={card.id} 
-                className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+                className="group relative overflow-hidden rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:scale-[1.01]"
               >
-                <div className="absolute top-0 left-0 h-full w-2" style={{ backgroundColor: color }}></div>
+                {/* Lateral Accent */}
+                <div className="absolute top-0 left-0 h-full w-2" style={{ backgroundColor: info.color }}></div>
                 
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-5">
                     <div 
-                      className="flex h-10 w-10 items-center justify-center rounded-lg text-white shadow-sm"
-                      style={{ backgroundColor: color }}
+                      className="flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-md relative overflow-hidden"
+                      style={{ backgroundColor: info.color }}
                     >
-                      <span className="material-symbols-outlined text-xl">credit_card</span>
+                      <div className="absolute inset-0 bg-white/5 pointer-events-none"></div>
+                      <span className="material-symbols-outlined text-3xl">credit_card</span>
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900">{card.name}</p>
-                      <p className="text-xs text-secondary">Vence dia {card.dueDay}</p>
+                      <p className="text-lg font-bold text-slate-800 leading-none mb-1">{card.name}</p>
+                      <p className="text-[11px] font-bold text-slate-400 tracking-tight">Vencimento dia {card.dueDay}</p>
                     </div>
                   </div>
                   
                   <button 
                     onClick={() => setCardToDelete(card.id)}
-                    className="text-gray-300 hover:text-danger transition-colors"
+                    className="text-slate-200 hover:text-danger transition-colors p-2 rounded-xl hover:bg-red-50"
                     title="Excluir cartão"
                   >
-                    <span className="material-symbols-outlined text-lg">delete</span>
+                    <span className="material-symbols-outlined text-xl">delete</span>
                   </button>
                 </div>
 
-                <div className="mt-4 flex items-end justify-between border-t border-gray-50 pt-3">
-                  <div>
-                    <span className="text-xs text-secondary block">Limite</span>
-                    <span className="font-semibold text-slate-700">{formatCurrency(card.limit)}</span>
+                <div className="mt-8 flex items-end justify-between border-t border-slate-50 pt-5">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 block">Limite</span>
+                    <span className="text-xl font-bold text-slate-800 tracking-tighter">
+                      {formatCurrency(card.limit)}
+                    </span>
                   </div>
-                  <div className="text-right">
-                     <span className="text-xs text-secondary block">Fatura Atual</span>
-                     <span className="font-bold text-primary text-lg">R$ 0,00</span>
+                  <div className="text-right space-y-1">
+                     <span className="text-[10px] font-bold text-slate-400 block">Fatura atual</span>
+                     <span className="text-2xl font-bold text-success tracking-tighter block">
+                       R$ 0,00
+                     </span>
                   </div>
                 </div>
               </div>
@@ -108,24 +112,23 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, onAddCa
           })}
           
            <div className="mt-2 flex justify-center">
-            <Button 
+            <button 
               onClick={onAddCard} 
-              variant="ghost"
-              className="text-primary hover:bg-blue-50"
+              className="flex items-center gap-2 text-[11px] font-bold text-success hover:opacity-80 transition-opacity"
             >
-              + Adicionar outro cartão
-            </Button>
+              <span className="material-symbols-outlined text-lg">add</span>
+              Adicionar outro cartão
+            </button>
           </div>
         </div>
       )}
 
-      {/* Modal de Confirmação */}
       <ConfirmationModal
         isOpen={!!cardToDelete}
         onClose={() => setCardToDelete(null)}
         onConfirm={handleDeleteConfirm}
-        title="Excluir Cartão"
-        message="Tem certeza que deseja remover este cartão? O histórico de faturas pode ser perdido."
+        title="Excluir cartão"
+        message="Deseja remover este cartão? Isso não apagará as despesas já registradas vinculadas a ele."
       />
     </div>
   );

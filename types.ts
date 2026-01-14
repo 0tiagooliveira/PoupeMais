@@ -1,11 +1,15 @@
+
 import React from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 
+// Add photoURL to UserProfile to ensure it's available when using the interface, 
+// extending firebase.User should include it, but explicit definition helps in some TS environments.
 export interface UserProfile extends firebase.User {
   uid: string;
   email: string | null;
   displayName: string | null;
+  photoURL: string | null;
 }
 
 export interface AuthContextType {

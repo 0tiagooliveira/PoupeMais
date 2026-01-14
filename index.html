@@ -16,6 +16,14 @@
         25% { transform: translateX(-4px); }
         75% { transform: translateX(4px); }
       }
+      @keyframes dash {
+        to { stroke-dashoffset: 0; }
+      }
+      .animate-dash {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: dash 3s linear forwards;
+      }
       .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
       .custom-scrollbar::-webkit-scrollbar { width: 4px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -23,16 +31,18 @@
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              primary: '#21C25E', /* Verde Poup+ */
+              primary: '#21C25E',
               secondary: '#64748b',
-              success: '#21C25E', /* Verde Poup+ */
-              danger: '#FF4444',  /* Vermelho Vibrante */
+              success: '#21C25E',
+              danger: '#FF4444',
               background: '#fcfcfd',
               surface: '#ffffff',
             },

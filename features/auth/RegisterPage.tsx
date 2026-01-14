@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import firebase from 'firebase/compat/app';
@@ -82,7 +83,7 @@ export const RegisterPage: React.FC = () => {
             alt="Poup+" 
             className="mx-auto mb-6 h-14 w-auto" 
           />
-          <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Junte-se ao Poup+</h2>
+          <h2 className="text-xl font-bold text-slate-800 tracking-tight">Junte-se ao Poup+</h2>
           <p className="text-secondary font-medium text-sm mt-1">Sua jornada para o sucesso financeiro.</p>
         </div>
 
@@ -93,20 +94,20 @@ export const RegisterPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input label="Seu Nome" type="text" placeholder="João da Silva" value={name} onChange={e => setName(e.target.value)} required icon="person" className="rounded-2xl" />
+          <Input label="Seu nome" type="text" placeholder="João da Silva" value={name} onChange={e => setName(e.target.value)} required icon="person" className="rounded-2xl" />
           <Input label="E-mail" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required icon="mail" className="rounded-2xl" />
-          <Input label="Crie uma Senha" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required icon="key" className="rounded-2xl" />
-          <Input label="Confirme a Senha" type="password" placeholder="••••••••" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required icon="check_circle" className="rounded-2xl" />
+          <Input label="Crie uma senha" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required icon="key" className="rounded-2xl" />
+          <Input label="Confirme a senha" type="password" placeholder="••••••••" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required icon="check_circle" className="rounded-2xl" />
 
-          <Button type="submit" className="w-full py-5 rounded-[22px] bg-slate-800 hover:bg-slate-900 shadow-xl mt-4 font-black text-[11px] tracking-widest uppercase" isLoading={loading}>
-            FINALIZAR CADASTRO
+          <Button type="submit" className="w-full py-5 rounded-[22px] bg-slate-800 hover:bg-slate-900 shadow-xl mt-4 font-bold text-sm tracking-tight" isLoading={loading}>
+            Finalizar cadastro
           </Button>
         </form>
 
         <div className="mt-8 text-center text-xs font-bold text-slate-400">
           Já tem conta?{' '}
-          <Link to="/login" className="font-black text-success hover:underline uppercase tracking-widest">
-            Fazer Login
+          <Link to="/login" className="font-bold text-success hover:underline tracking-tight">
+            Fazer login
           </Link>
         </div>
       </div>

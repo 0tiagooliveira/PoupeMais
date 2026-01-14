@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { formatCurrency } from '../../../utils/formatters';
 
@@ -17,20 +18,26 @@ export const StatCard: React.FC<StatCardProps> = ({ type, value, onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className="cursor-pointer rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:scale-[1.02] hover:shadow-md active:scale-[0.98]"
+      className="group cursor-pointer rounded-[32px] border border-slate-50 bg-white p-5 shadow-sm transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
     >
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
-        <span className="material-symbols-outlined text-slate-300 text-sm">arrow_forward</span>
+      {/* Top row with label and small arrow */}
+      <div className="mb-4 flex items-center justify-between">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+        <span className="material-symbols-outlined text-slate-200 text-sm transition-colors group-hover:text-slate-400">arrow_forward</span>
       </div>
       
-      <div className="flex items-center gap-3">
-         <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm ${iconBg}`}>
-            <span className="material-symbols-outlined text-xl">{icon}</span>
+      {/* Content row with icon and value */}
+      <div className="flex items-center gap-4">
+         {/* Squircle Icon Container */}
+         <div className={`flex h-14 w-12 items-center justify-center rounded-[20px] text-white shadow-sm shadow-black/5 transition-transform group-hover:scale-105 ${iconBg}`}>
+            <span className="material-symbols-outlined text-2xl font-bold">{icon}</span>
          </div>
-         <span className={`text-xl font-black tracking-tighter ${colorClass}`}>
-           {formatCurrency(value)}
-         </span>
+         
+         <div className="flex flex-col">
+            <span className={`text-2xl font-bold tracking-tighter ${colorClass}`}>
+              {formatCurrency(value)}
+            </span>
+         </div>
       </div>
     </div>
   );

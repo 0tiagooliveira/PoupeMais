@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,7 +25,6 @@ export const Dashboard: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const navigate = useNavigate();
   
-  // Modals state
   const [isTransModalOpen, setIsTransModalOpen] = useState(false);
   const [transModalType, setTransModalType] = useState<TransactionType>('expense');
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -36,7 +36,6 @@ export const Dashboard: React.FC = () => {
   const { accounts, addAccount, updateAccount, deleteAccount } = useAccounts();
   const { cards, addCard, deleteCard } = useCreditCards();
 
-  // Alertas Financeiros Inteligentes
   useEffect(() => {
     if (transactions.length > 0) {
       const today = new Date();
@@ -58,8 +57,8 @@ export const Dashboard: React.FC = () => {
           const daysLeft = Math.ceil((billDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
           const message = daysLeft === 0 
-            ? `⚠️ Vence HOJE: "${bill.description}" (${formatCurrency(bill.amount)})`
-            : `🔔 Vence em ${daysLeft} dias: "${bill.description}" (${formatCurrency(bill.amount)})`;
+            ? `Vence hoje: "${bill.description}" (${formatCurrency(bill.amount)})`
+            : `Vence em ${daysLeft} dias: "${bill.description}" (${formatCurrency(bill.amount)})`;
           
           const alreadyNotified = history.some(h => h.message === message);
           if (!alreadyNotified) {
@@ -88,7 +87,6 @@ export const Dashboard: React.FC = () => {
       }
     });
 
-    // Paleta sincronizada com as novas cores #21C25E e #FF4444
     const incomeColors = ['#21C25E', '#2BDC6F', '#45E883', '#6DF2A1', '#9FF9C5'];
     const expenseColors = ['#FF4444', '#FF6666', '#FF8888', '#FFAAAA', '#FFCCCC'];
 
@@ -119,6 +117,10 @@ export const Dashboard: React.FC = () => {
     return history.filter(n => !n.read).length;
   }, [history]);
 
+  const handleAccountClick = (account: Account) => {
+    navigate(`/transactions/account/${account.id}`);
+  };
+
   const handleEditAccount = (account: Account) => {
     setAccountToEdit(account);
     setIsAccountModalOpen(true);
@@ -131,7 +133,7 @@ export const Dashboard: React.FC = () => {
           addNotification(`Conta "${data.name}" atualizada com sucesso.`, 'success', 3000, true);
       } else {
           await addAccount(data);
-          addNotification(`🏦 Nova conta conectada: "${data.name}"`, 'finance', 5000, true);
+          addNotification(`Nova conta conectada: "${data.name}"`, 'finance', 5000, true);
       }
       setIsAccountModalOpen(false);
     } catch (error) {
@@ -146,22 +148,35 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-24">
-      <div className="flex items-center justify-between">
-        <div>
-           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bem-vindo,</div>
-           <h2 className="text-xl font-black text-slate-800 tracking-tighter">
-            {currentUser?.displayName || 'Usuário'}
-           </h2>
+      {/* Header Estilizado conforme Referência */}
+      <div className="flex items-center justify-between bg-white border border-slate-50 p-4 rounded-[28px] shadow-sm">
+        <div className="flex items-center gap-4">
+           {/* Avatar com Borda Sucesso */}
+           <div className="h-14 w-14 rounded-full border-2 border-success p-0.5 overflow-hidden flex-shrink-0 shadow-sm">
+             <img 
+               src={currentUser?.photoURL || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
+               alt="Perfil" 
+               className="h-full w-full rounded-full object-cover"
+             />
+           </div>
+           
+           <div className="flex flex-col">
+              <span className="text-sm font-medium text-slate-400">Bem-vindo de volta,</span>
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight leading-tight">
+               {currentUser?.displayName || 'Usuário'}
+              </h2>
+           </div>
         </div>
         
+        {/* Notificações no lado oposto */}
         <button 
            onClick={() => { setIsNotificationsOpen(true); markAllAsRead(); }}
-           className="relative rounded-2xl bg-white border border-slate-100 p-2 text-slate-400 hover:text-primary transition-all shadow-sm active:scale-90"
+           className="relative flex h-12 w-12 items-center justify-center text-slate-400 hover:text-slate-600 transition-all rounded-full hover:bg-slate-50 active:scale-90"
         >
-          <span className="material-symbols-outlined text-2xl">notifications</span>
+          <span className="material-symbols-outlined text-3xl">notifications</span>
           {unreadCount > 0 && (
-             <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[9px] font-black text-white ring-2 ring-white">
-               {unreadCount}
+             <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white ring-2 ring-white shadow-md">
+               {unreadCount > 99 ? '99+' : unreadCount}
              </span>
           )}
         </button>
@@ -186,6 +201,7 @@ export const Dashboard: React.FC = () => {
           <AccountsList 
             accounts={accounts} 
             onAddAccount={() => { setAccountToEdit(null); setIsAccountModalOpen(true); }}
+            onAccountClick={handleAccountClick}
             onEditAccount={handleEditAccount}
           />
 
@@ -215,14 +231,14 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <CategoryChartCard 
-            title="Receitas por Categoria" 
+            title="Receitas por categoria" 
             type="income" 
             categories={incomeCategories} 
             total={totalIncome} 
           />
           
           <CategoryChartCard 
-            title="Gastos por Categoria" 
+            title="Gastos por categoria" 
             type="expense" 
             categories={expenseCategories} 
             total={totalExpenses} 

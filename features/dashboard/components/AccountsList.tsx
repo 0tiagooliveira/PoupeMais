@@ -6,6 +6,7 @@ import { formatCurrency } from '../../../utils/formatters';
 interface AccountsListProps {
   accounts: Account[];
   onAddAccount: () => void;
+  onAccountClick: (account: Account) => void;
   onEditAccount: (account: Account) => void;
 }
 
@@ -20,7 +21,6 @@ const getBankLogoUrl = (name: string) => {
   if (lowerName.includes('caixa')) return 'https://poup-beta.web.app/Icon/caixa.svg';
   if (lowerName.includes('picpay')) return 'https://poup-beta.web.app/Icon/picpay.svg';
   
-  // Fallbacks para Inter e C6 se não estiverem na lista acima
   if (lowerName.includes('inter')) return 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20Inter%20S.A/inter.svg';
   if (lowerName.includes('c6')) return 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20C6%20S.A/c6%20bank.svg';
   
@@ -55,11 +55,11 @@ export const BankLogo = ({ name, color, size = 'md' }: { name: string, color: st
   );
 };
 
-export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccount, onEditAccount }) => {
+export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccount, onAccountClick, onEditAccount }) => {
   return (
     <div className="flex flex-col">
       <div className="flex items-center justify-between mb-5 px-1">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Minhas Contas</h3>
+        <h3 className="text-xs font-bold text-slate-400">Minhas contas</h3>
         <button 
           onClick={onAddAccount} 
           className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:bg-success/10 hover:text-success transition-all active:scale-90"
@@ -72,20 +72,28 @@ export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccou
         {accounts.map((account) => (
           <div 
             key={account.id} 
-            onClick={() => onEditAccount(account)}
+            onClick={() => onAccountClick(account)}
             className="group flex cursor-pointer items-center justify-between rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-success/30 hover:shadow-md active:scale-[0.98]"
           >
             <div className="flex items-center gap-4">
               <BankLogo name={account.name} color={account.color} />
               <div className="flex flex-col">
-                <p className="text-sm font-black text-slate-800 leading-none mb-1">{account.name}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{account.type}</p>
+                <p className="text-sm font-bold text-slate-800 leading-none mb-1">{account.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[9px] font-bold text-slate-400">{account.type}</p>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEditAccount(account); }}
+                    className="flex h-4 w-4 items-center justify-center rounded bg-slate-50 text-[10px] text-slate-300 hover:text-primary transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[12px]">settings</span>
+                  </button>
+                </div>
               </div>
             </div>
             
             <div className="flex items-center gap-4">
                <div className="text-right">
-                  <span className="block text-base font-black text-success tracking-tighter">
+                  <span className="block text-base font-bold text-success tracking-tighter">
                     {formatCurrency(account.balance)}
                   </span>
                </div>
@@ -99,14 +107,14 @@ export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccou
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-slate-200 shadow-sm border border-slate-100">
                 <span className="material-symbols-outlined text-3xl">account_balance</span>
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Nenhuma conta conectada</p>
+            <p className="text-xs font-bold text-slate-400 mb-6">Nenhuma conta conectada</p>
             <Button 
                 variant="primary" 
                 size="md" 
                 onClick={onAddAccount}
-                className="rounded-2xl font-black text-[10px] tracking-widest uppercase bg-slate-800"
+                className="rounded-2xl font-bold text-xs bg-slate-800"
             >
-                + ADICIONAR CONTA
+                + Adicionar conta
             </Button>
           </div>
         )}

@@ -24,7 +24,7 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
   const bgClass = isIncome ? 'bg-success' : 'bg-danger';
   const themeBg = isIncome ? 'bg-success/10' : 'bg-danger/10';
   const headerIcon = isIncome ? 'payments' : 'shopping_cart';
-  const title = isIncome ? 'Últimas Receitas' : 'Últimas Despesas';
+  const title = isIncome ? 'Últimas receitas' : 'Últimas despesas';
 
   const getCategoryInfo = (categoryName: string) => {
     const all = [...incomeCategories, ...expenseCategories];
@@ -33,15 +33,13 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
 
   return (
     <div className="flex flex-col rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all h-full">
-      {/* Header */}
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">{title}</h3>
+        <h3 className="text-xs font-bold text-slate-400">{title}</h3>
         <button onClick={onViewAll} className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 text-slate-300 hover:text-slate-500 transition-colors">
           <span className="material-symbols-outlined text-base">arrow_forward</span>
         </button>
       </div>
 
-      {/* Total Display */}
       <div className="flex items-center gap-4 mb-7">
         <div className={`flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm border border-white ${themeBg}`}>
           <span className={`material-symbols-outlined text-xl ${colorClass}`}>
@@ -49,19 +47,18 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
           </span>
         </div>
         <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter leading-none mb-1">Total Mensal</p>
+            <p className="text-[10px] font-bold text-slate-400 leading-none mb-1">Total mensal</p>
             <span className={`text-2xl font-bold tracking-tighter ${colorClass}`}>
                 {formatCurrency(total)}
             </span>
         </div>
       </div>
 
-      {/* List */}
       <div className="flex-1 space-y-3 mb-6">
         {transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-slate-300 text-xs text-center border-2 border-dashed border-slate-50 rounded-[24px] bg-slate-50/20">
             <span className="material-symbols-outlined mb-2 text-xl opacity-30">history</span>
-            <p className="font-bold uppercase tracking-tight opacity-50">Sem registros</p>
+            <p className="font-bold opacity-50">Sem registros</p>
           </div>
         ) : (
           transactions.map((t) => {
@@ -86,12 +83,12 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
                         {t.description}
                       </span>
                       {isParcelado && (
-                        <span className={`text-[8px] font-black px-1 rounded bg-white/50 border border-slate-100 ${colorClass}`}>
+                        <span className={`text-[8px] font-bold px-1 rounded bg-white/50 border border-slate-100 ${colorClass}`}>
                           {t.installmentNumber}/{t.totalInstallments}
                         </span>
                       )}
                     </div>
-                    <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-tight">
+                    <span className="text-[9px] font-semibold text-slate-400 tracking-tight">
                       {new Date(t.date).toLocaleDateString('pt-BR')}
                     </span>
                   </div>
@@ -107,21 +104,20 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
         )}
       </div>
 
-      {/* Action Button */}
       {transactions.length > 0 ? (
         <button 
             onClick={onViewAll}
-            className={`w-full rounded-2xl py-3 text-[10px] font-bold text-white shadow-md transition-all active:scale-[0.98] ${bgClass} hover:opacity-90 uppercase tracking-[0.1em]`}
+            className={`w-full rounded-2xl py-3 text-xs font-bold text-white shadow-md transition-all active:scale-[0.98] ${bgClass} hover:opacity-90`}
         >
-            Ver Extrato
+            Ver extrato
         </button>
       ) : (
         <Button 
             variant="secondary" 
             onClick={onAdd}
-            className="w-full rounded-2xl py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] border-slate-100"
+            className="w-full rounded-2xl py-3 text-xs font-bold text-slate-500 border-slate-100"
         >
-            Adicionar Novo
+            Adicionar novo
         </Button>
       )}
     </div>

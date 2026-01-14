@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import firebase from 'firebase/compat/app';
@@ -117,7 +118,7 @@ export const LoginPage: React.FC = () => {
           variant="secondary" 
           onClick={handleGoogleLogin} 
           disabled={loading}
-          className="w-full mb-8 py-4 rounded-2xl border-gray-100 hover:border-success/30 hover:bg-success/5 transition-all font-black text-[11px] tracking-widest uppercase"
+          className="w-full mb-8 py-4 rounded-2xl border-gray-100 hover:border-success/30 hover:bg-success/5 transition-all font-bold text-sm tracking-tight"
         >
           <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -130,7 +131,7 @@ export const LoginPage: React.FC = () => {
         
         <div className="relative flex items-center mb-8">
           <div className="flex-grow border-t border-gray-100"></div>
-          <span className="mx-4 flex-shrink text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">ou e-mail</span>
+          <span className="mx-4 flex-shrink text-[10px] font-bold tracking-tight text-slate-300">ou e-mail</span>
           <div className="flex-grow border-t border-gray-100"></div>
         </div>
 
@@ -165,33 +166,33 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border-2 border-gray-100 transition-all checked:bg-success checked:border-success"
                 />
-                <span className="material-symbols-outlined absolute text-white text-[12px] font-black opacity-0 peer-checked:opacity-100 pointer-events-none left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <span className="material-symbols-outlined absolute text-white text-[12px] font-bold opacity-0 peer-checked:opacity-100 pointer-events-none left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                     check
                 </span>
               </div>
-              <span className="text-xs font-bold text-slate-400 group-hover:text-slate-600 transition-colors uppercase tracking-tight">
+              <span className="text-xs font-bold text-slate-400 group-hover:text-slate-600 transition-colors tracking-tight">
                 Manter conectado
               </span>
             </label>
             
-            <Link to="/register" className="text-[10px] font-black text-success hover:underline uppercase tracking-widest">
+            <Link to="/register" className="text-[10px] font-bold text-success hover:underline tracking-tight">
                 Esqueci a senha
             </Link>
           </div>
 
           <Button 
             type="submit" 
-            className="w-full py-5 rounded-[22px] shadow-xl shadow-success/20 mt-2 bg-slate-800 hover:bg-slate-900 font-black text-[11px] tracking-[0.2em] uppercase" 
+            className="w-full py-5 rounded-[22px] shadow-xl shadow-success/20 mt-2 bg-slate-800 hover:bg-slate-900 font-bold text-sm tracking-tight" 
             isLoading={loading}
           >
-            Acessar Plataforma
+            Acessar plataforma
           </Button>
         </form>
 
         <p className="mt-10 text-center text-xs font-bold text-slate-400">
           Novo por aqui?{' '}
-          <Link to="/register" className="font-black text-success hover:underline uppercase tracking-widest">
-            Criar Conta Grátis
+          <Link to="/register" className="font-bold text-success hover:underline tracking-tight">
+            Criar conta grátis
           </Link>
         </p>
       </div>
