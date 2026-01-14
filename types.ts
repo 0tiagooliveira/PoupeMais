@@ -1,9 +1,11 @@
+import React from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 
 export interface UserProfile extends firebase.User {
   uid: string;
   email: string | null;
+  displayName: string | null;
 }
 
 export interface AuthContextType {
@@ -16,7 +18,6 @@ export interface BaseComponentProps {
   children?: React.ReactNode;
 }
 
-// Data Models
 export type TransactionType = 'income' | 'expense';
 export type TransactionStatus = 'pending' | 'completed'; 
 export type TransactionFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -29,13 +30,13 @@ export interface Transaction {
   category: string;
   accountId: string;
   accountName?: string;
-  date: string; // ISO String
+  date: string;
   status: TransactionStatus;
   isFixed: boolean;
   isRecurring: boolean;
   frequency?: TransactionFrequency;
-  installmentNumber?: number; // Novo: Número da parcela atual (ex: 1)
-  totalInstallments?: number; // Novo: Total de parcelas (ex: 12)
+  installmentNumber?: number; 
+  totalInstallments?: number; 
   createdAt: string;
 }
 
@@ -66,17 +67,23 @@ export interface CategoryData {
   icon: string;
 }
 
-// Notification System
-export type NotificationType = 'success' | 'error' | 'info' | 'warning';
+export type NotificationType = 'success' | 'error' | 'info' | 'warning' | 'finance';
 
 export interface NotificationItem {
   id: string;
   type: NotificationType;
   message: string;
   duration?: number;
+  timestamp: Date;
+  read: boolean;
+  addToHistory?: boolean; // Se false, não aparece na modal de notificações
 }
 
 export interface NotificationContextType {
-  addNotification: (message: string, type: NotificationType, duration?: number) => void;
+  notifications: NotificationItem[];
+  history: NotificationItem[];
+  addNotification: (message: string, type: NotificationType, duration?: number, addToHistory?: boolean) => void;
   removeNotification: (id: string) => void;
+  clearHistory: () => void;
+  markAllAsRead: () => void;
 }

@@ -9,83 +9,108 @@ interface AccountsListProps {
   onEditAccount: (account: Account) => void;
 }
 
-export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccount, onEditAccount }) => {
+const getBankLogoUrl = (name: string) => {
+  const lowerName = name.toLowerCase();
   
-  // Helper to determine icon style based on bank name
-  const getBankVisuals = (name: string, defaultColor: string) => {
-    const lowerName = name.toLowerCase();
-    
-    if (lowerName.includes('nubank')) return { color: '#820ad1', icon: 'account_balance' };
-    if (lowerName.includes('bradesco')) return { color: '#cc092f', icon: 'account_balance' };
-    if (lowerName.includes('itaú') || lowerName.includes('itau')) return { color: '#ec7000', icon: 'account_balance' };
-    if (lowerName.includes('inter')) return { color: '#ff7a00', icon: 'account_balance' };
-    if (lowerName.includes('santander')) return { color: '#ec0000', icon: 'account_balance' };
-    if (lowerName.includes('carteira') || lowerName.includes('dinheiro')) return { color: '#16a34a', icon: 'payments' };
-    
-    return { color: defaultColor || '#64748b', icon: 'account_balance' };
-  };
+  if (lowerName.includes('nubank')) return 'https://poup-beta.web.app/Icon/Nubank.svg';
+  if (lowerName.includes('itaú') || lowerName.includes('itau')) return 'https://poup-beta.web.app/Icon/itau.svg';
+  if (lowerName.includes('bradesco')) return 'https://poup-beta.web.app/Icon/bradesco.svg';
+  if (lowerName.includes('santander')) return 'https://poup-beta.web.app/Icon/santander.svg';
+  if (lowerName.includes('brasil') || lowerName.includes('bb')) return 'https://poup-beta.web.app/Icon/banco-do-brasil.svg';
+  if (lowerName.includes('caixa')) return 'https://poup-beta.web.app/Icon/caixa.svg';
+  if (lowerName.includes('picpay')) return 'https://poup-beta.web.app/Icon/picpay.svg';
+  
+  // Fallbacks para Inter e C6 se não estiverem na lista acima
+  if (lowerName.includes('inter')) return 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20Inter%20S.A/inter.svg';
+  if (lowerName.includes('c6')) return 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20C6%20S.A/c6%20bank.svg';
+  
+  return null;
+};
+
+export const BankLogo = ({ name, color, size = 'md' }: { name: string, color: string, size?: 'sm' | 'md' | 'lg' }) => {
+  const logoUrl = getBankLogoUrl(name);
+  const sizeClasses = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-14 w-14' : 'h-11 w-11';
 
   return (
-    <div className="flex flex-col">
-      <h3 className="mb-4 text-lg font-bold text-slate-800">Contas</h3>
-      
-      <div className="flex flex-col gap-4">
-        {accounts.map((account) => {
-          const visuals = getBankVisuals(account.name, account.color);
-          
-          return (
-            <div 
-              key={account.id} 
-              onClick={() => onEditAccount(account)}
-              className="flex cursor-pointer items-center justify-between rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
-              title="Clique para editar"
-            >
-              <div className="flex items-center gap-4">
-                <div 
-                  className="flex h-12 w-12 items-center justify-center rounded-full text-white shadow-sm"
-                  style={{ backgroundColor: visuals.color }}
-                >
-                  <span className="material-symbols-outlined text-2xl">
-                    {nameIsBank(account.name) ? 'account_balance' : visuals.icon}
-                  </span>
-                </div>
-                <div>
-                  <p className="font-bold text-slate-900">{account.name}</p>
-                  <p className="text-sm text-secondary">{account.type}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                 <span className="font-bold text-success text-lg">
-                  {formatCurrency(account.balance)}
-                </span>
-                <span className="material-symbols-outlined text-gray-300">chevron_right</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {accounts.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-secondary">
-            Nenhuma conta cadastrada.
-          </div>
-        )}
-      </div>
-
-      <div className="mt-6 flex justify-center">
-        <Button 
-          onClick={onAddAccount} 
-          className="bg-[#10b981] hover:bg-[#059669] text-white px-6 py-3 rounded-xl font-semibold shadow-md shadow-green-500/20"
-        >
-          + Nova Conta
-        </Button>
-      </div>
+    <div 
+      className={`${sizeClasses} flex items-center justify-center rounded-full overflow-hidden shadow-sm flex-shrink-0 transition-transform group-hover:scale-110 border border-black/5`}
+      style={{ backgroundColor: color }}
+    >
+      {logoUrl ? (
+        <img 
+          src={logoUrl} 
+          alt={name} 
+          className="h-full w-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+            (e.target as HTMLImageElement).parentElement!.style.backgroundColor = color;
+          }}
+        />
+      ) : (
+        <span className="material-symbols-outlined text-white text-xl">
+          {name.toLowerCase().includes('dinheiro') ? 'payments' : 'account_balance'}
+        </span>
+      )}
     </div>
   );
 };
 
-// Helper to decide if we show a generic bank icon
-const nameIsBank = (name: string) => {
-    const banks = ['nubank', 'bradesco', 'itau', 'inter', 'c6', 'santander', 'caixa', 'banco'];
-    return banks.some(b => name.toLowerCase().includes(b));
+export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccount, onEditAccount }) => {
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between mb-5 px-1">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Minhas Contas</h3>
+        <button 
+          onClick={onAddAccount} 
+          className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:bg-success/10 hover:text-success transition-all active:scale-90"
+        >
+          <span className="material-symbols-outlined text-lg font-bold">add</span>
+        </button>
+      </div>
+      
+      <div className="flex flex-col gap-3">
+        {accounts.map((account) => (
+          <div 
+            key={account.id} 
+            onClick={() => onEditAccount(account)}
+            className="group flex cursor-pointer items-center justify-between rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-success/30 hover:shadow-md active:scale-[0.98]"
+          >
+            <div className="flex items-center gap-4">
+              <BankLogo name={account.name} color={account.color} />
+              <div className="flex flex-col">
+                <p className="text-sm font-black text-slate-800 leading-none mb-1">{account.name}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{account.type}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+               <div className="text-right">
+                  <span className="block text-base font-black text-success tracking-tighter">
+                    {formatCurrency(account.balance)}
+                  </span>
+               </div>
+               <span className="material-symbols-outlined text-slate-200 group-hover:text-success transition-colors">chevron_right</span>
+            </div>
+          </div>
+        ))}
+
+        {accounts.length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-slate-100 bg-slate-50/50 p-12 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-slate-200 shadow-sm border border-slate-100">
+                <span className="material-symbols-outlined text-3xl">account_balance</span>
+            </div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Nenhuma conta conectada</p>
+            <Button 
+                variant="primary" 
+                size="md" 
+                onClick={onAddAccount}
+                className="rounded-2xl font-black text-[10px] tracking-widest uppercase bg-slate-800"
+            >
+                + ADICIONAR CONTA
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };

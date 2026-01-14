@@ -3,10 +3,10 @@ import { useTransactions } from '../../hooks/useTransactions';
 import { Transaction, TransactionType } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { MonthSelector } from '../dashboard/components/MonthSelector';
-import { Card } from '../../components/ui/Card';
 import { useAccounts } from '../../hooks/useAccounts';
 import { BackButton } from '../../components/ui/BackButton';
-import { NewTransactionModal } from '../dashboard/components/NewTransactionModal';
+import { NewTransactionModal, incomeCategories, expenseCategories } from '../dashboard/components/NewTransactionModal';
+import { Button } from '../../components/ui/Button';
 
 interface TransactionsPageProps {
   title: string;
@@ -15,14 +15,24 @@ interface TransactionsPageProps {
 
 export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filterType }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const { transactions, loading, updateTransaction, deleteTransaction } = useTransactions(currentDate);
+  const { transactions, loading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(currentDate);
   const { accounts } = useAccounts();
   
-  // States para Edição
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  // Mapa para pegar o nome da conta rapidamente
+  const isIncome = filterType === 'income';
+  const isExpense = filterType === 'expense';
+  
+  const theme = {
+    primary: isIncome ? 'text-success' : (isExpense ? 'text-danger' : 'text-primary'),
+    bg: isIncome ? 'bg-success/10' : (isExpense ? 'bg-danger/10' : 'bg-slate-50'),
+    gradient: isIncome 
+      ? 'bg-gradient-to-br from-success to-[#1AA851]' 
+      : (isExpense ? 'bg-gradient-to-br from-danger to-[#D63A3A]' : 'bg-gradient-to-br from-slate-700 to-slate-900'),
+    icon: isIncome ? 'trending_up' : (isExpense ? 'trending_down' : 'receipt_long')
+  };
+
   const accountsMap = useMemo(() => {
     return accounts.reduce((acc, curr) => {
       acc[curr.id] = curr.name;
@@ -32,11 +42,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
 
   const filteredTransactions = useMemo(() => {
     if (!filterType) return transactions;
-    
-    if (filterType === 'credit_card') {
-        return transactions.filter(t => false); 
-    }
-
+    if (filterType === 'credit_card') return []; 
     return transactions.filter(t => t.type === filterType);
   }, [transactions, filterType]);
 
@@ -44,17 +50,9 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
     return filteredTransactions.reduce((acc, curr) => acc + curr.amount, 0);
   }, [filteredTransactions]);
 
-  const getIcon = (category: string) => {
-    const map: Record<string, string> = {
-      'Moradia': 'home',
-      'Alimentação': 'restaurant',
-      'Transporte': 'directions_car',
-      'Lazer': 'movie',
-      'Saúde': 'medical_services',
-      'Receita/Salário': 'work',
-      'Outros': 'more_horiz'
-    };
-    return map[category] || 'receipt';
+  const getCategoryInfo = (category: string) => {
+    const allCategories = [...incomeCategories, ...expenseCategories];
+    return allCategories.find(c => c.name === category) || { icon: 'payments', color: '#64748b' };
   };
 
   const handleTransactionClick = (transaction: Transaction) => {
@@ -62,78 +60,130 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
       setIsModalOpen(true);
   };
 
-  const handleSave = async (data: any) => {
-      if (editingTransaction) {
-          await updateTransaction(editingTransaction.id, data);
-      }
+  const handleAddNew = () => {
+    setEditingTransaction(null);
+    setIsModalOpen(true);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-            <BackButton className="md:hidden" />
-            <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
+    <div className="space-y-8 pb-12 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+            <BackButton className="bg-white border border-slate-100 shadow-sm" />
+            <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold tracking-tight text-slate-800">{title}</h2>
+                    <button 
+                        onClick={handleAddNew}
+                        className={`flex h-6 w-6 items-center justify-center rounded-full transition-transform active:scale-90 ${theme.bg} ${theme.primary}`}
+                    >
+                        <span className="material-symbols-outlined text-sm font-bold">add</span>
+                    </button>
+                </div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em]">Visão Geral do Mês</p>
+            </div>
         </div>
         <MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="sm:col-span-1 bg-gradient-to-br from-slate-800 to-slate-900 text-white border-none">
-            <div className="text-slate-300 text-sm mb-1">Total em {title}</div>
-            <div className="text-2xl font-bold">{formatCurrency(totalAmount)}</div>
-            <div className="text-xs text-slate-400 mt-2">{filteredTransactions.length} lançamentos</div>
-        </Card>
+      <div className={`relative overflow-hidden rounded-[28px] p-8 text-white shadow-lg ${theme.gradient}`}>
+          <div className="absolute -right-4 -bottom-4 opacity-10">
+              <span className="material-symbols-outlined text-[140px] rotate-12">{theme.icon}</span>
+          </div>
+          
+          <div className="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+              <div>
+                  <div className="flex items-center gap-2 text-white/70 text-[11px] font-bold uppercase tracking-widest mb-3">
+                      <span className="material-symbols-outlined text-sm">{theme.icon}</span>
+                      Balanço Total
+                  </div>
+                  <div className="text-5xl font-bold tracking-tighter">
+                      {formatCurrency(totalAmount)}
+                  </div>
+              </div>
+              <div className="flex items-center gap-2">
+                  <div className="rounded-2xl bg-white/10 px-4 py-2 backdrop-blur-md border border-white/10">
+                      <p className="text-[10px] font-bold text-white/60 uppercase tracking-tighter mb-0.5">Lançamentos</p>
+                      <p className="text-lg font-bold">{filteredTransactions.length}</p>
+                  </div>
+              </div>
+          </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-surface shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm">
+        <div className="flex items-center justify-between bg-slate-50/50 px-6 py-4 border-b border-slate-50">
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Histórico Detalhado</h3>
+        </div>
+
         {loading ? (
-          <div className="p-8 text-center text-secondary">Carregando transações...</div>
+          <div className="flex flex-col items-center justify-center p-20 space-y-4">
+             <div className="relative">
+                <div className="h-10 w-10 rounded-full border-2 border-slate-100"></div>
+                <div className="absolute top-0 h-10 w-10 animate-spin rounded-full border-t-2 border-primary"></div>
+             </div>
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sincronizando...</p>
+          </div>
         ) : filteredTransactions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            <span className="material-symbols-outlined mb-2 text-4xl text-gray-300">receipt_long</span>
-            <p className="text-lg font-medium text-slate-600">Nenhum lançamento encontrado</p>
-            <p className="text-sm text-secondary">Não há registros para este mês nesta categoria.</p>
+          <div className="flex flex-col items-center justify-center p-20 text-center">
+            <div className={`mb-6 flex h-20 w-20 items-center justify-center rounded-3xl ${theme.bg} text-opacity-40`}>
+                <span className={`material-symbols-outlined text-4xl ${theme.primary} opacity-30`}>{theme.icon}</span>
+            </div>
+            <p className="text-lg font-bold text-slate-800">Nada por aqui ainda</p>
+            <p className="mt-1 text-xs text-slate-400 font-medium">Não encontramos registros para este período.</p>
+            <Button 
+                onClick={handleAddNew} 
+                className={`mt-6 rounded-2xl font-bold px-8 py-3 text-sm tracking-tight ${isIncome ? 'bg-success hover:opacity-90' : 'bg-danger hover:opacity-90'}`}
+            >
+                Criar Primeiro Registro
+            </Button>
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-slate-50">
             {filteredTransactions.map((transaction) => {
-              const isExpense = transaction.type === 'expense';
+              const itemIsExpense = transaction.type === 'expense';
+              const itemColor = itemIsExpense ? 'text-danger' : 'text-success';
+              const itemBg = itemIsExpense ? 'bg-danger/10' : 'bg-success/10';
+              const cat = getCategoryInfo(transaction.category);
+              const isParcelado = transaction.totalInstallments && transaction.totalInstallments > 1;
+              
               return (
                 <div 
                     key={transaction.id} 
                     onClick={() => handleTransactionClick(transaction)}
-                    className="flex cursor-pointer items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                    className="group flex cursor-pointer items-center justify-between px-6 py-4 transition-all hover:bg-slate-50/50"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                        isExpense ? 'bg-red-50 text-danger' : 'bg-green-50 text-success'
-                    }`}>
-                      <span className="material-symbols-outlined text-xl">{getIcon(transaction.category)}</span>
+                    <div 
+                        className={`flex h-11 w-11 items-center justify-center rounded-[14px] shadow-sm ring-1 ring-inset ring-slate-100/50 transition-all group-hover:scale-110 ${itemBg} ${itemColor}`}
+                    >
+                      <span className="material-symbols-outlined text-xl">{cat.icon}</span>
                     </div>
                     <div>
-                      <p className="font-medium text-slate-800 flex items-center gap-2">
-                        {transaction.installmentNumber && transaction.totalInstallments && (
-                            <span className="text-xs font-bold text-secondary bg-gray-100 px-1.5 py-0.5 rounded">
-                                {transaction.installmentNumber}/{transaction.totalInstallments}
-                            </span>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-semibold text-slate-700 text-sm leading-snug">{transaction.description}</p>
+                        {isParcelado && (
+                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${itemIsExpense ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'}`}>
+                            {transaction.installmentNumber}/{transaction.totalInstallments}
+                          </span>
                         )}
-                        {transaction.description}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-secondary">
-                        <span>{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
-                        <span>•</span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                        <span className="text-slate-300">{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-200"></span>
                         <span>{transaction.category}</span>
-                        <span>•</span>
-                        <span className="font-medium text-slate-600">
-                          {accountsMap[transaction.accountId] || 'Conta Excluída'}
-                        </span>
+                        <span className="h-1 w-1 rounded-full bg-slate-200"></span>
+                        <div className="flex items-center gap-1 opacity-60">
+                            <span className="material-symbols-outlined text-[12px]">account_balance_wallet</span>
+                            {accountsMap[transaction.accountId]}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <span className={`font-semibold ${isExpense ? 'text-danger' : 'text-success'}`}>
-                    {isExpense ? '-' : '+'}{formatCurrency(transaction.amount)}
-                  </span>
+                  <div className="text-right">
+                      <span className={`text-base font-bold tracking-tight ${itemColor}`}>
+                        {itemIsExpense ? '-' : '+'}{formatCurrency(transaction.amount)}
+                      </span>
+                  </div>
                 </div>
               );
             })}
@@ -141,19 +191,18 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title, filte
         )}
       </div>
 
-      {editingTransaction && (
-          <NewTransactionModal
-            isOpen={isModalOpen}
-            onClose={() => {
-                setIsModalOpen(false);
-                setEditingTransaction(null);
-            }}
-            onSave={handleSave}
-            onDelete={deleteTransaction}
-            accounts={accounts}
-            transactionToEdit={editingTransaction}
-          />
-      )}
+      <NewTransactionModal
+        isOpen={isModalOpen}
+        onClose={() => { setIsModalOpen(false); setEditingTransaction(null); }}
+        onSave={async (data) => {
+            if (editingTransaction) await updateTransaction(editingTransaction.id, data);
+            else await addTransaction(data);
+        }}
+        onDelete={deleteTransaction}
+        accounts={accounts}
+        transactionToEdit={editingTransaction}
+        initialType={filterType === 'credit_card' ? 'expense' : (filterType as TransactionType)}
+      />
     </div>
   );
 };

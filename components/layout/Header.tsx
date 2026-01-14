@@ -13,16 +13,19 @@ export const Header: React.FC = () => {
   return (
     <header className="sticky top-0 z-10 w-full border-b border-gray-200 bg-surface px-6 py-4 shadow-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between">
-        <div className="flex items-center gap-2">
-           <span className="material-symbols-outlined text-3xl text-primary">account_balance_wallet</span>
-           <h1 className="text-xl font-bold tracking-tight text-slate-800">Poup+</h1>
+        <div className="flex items-center">
+           <img 
+             src="https://poup-beta.web.app/Icon/LogoPoup.svg" 
+             alt="Poup+" 
+             className="h-7 w-auto md:h-8" 
+           />
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="hidden text-sm text-secondary md:block">
+          <span className="hidden text-sm font-semibold text-secondary md:block">
             {currentUser?.email}
           </span>
-          <Button variant="ghost" size="sm" onClick={handleLogout} icon="logout" title="Sair">
+          <Button variant="ghost" size="sm" onClick={handleLogout} icon="logout" title="Sair" className="text-slate-400 hover:text-danger">
             <span className="sr-only">Sair</span>
           </Button>
         </div>

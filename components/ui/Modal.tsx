@@ -31,23 +31,25 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity" 
         onClick={onClose}
       />
       
       {/* Content */}
-      <div className="relative w-full max-w-md scale-100 rounded-2xl bg-surface p-6 shadow-2xl transition-transform">
+      <div className="relative w-full max-w-sm scale-100 rounded-3xl bg-surface p-5 shadow-2xl transition-transform border border-gray-100">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-slate-800">{title}</h3>
+          <h3 className="text-lg font-bold text-slate-800">{title}</h3>
           <button 
             onClick={onClose}
-            className="rounded-full p-1 text-secondary hover:bg-gray-100"
+            className="rounded-full p-1.5 text-secondary hover:bg-gray-100 transition-colors"
           >
-            <span className="material-symbols-outlined">close</span>
+            <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
         
-        {children}
+        <div className="custom-scrollbar max-h-[80vh] overflow-y-auto pr-1">
+          {children}
+        </div>
       </div>
     </div>,
     document.body

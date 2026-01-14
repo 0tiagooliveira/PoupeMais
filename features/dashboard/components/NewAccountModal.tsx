@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
-import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { useNotification } from '../../../contexts/NotificationContext';
 import { Account } from '../../../types';
+import { BankLogo } from './AccountsList';
 
 interface NewAccountModalProps {
   isOpen: boolean;
@@ -14,146 +14,183 @@ interface NewAccountModalProps {
   accountToEdit?: Account | null;
 }
 
-export const NewAccountModal: React.FC<NewAccountModalProps> = ({ 
-    isOpen, 
-    onClose, 
-    onSave, 
-    onDelete, 
-    accountToEdit 
-}) => {
+const BANKS = [
+  { name: 'Nubank', color: '#820ad1', code: '260', url: 'https://poup-beta.web.app/Icon/Nubank.svg' },
+  { name: 'Itaú', color: '#ec7000', code: '341', url: 'https://poup-beta.web.app/Icon/itau.svg' },
+  { name: 'Bradesco', color: '#cc092f', code: '237', url: 'https://poup-beta.web.app/Icon/bradesco.svg' },
+  { name: 'Inter', color: '#ff7a00', code: '077', url: 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20Inter%20S.A/inter.svg' },
+  { name: 'Santander', color: '#ec0000', code: '033', url: 'https://poup-beta.web.app/Icon/santander.svg' },
+  { name: 'Banco do Brasil', color: '#fcf800', code: '001', url: 'https://poup-beta.web.app/Icon/banco-do-brasil.svg' },
+  { name: 'Caixa', color: '#005ca9', code: '104', url: 'https://poup-beta.web.app/Icon/caixa.svg' },
+  { name: 'PicPay', color: '#21C25E', code: '380', url: 'https://poup-beta.web.app/Icon/picpay.svg' },
+  { name: 'C6 Bank', color: '#000000', code: '336', url: 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20C6%20S.A/c6%20bank.svg' },
+];
+
+const ACCOUNT_TYPES = ['Corrente', 'Poupança', 'Investimentos', 'Dinheiro'];
+
+export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClose, onSave, onDelete, accountToEdit }) => {
   const [name, setName] = useState('');
-  const [type, setType] = useState('Conta corrente');
-  const [initialBalance, setInitialBalance] = useState('');
+  const [type, setType] = useState('Corrente');
+  const [balance, setBalance] = useState('');
+  const [color, setColor] = useState('#21C25E');
   const [loading, setLoading] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { addNotification } = useNotification();
 
   useEffect(() => {
-    if (isOpen) {
-        if (accountToEdit) {
-            setName(accountToEdit.name);
-            setType(accountToEdit.type);
-            setInitialBalance(accountToEdit.balance.toString());
-        } else {
-            setName('');
-            setType('Conta corrente');
-            setInitialBalance('');
-        }
+    if (accountToEdit) {
+      setName(accountToEdit.name);
+      setType(accountToEdit.type);
+      setBalance(accountToEdit.balance.toString());
+      setColor(accountToEdit.color);
+    } else {
+      setName('');
+      setType('Corrente');
+      setBalance('');
+      setColor('#21C25E');
     }
-  }, [isOpen, accountToEdit]);
+  }, [accountToEdit, isOpen]);
+
+  const handleBankSelect = (bank: typeof BANKS[0]) => {
+    setName(bank.name);
+    setColor(bank.color);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
     try {
       await onSave({
         name,
         type,
-        initialBalance: parseFloat(initialBalance) || 0,
-        balance: parseFloat(initialBalance) || 0,
-        color: '#64748b', 
+        balance: parseFloat(balance) || 0,
+        initialBalance: parseFloat(balance) || 0,
+        color,
       });
-      
-      const action = accountToEdit ? 'atualizada' : 'criada';
-      addNotification(`Conta "${name}" ${action} com sucesso!`, 'success');
-
       onClose();
     } catch (error) {
-      console.error(error);
       addNotification('Erro ao salvar conta.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!accountToEdit || !onDelete) return;
-    
-    setLoading(true);
-    try {
-        await onDelete(accountToEdit.id);
-        addNotification('Conta excluída.', 'success');
-        setShowDeleteConfirm(false);
-        onClose();
-    } catch (error) {
-        console.error(error);
-        addNotification('Erro ao excluir conta.', 'error');
-    } finally {
-        setLoading(false);
-    }
-  };
-
   return (
-    <>
-    <Modal isOpen={isOpen} onClose={onClose} title={accountToEdit ? "Editar Conta" : "Nova Conta"}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        
-        <Input 
-          label="Nome da Conta" 
-          placeholder="Ex: Nubank, Bradesco, Carteira" 
-          value={name}
-          onChange={e => setName(e.target.value)}
-          required
-        />
+    <Modal isOpen={isOpen} onClose={onClose} title={accountToEdit ? "Editar Conta" : "Conectar Instituição"}>
+      {/* Visual Preview */}
+      <div className="mb-8 flex flex-col items-center px-1">
+        <div 
+          className="w-full rounded-[36px] p-6 shadow-2xl transition-all duration-500 flex items-center justify-between overflow-hidden relative border border-white/20"
+          style={{ 
+            background: `linear-gradient(135deg, ${color} 0%, ${color}DD 100%)`,
+            color: (color === '#fcf800' || color === '#FC0') ? '#1e293b' : '#fff'
+          }}
+        >
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="bg-white/95 rounded-full p-0.5 shadow-lg border border-white/20">
+              <BankLogo name={name} color={color} size="lg" />
+            </div>
+            <div className="drop-shadow-sm">
+               <p className="text-sm font-black leading-none mb-1">{name || 'Minha Conta'}</p>
+               <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">{type}</p>
+            </div>
+          </div>
+          <div className="text-right relative z-10 drop-shadow-sm">
+             <span className="block text-xl font-black tracking-tighter">
+               R$ {parseFloat(balance || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+             </span>
+          </div>
+          <div className="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
+             <span className="material-symbols-outlined text-[140px] rotate-12">account_balance</span>
+          </div>
+        </div>
+      </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-secondary">Tipo de Conta</label>
-          <select 
-            className="w-full rounded-lg border border-gray-200 bg-surface px-4 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            value={type}
-            onChange={e => setType(e.target.value)}
-          >
-            <option value="Conta corrente">Conta corrente</option>
-            <option value="Poupança">Poupança</option>
-            <option value="Investimentos">Investimentos</option>
-            <option value="Dinheiro">Dinheiro</option>
-            <option value="Outros">Outros</option>
-          </select>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div>
+          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-5 block px-1">Selecione o seu Banco</label>
+          <div className="grid grid-cols-4 gap-y-6 gap-x-2">
+            {BANKS.map(bank => (
+              <button
+                key={bank.name}
+                type="button"
+                onClick={() => handleBankSelect(bank)}
+                className="group flex flex-col items-center gap-2 transition-all active:scale-90"
+              >
+                <div className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${name === bank.name ? 'ring-[3px] ring-slate-800 ring-offset-2 scale-110 shadow-lg' : 'ring-1 ring-slate-100 hover:ring-slate-300'}`}>
+                    <BankLogo name={bank.name} color={bank.color} size="md" />
+                    {name === bank.name && (
+                        <div className="absolute -top-1 -right-1 bg-slate-800 text-white rounded-full h-5 w-5 flex items-center justify-center shadow-md border-2 border-white z-20">
+                            <span className="material-symbols-outlined text-[12px] font-black">check</span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex flex-col items-center text-center mt-1">
+                    <span className={`text-[10px] font-black leading-tight ${name === bank.name ? 'text-slate-800' : 'text-slate-500'}`}>{bank.name}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">BANCO {bank.code}</span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
         <Input 
-          label={accountToEdit ? "Saldo Atual (R$)" : "Saldo Inicial (R$)"}
-          type="number" 
-          step="0.01" 
-          placeholder="0,00" 
-          value={initialBalance}
-          onChange={e => setInitialBalance(e.target.value)}
-          className="font-mono"
+          label="Nome da Conta" 
+          placeholder="Ex: Nubank Pessoal, Carteira..." 
+          value={name}
+          onChange={e => setName(e.target.value)}
+          required
+          className="rounded-2xl font-bold"
         />
 
-        <div className="mt-4 flex gap-3">
-          {accountToEdit && onDelete && (
-                <Button 
-                    type="button" 
-                    variant="danger" 
-                    onClick={() => setShowDeleteConfirm(true)} 
-                    isLoading={loading}
-                    className="w-12 px-0 flex items-center justify-center"
-                    title="Excluir"
-                >
-                    <span className="material-symbols-outlined text-xl">delete</span>
-                </Button>
-            )}
+        <div>
+          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 block">Tipo</label>
+          <div className="flex flex-wrap gap-2">
+            {ACCOUNT_TYPES.map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setType(t)}
+                className={`rounded-xl px-4 py-2.5 text-[10px] font-black tracking-widest uppercase transition-all ${
+                    type === t 
+                    ? 'bg-slate-800 text-white shadow-lg' 
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          <Button type="button" variant="ghost" onClick={onClose} className="flex-1">
-            Cancelar
+        <div className="rounded-3xl bg-slate-50 p-6 border border-slate-100">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 block">Saldo Disponível</label>
+            <div className="flex items-center gap-3">
+                <span className="text-2xl font-black text-slate-300">R$</span>
+                <input 
+                    type="number" 
+                    step="0.01" 
+                    placeholder="0,00" 
+                    value={balance}
+                    onChange={e => setBalance(e.target.value)}
+                    required
+                    className="w-full bg-transparent text-4xl font-black tracking-tighter text-slate-800 outline-none placeholder:text-slate-100"
+                />
+            </div>
+        </div>
+
+        <div className="flex gap-4 pt-4">
+          <Button type="button" variant="ghost" onClick={onClose} className="flex-1 rounded-2xl font-black text-[11px] tracking-widest uppercase py-4">
+            CANCELAR
           </Button>
-          <Button type="submit" isLoading={loading} className="flex-1">
-            {accountToEdit ? 'Atualizar' : 'Criar Conta'}
+          <Button 
+            type="submit" 
+            isLoading={loading} 
+            className="flex-1 rounded-2xl font-black text-[11px] tracking-widest uppercase shadow-2xl py-4 bg-slate-800 hover:bg-slate-900"
+          >
+            {accountToEdit ? 'ATUALIZAR' : 'CONCLUIR'}
           </Button>
         </div>
       </form>
     </Modal>
-
-    <ConfirmationModal
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleConfirmDelete}
-        title="Excluir Conta Bancária"
-        message={`Tem certeza que deseja apagar a conta "${name}"? Todas as transações vinculadas poderão ficar sem referência.`}
-        isLoading={loading}
-    />
-    </>
   );
 };
