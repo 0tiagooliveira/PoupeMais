@@ -28,6 +28,9 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError('');
 
+    // Clear logout flag when attempting to login
+    sessionStorage.removeItem('poup_logout');
+
     try {
       const persistence = rememberMe 
         ? firebase.auth.Auth.Persistence.LOCAL 

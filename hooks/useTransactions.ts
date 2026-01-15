@@ -26,14 +26,22 @@ export const useTransactions = (currentDate: Date) => {
   };
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setTransactions([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
-    // Define o início e fim do mês local
-    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    // Define o início e fim do mês local usando valores primitivos para evitar referências instáveis
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    const startOfMonth = new Date(year, month, 1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const endOfMonth = new Date(year, month + 1, 0);
     endOfMonth.setHours(23, 59, 59, 999);
 
     // AMPLIAÇÃO DE SEGURANÇA PARA FUSO HORÁRIO:
@@ -62,19 +70,20 @@ export const useTransactions = (currentDate: Date) => {
       // Filtro preciso em memória baseado no Mês/Ano selecionado visualmente
       const filteredData = rawData.filter(t => {
         const tDate = new Date(t.date);
-        return tDate.getMonth() === currentDate.getMonth() && 
-               tDate.getFullYear() === currentDate.getFullYear();
+        return tDate.getMonth() === month && 
+               tDate.getFullYear() === year;
       });
 
       setTransactions(filteredData);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching transactions:", error);
+      setTransactions([]);
       setLoading(false);
     });
 
     return unsubscribe;
-  }, [currentUser, currentDate]);
+  }, [currentUser?.uid, currentDate.getFullYear(), currentDate.getMonth()]);
 
   const calculateFutureDate = (baseDate: Date, frequency: TransactionFrequency, index: number) => {
     const newDate = new Date(baseDate);

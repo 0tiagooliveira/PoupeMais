@@ -10,7 +10,11 @@ export const useCreditCards = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setCards([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
 
@@ -29,11 +33,12 @@ export const useCreditCards = () => {
       setLoading(false);
     }, (error) => {
       console.error("Error fetching credit cards:", error);
+      setCards([]);
       setLoading(false);
     });
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
   const addCard = async (data: Omit<CreditCard, 'id' | 'createdAt'>) => {
     if (!currentUser) throw new Error("No user logged in");

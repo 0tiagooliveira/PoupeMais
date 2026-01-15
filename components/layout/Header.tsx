@@ -8,7 +8,21 @@ export const Header: React.FC = () => {
   const { currentUser } = useAuth();
 
   const handleLogout = () => {
+    // Mark that user explicitly logged out
+    sessionStorage.setItem('poup_logout', 'true');
     auth.signOut();
+  };
+
+  const handleSwitchUser = () => {
+    // For testing: toggle between mock user and real auth
+    if (currentUser?.email === 'teste@poup.com') {
+      // If using mock user, log out to allow real login
+      handleLogout();
+    } else {
+      // If using real user, go to mock user
+      sessionStorage.removeItem('poup_logout');
+      window.location.reload();
+    }
   };
 
   return (
@@ -28,6 +42,11 @@ export const Header: React.FC = () => {
           <span className="hidden text-sm font-semibold text-secondary md:block">
             {currentUser?.email}
           </span>
+          {currentUser?.email === 'teste@poup.com' && (
+            <Button variant="secondary" size="sm" onClick={handleSwitchUser} title="Fazer Login Real">
+              Login Real
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={handleLogout} icon="logout" title="Sair" className="text-slate-400 hover:text-danger">
             <span className="sr-only">Sair</span>
           </Button>

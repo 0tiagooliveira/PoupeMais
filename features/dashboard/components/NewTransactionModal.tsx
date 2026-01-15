@@ -191,7 +191,17 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
             <label className="mb-1 block text-[10px] font-bold text-secondary/50">Valor</label>
             <div className="flex items-center justify-center gap-1">
                 <span className={`text-xl font-bold ${primaryColor}`}>R$</span>
-                <input type="number" step="0.01" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} className={`w-full max-w-[180px] bg-transparent text-4xl font-bold outline-none text-center ${primaryColor}`} required />
+                <input 
+                  type="tel"
+                  pattern="[0-9]*"
+                  inputMode="decimal"
+                  step="0.01" 
+                  placeholder="0,00" 
+                  value={amount} 
+                  onChange={(e) => setAmount(e.target.value)} 
+                  className={`w-full max-w-[180px] bg-transparent text-4xl font-bold outline-none text-center ${primaryColor}`} 
+                  required 
+                />
             </div>
         </div>
 
@@ -246,7 +256,16 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                         <option value="weekly">Semanal</option>
                         <option value="yearly">Anual</option>
                     </select>
-                    <input type="number" min="2" placeholder="Parcelas" value={repeatCount} onChange={(e) => setRepeatCount(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold outline-none" />
+                    <input 
+                      type="tel"
+                      pattern="[0-9]*"
+                      inputMode="numeric"
+                      min="2" 
+                      placeholder="Parcelas" 
+                      value={repeatCount} 
+                      onChange={(e) => setRepeatCount(e.target.value)} 
+                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold outline-none" 
+                    />
                 </div>
             )}
         </div>

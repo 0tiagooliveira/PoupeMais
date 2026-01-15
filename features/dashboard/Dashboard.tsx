@@ -70,6 +70,16 @@ export const Dashboard: React.FC = () => {
   const { addNotification, history, clearHistory, markAllAsRead } = useNotification();
   const [currentDate, setCurrentDate] = useState(new Date());
   const navigate = useNavigate();
+
+  const handleIncomeClick = () => {
+    console.log('Navigating to /incomes');
+    navigate('/incomes');
+  };
+
+  const handleExpenseClick = () => {
+    console.log('Navigating to /expenses');
+    navigate('/expenses');
+  };
   
   const [isTransModalOpen, setIsTransModalOpen] = useState(false);
   const [transModalType, setTransModalType] = useState<TransactionType>('expense');
@@ -242,8 +252,8 @@ export const Dashboard: React.FC = () => {
         
         {/* Grid de Receitas e Despesas - Apenas 2 colunas agora */}
         <div className="grid grid-cols-2 gap-3">
-            <StatCard type="income" value={totalIncome} onClick={() => navigate('/incomes')} />
-            <StatCard type="expense" value={totalExpenses} onClick={() => navigate('/expenses')} />
+            <StatCard type="income" value={totalIncome} onClick={handleIncomeClick} />
+            <StatCard type="expense" value={totalExpenses} onClick={handleExpenseClick} />
         </div>
       </div>
       

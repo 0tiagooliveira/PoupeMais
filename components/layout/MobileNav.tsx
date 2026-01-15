@@ -32,13 +32,8 @@ export const MobileNav: React.FC = () => {
                   }`
                 }
               >
-                {/* Fix: Use functional children to correctly access isActive scope */}
-                {({ isActive }) => (
-                  <>
-                    <span className={`material-symbols-outlined text-2xl ${isActive ? 'fill-1' : ''}`}>{link.icon}</span>
-                    <span className="text-[10px] font-bold">{link.label}</span>
-                  </>
-                )}
+                <span className="material-symbols-outlined text-2xl">{link.icon}</span>
+                <span className="text-[10px] font-bold">{link.label}</span>
               </NavLink>
             ))}
           </div>
@@ -63,13 +58,8 @@ export const MobileNav: React.FC = () => {
                   }`
                 }
               >
-                {/* Fix: Use functional children to correctly access isActive scope */}
-                {({ isActive }) => (
-                  <>
-                    <span className={`material-symbols-outlined text-2xl ${isActive ? 'fill-1' : ''}`}>{link.icon}</span>
-                    <span className="text-[10px] font-bold">{link.label}</span>
-                  </>
-                )}
+                <span className="material-symbols-outlined text-2xl">{link.icon}</span>
+                <span className="text-[10px] font-bold">{link.label}</span>
               </NavLink>
             ))}
           </div>

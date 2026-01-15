@@ -57,6 +57,10 @@ export const RegisterPage: React.FC = () => {
     if (password.length < 6) return setError('Mínimo 6 caracteres.');
     setLoading(true);
     setError('');
+    
+    // Clear logout flag when attempting to register
+    sessionStorage.removeItem('poup_logout');
+    
     try {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;

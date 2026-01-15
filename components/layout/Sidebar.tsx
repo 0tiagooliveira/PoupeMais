@@ -19,6 +19,7 @@ export const Sidebar: React.FC = () => {
             <NavLink
               key={link.to}
               to={link.to}
+              onClick={() => console.log('Sidebar click:', link.to, 'Label:', link.label)}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold tracking-tight transition-all ${
                   isActive

@@ -10,7 +10,11 @@ export const useAccounts = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setAccounts([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
 
@@ -38,11 +42,12 @@ export const useAccounts = () => {
       setLoading(false);
     }, (error) => {
       console.error("Error fetching accounts:", error);
+      setAccounts([]);
       setLoading(false);
     });
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
   const addAccount = async (data: Omit<Account, 'id'>) => {
     if (!currentUser) throw new Error("No user logged in");
