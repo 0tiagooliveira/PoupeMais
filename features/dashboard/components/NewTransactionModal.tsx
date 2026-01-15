@@ -18,56 +18,59 @@ interface NewTransactionModalProps {
 }
 
 export const incomeCategories = [
-  { name: 'Salário', icon: 'attach_money', color: '#21C25E' },
-  { name: 'Freelance', icon: 'work', color: '#2BDC6F' },
-  { name: 'Bônus', icon: 'card_giftcard', color: '#45E883' },
-  { name: 'Comissões', icon: 'trending_up', color: '#21C25E' },
-  { name: 'Aluguel recebido', icon: 'home', color: '#047857' },
-  { name: 'Investimentos', icon: 'show_chart', color: '#065f46' },
-  { name: 'Dividendos', icon: 'account_balance_wallet', color: '#21C25E' },
-  { name: 'Juros recebidos', icon: 'percent', color: '#2BDC6F' },
-  { name: 'Cashback', icon: 'credit_card', color: '#21C25E' },
-  { name: 'Venda de produtos', icon: 'shopping_cart', color: '#21C25E' },
-  { name: 'Venda de serviços', icon: 'handshake', color: '#2BDC6F' },
-  { name: 'Reembolso', icon: 'receipt', color: '#45E883' },
-  { name: 'Restituição', icon: 'account_balance', color: '#047857' },
-  { name: 'Premiações', icon: 'emoji_events', color: '#fbbf24' },
-  { name: 'Herança', icon: 'family_restroom', color: '#6366f1' },
-  { name: 'Aposentadoria', icon: 'elderly', color: '#64748b' },
-  { name: 'Pensão', icon: 'child_care', color: '#ec4899' },
-  { name: 'Doações', icon: 'volunteer_activism', color: '#f43f5e' },
-  { name: 'Loteria', icon: 'casino', color: '#fbbf24' },
-  { name: 'Transferência', icon: 'swap_horiz', color: '#94a3b8' },
-  { name: 'Décimo terceiro', icon: 'calendar_month', color: '#21C25E' },
-  { name: 'Resgate', icon: 'savings', color: '#2BDC6F' },
-  { name: 'Lucros', icon: 'business', color: '#21C25E' },
-  { name: 'Outros', icon: 'more_horiz', color: '#94a3b8' }
+  { name: 'Salário', icon: 'payments', color: '#10B981' }, // Emerald 500
+  { name: 'Freelance', icon: 'computer', color: '#0EA5E9' }, // Sky 500
+  { name: 'Bônus', icon: 'stars', color: '#F59E0B' }, // Amber 500
+  { name: 'Comissões', icon: 'trending_up', color: '#8B5CF6' }, // Violet 500
+  { name: 'Aluguel recebido', icon: 'real_estate_agent', color: '#6366F1' }, // Indigo 500
+  { name: 'Investimentos', icon: 'show_chart', color: '#14B8A6' }, // Teal 500
+  { name: 'Dividendos', icon: 'pie_chart', color: '#22C55E' }, // Green 500
+  { name: 'Juros recebidos', icon: 'percent', color: '#84CC16' }, // Lime 500
+  { name: 'Cashback', icon: 'currency_exchange', color: '#EC4899' }, // Pink 500
+  { name: 'Venda de produtos', icon: 'storefront', color: '#F97316' }, // Orange 500
+  { name: 'Venda de serviços', icon: 'design_services', color: '#06B6D4' }, // Cyan 500
+  { name: 'Reembolso', icon: 'undo', color: '#64748B' }, // Slate 500
+  { name: 'Restituição', icon: 'account_balance', color: '#3B82F6' }, // Blue 500
+  { name: 'Premiações', icon: 'emoji_events', color: '#EAB308' }, // Yellow 500
+  { name: 'Herança', icon: 'diversity_3', color: '#A855F7' }, // Purple 500
+  { name: 'Aposentadoria', icon: 'elderly', color: '#475569' }, // Slate 600
+  { name: 'Pensão', icon: 'child_friendly', color: '#FB7185' }, // Rose 400
+  { name: 'Doações', icon: 'volunteer_activism', color: '#F43F5E' }, // Rose 500
+  { name: 'Loteria', icon: 'casino', color: '#10B981' }, // Emerald
+  { name: 'Transferência', icon: 'sync_alt', color: '#94A3B8' }, // Slate 400
+  { name: 'Décimo terceiro', icon: 'calendar_month', color: '#059669' }, // Emerald 600
+  { name: 'Resgate', icon: 'move_to_inbox', color: '#0D9488' }, // Teal 600
+  { name: 'Lucros', icon: 'query_stats', color: '#4ADE80' }, // Green 400
+  { name: 'Outros', icon: 'more_horiz', color: '#CBD5E1' } // Slate 300
 ];
 
 export const expenseCategories = [
-  { name: 'Alimentação', icon: 'restaurant', color: '#FF4444' },
-  { name: 'Transporte', icon: 'directions_car', color: '#3b82f6' },
-  { name: 'Moradia', icon: 'home', color: '#6366f1' },
-  { name: 'Mercado', icon: 'shopping_cart', color: '#f59e0b' },
-  { name: 'Compras', icon: 'local_mall', color: '#ec4899' },
-  { name: 'Saúde', icon: 'local_hospital', color: '#21C25E' },
-  { name: 'Educação', icon: 'school', color: '#8b5cf6' },
-  { name: 'Lazer', icon: 'sports_soccer', color: '#f97316' },
-  { name: 'Viagem', icon: 'flight', color: '#06b6d4' },
-  { name: 'Assinaturas', icon: 'subscriptions', color: '#FF4444' },
-  { name: 'Cartão de crédito', icon: 'credit_card', color: '#475569' },
-  { name: 'Impostos', icon: 'paid', color: '#FF4444' },
-  { name: 'Presentes', icon: 'emoji_events', color: '#fbbf24' },
-  { name: 'Pets', icon: 'pets', color: '#f59e0b' },
-  { name: 'Manutenção', icon: 'build', color: '#64748b' },
-  { name: 'Telefonia', icon: 'phone_iphone', color: '#3b82f6' },
-  { name: 'Energia', icon: 'bolt', color: '#fbbf24' },
-  { name: 'Água', icon: 'water_drop', color: '#0ea5e9' },
-  { name: 'Gás', icon: 'local_fire_department', color: '#f97316' },
-  { name: 'Bem-estar', icon: 'self_improvement', color: '#ec4899' },
-  { name: 'Empréstimos', icon: 'attach_money', color: '#FF4444' },
-  { name: 'Poupança', icon: 'savings', color: '#21C25E' },
-  { name: 'Outros', icon: 'more_horiz', color: '#94a3b8' }
+  { name: 'Alimentação', icon: 'restaurant', color: '#EF4444' }, // Red 500
+  { name: 'Transporte', icon: 'directions_car', color: '#3B82F6' }, // Blue 500
+  { name: 'Moradia', icon: 'home', color: '#6366F1' }, // Indigo 500
+  { name: 'Mercado', icon: 'shopping_cart', color: '#F59E0B' }, // Amber 500
+  { name: 'Compras', icon: 'shopping_bag', color: '#EC4899' }, // Pink 500
+  { name: 'Saúde', icon: 'medical_services', color: '#14B8A6' }, // Teal 500
+  { name: 'Educação', icon: 'school', color: '#8B5CF6' }, // Violet 500
+  { name: 'Lazer', icon: 'sports_esports', color: '#F97316' }, // Orange 500
+  { name: 'Viagem', icon: 'flight', color: '#0EA5E9' }, // Sky 500
+  { name: 'Assinaturas', icon: 'subscriptions', color: '#D946EF' }, // Fuchsia 500
+  { name: 'Cartão de crédito', icon: 'credit_card', color: '#475569' }, // Slate 600
+  { name: 'Impostos', icon: 'gavel', color: '#B91C1C' }, // Red 700
+  { name: 'Presentes', icon: 'card_giftcard', color: '#EAB308' }, // Yellow 500
+  { name: 'Pets', icon: 'pets', color: '#A855F7' }, // Purple 500
+  { name: 'Manutenção', icon: 'build', color: '#64748B' }, // Slate 500
+  { name: 'Telefonia', icon: 'smartphone', color: '#2563EB' }, // Blue 600
+  { name: 'Energia', icon: 'bolt', color: '#FBBF24' }, // Amber 400
+  { name: 'Água', icon: 'water_drop', color: '#06B6D4' }, // Cyan 500
+  { name: 'Gás', icon: 'propane', color: '#FB923C' }, // Orange 400
+  { name: 'Bem-estar', icon: 'spa', color: '#10B981' }, // Emerald 500
+  { name: 'Empréstimos', icon: 'handshake', color: '#991B1B' }, // Red 800
+  { name: 'Poupança', icon: 'savings', color: '#22C55E' }, // Green 500
+  { name: 'Vestiário', icon: 'checkroom', color: '#DB2777' }, // Pink 600
+  { name: 'Beleza', icon: 'face', color: '#F472B6' }, // Pink 400
+  { name: 'Carro', icon: 'local_gas_station', color: '#1E40AF' }, // Blue 800
+  { name: 'Outros', icon: 'more_horiz', color: '#94A3B8' } // Slate 400
 ];
 
 export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ 

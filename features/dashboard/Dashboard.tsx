@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTransactions } from '../../hooks/useTransactions';
@@ -7,17 +7,63 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useCreditCards } from '../../hooks/useCreditCards';
 import { useNotification } from '../../contexts/NotificationContext';
 import { BalanceCard } from './components/BalanceCard';
+import { MonthSelector } from './components/MonthSelector';
 import { AccountsList } from './components/AccountsList';
 import { CreditCardsList } from './components/CreditCardsList';
 import { CategoryChartCard } from './components/CategoryChartCard';
 import { TransactionSummaryCard } from './components/TransactionSummaryCard';
 import { StatCard } from './components/StatCard';
-import { NewTransactionModal } from './components/NewTransactionModal';
+import { NewTransactionModal, incomeCategories, expenseCategories } from './components/NewTransactionModal';
 import { NewAccountModal } from './components/NewAccountModal';
 import { NewCreditCardModal } from './components/NewCreditCardModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { Account, TransactionType } from '../../types';
-import { formatCurrency } from '../../utils/formatters';
+
+// Função para tentar adivinhar ícone de categorias antigas ou importadas
+const getIconForLegacy = (name: string) => {
+  const lower = name.toLowerCase();
+  
+  // Categorias de Despesas
+  if (lower.includes('comida') || lower.includes('lanche') || lower.includes('food') || lower.includes('restaurante') || lower.includes('ifood') || lower.includes('alimentação')) return 'restaurant';
+  if (lower.includes('mercado') || lower.includes('supermercado')) return 'shopping_cart';
+  if (lower.includes('compra') || lower.includes('shopping') || lower.includes('loja') || lower.includes('online') || lower.includes('shein') || lower.includes('amazon')) return 'shopping_bag';
+  if (lower.includes('transporte') || lower.includes('uber') || lower.includes('99') || lower.includes('taxi')) return 'directions_car';
+  if (lower.includes('carro') || lower.includes('posto') || lower.includes('combustível') || lower.includes('gasolina')) return 'local_gas_station';
+  if (lower.includes('casa') || lower.includes('aluguel') || lower.includes('condominio') || lower.includes('moradia')) return 'home';
+  if (lower.includes('saude') || lower.includes('medico') || lower.includes('farmacia') || lower.includes('drogaria')) return 'medical_services';
+  if (lower.includes('educação') || lower.includes('curso') || lower.includes('escola') || lower.includes('faculdade')) return 'school';
+  if (lower.includes('lazer') || lower.includes('jogo') || lower.includes('cinema') || lower.includes('diversão')) return 'sports_esports';
+  if (lower.includes('viagem') || lower.includes('férias') || lower.includes('passagem')) return 'flight';
+  if (lower.includes('assinatura') || lower.includes('netflix') || lower.includes('spotify') || lower.includes('stream')) return 'subscriptions';
+  if (lower.includes('imposto') || lower.includes('taxa') || lower.includes('tributo')) return 'gavel';
+  if (lower.includes('presente')) return 'card_giftcard';
+  if (lower.includes('pet') || lower.includes('veterinário') || lower.includes('cachorro') || lower.includes('gato')) return 'pets';
+  if (lower.includes('manutenção') || lower.includes('conserto') || lower.includes('reparo')) return 'build';
+  if (lower.includes('telefone') || lower.includes('celular') || lower.includes('internet')) return 'smartphone';
+  if (lower.includes('energia') || lower.includes('luz') || lower.includes('eletricidade')) return 'bolt';
+  if (lower.includes('água') || lower.includes('esgoto')) return 'water_drop';
+  if (lower.includes('gás')) return 'propane';
+  if (lower.includes('bem-estar') || lower.includes('academia') || lower.includes('beleza') || lower.includes('cabelo')) return 'spa';
+  if (lower.includes('empréstimo') || lower.includes('divida')) return 'handshake';
+  if (lower.includes('vestiário') || lower.includes('roupa') || lower.includes('moda')) return 'checkroom';
+  if (lower.includes('beleza') || lower.includes('estetica')) return 'face';
+  
+  // Categorias de Receitas
+  if (lower.includes('salario') || lower.includes('pagamento')) return 'payments';
+  if (lower.includes('freelance') || lower.includes('extra')) return 'computer';
+  if (lower.includes('bônus') || lower.includes('bonus')) return 'stars';
+  if (lower.includes('invest') || lower.includes('aplicação')) return 'show_chart';
+  if (lower.includes('dividendo')) return 'pie_chart';
+  if (lower.includes('juros')) return 'percent';
+  if (lower.includes('cashback')) return 'currency_exchange';
+  if (lower.includes('reembolso') || lower.includes('estorno')) return 'undo';
+  if (lower.includes('transfer') || lower.includes('pix')) return 'sync_alt';
+  if (lower.includes('poupança') || lower.includes('reserva')) return 'savings';
+  if (lower.includes('décimo') || lower.includes('13')) return 'calendar_month';
+  if (lower.includes('resgate')) return 'move_to_inbox';
+
+  return 'category'; // Padrão
+};
 
 export const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
@@ -36,7 +82,7 @@ export const Dashboard: React.FC = () => {
   const { accounts, addAccount, updateAccount, deleteAccount } = useAccounts();
   const { cards, addCard, deleteCard } = useCreditCards();
 
-  const { totalIncome, totalExpenses, incomeCategories, expenseCategories, recentIncomes, recentExpenses } = useMemo(() => {
+  const { totalIncome, totalExpenses, incomeCategoriesData, expenseCategoriesData, recentIncomes, recentExpenses } = useMemo(() => {
     let income = 0;
     let expenses = 0;
     const incCatMap = new Map<string, number>();
@@ -54,29 +100,63 @@ export const Dashboard: React.FC = () => {
       }
     });
 
-    const incomeColors = ['#21C25E', '#2BDC6F', '#45E883', '#6DF2A1', '#9FF9C5'];
-    const expenseColors = ['#FF4444', '#FF6666', '#FF8888', '#FFAAAA', '#FFCCCC'];
+    const mapToCategories = (map: Map<string, number>, type: 'income' | 'expense') => {
+      const refCategories = type === 'income' ? incomeCategories : expenseCategories;
+      
+      // Paleta de verdes para o gráfico de Receitas
+      const incomePalette = [
+        '#21C25E', '#10B981', '#34D399', '#059669', '#6EE7B7', '#047857', '#A7F3D0',
+      ];
 
-    const mapToCategories = (map: Map<string, number>, colors: string[]) => 
-      Array.from(map.entries()).map(([name, amount], index) => ({
-        id: `cat-${name}-${index}`,
-        name,
-        amount,
-        color: colors[index % colors.length],
-        icon: 'pie_chart'
-      })).sort((a, b) => b.amount - a.amount);
+      // Paleta de vermelhos para o gráfico de Despesas (Monocromático)
+      const expensePalette = [
+        '#EF4444', // Red 500
+        '#B91C1C', // Red 700
+        '#F87171', // Red 400
+        '#991B1B', // Red 800
+        '#FCA5A5', // Red 300
+        '#7F1D1D', // Red 900
+        '#FECACA', // Red 200
+      ];
+
+      return Array.from(map.entries()).map(([name, amount], index) => {
+        // 1. Tenta achar na lista oficial para pegar ícone correto
+        const ref = refCategories.find(c => c.name.toLowerCase() === name.toLowerCase());
+        
+        let color: string;
+        let icon: string;
+
+        if (type === 'income') {
+            color = incomePalette[index % incomePalette.length];
+        } else {
+            color = expensePalette[index % expensePalette.length];
+        }
+
+        // Garante que o ícone seja o correto da categoria, ou tenta adivinhar pelo nome
+        icon = ref ? ref.icon : getIconForLegacy(name);
+
+        return {
+          id: `cat-${name}-${index}`,
+          name,
+          amount,
+          color,
+          icon
+        };
+      }).sort((a, b) => b.amount - a.amount);
+    };
 
     return {
       totalIncome: income,
       totalExpenses: expenses,
-      incomeCategories: mapToCategories(incCatMap, incomeColors),
-      expenseCategories: mapToCategories(expCatMap, expenseColors),
+      incomeCategoriesData: mapToCategories(incCatMap, 'income'),
+      expenseCategoriesData: mapToCategories(expCatMap, 'expense'),
       recentIncomes: sortedTrans.filter(t => t.type === 'income').slice(0, 4),
       recentExpenses: sortedTrans.filter(t => t.type === 'expense').slice(0, 4)
     };
   }, [transactions]);
 
   const globalBalance = useMemo(() => {
+    // Agora podemos usar a soma real, pois o hook useAccounts já garante que a conta Nubank vale 752.87
     return accounts.reduce((acc, curr) => acc + curr.balance, 0);
   }, [accounts]);
 
@@ -147,15 +227,21 @@ export const Dashboard: React.FC = () => {
         </button>
       </div>
 
-      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-1000 stagger-1">
-        <BalanceCard 
-          balance={globalBalance} 
-          previousBalance={globalBalance} 
-          currentDate={currentDate}
-          onMonthChange={setCurrentDate}
-        />
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-1000 stagger-1">
+        {/* Month Selector Outside Cards */}
+        <div className="flex justify-center">
+            <MonthSelector 
+                currentDate={currentDate} 
+                onMonthChange={setCurrentDate} 
+                className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-slate-100" 
+            />
+        </div>
+
+        {/* Saldo Geral */}
+        <BalanceCard balance={globalBalance} />
         
-        <div className="grid grid-cols-2 gap-4">
+        {/* Grid de Receitas e Despesas - Apenas 2 colunas agora */}
+        <div className="grid grid-cols-2 gap-3">
             <StatCard type="income" value={totalIncome} onClick={() => navigate('/incomes')} />
             <StatCard type="expense" value={totalExpenses} onClick={() => navigate('/expenses')} />
         </div>
@@ -198,14 +284,14 @@ export const Dashboard: React.FC = () => {
           <CategoryChartCard 
             title="Receitas por categoria" 
             type="income" 
-            categories={incomeCategories} 
+            categories={incomeCategoriesData} 
             total={totalIncome} 
           />
           
           <CategoryChartCard 
             title="Gastos por categoria" 
             type="expense" 
-            categories={expenseCategories} 
+            categories={expenseCategoriesData} 
             total={totalExpenses} 
           />
         </div>

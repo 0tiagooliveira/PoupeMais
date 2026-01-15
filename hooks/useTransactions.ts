@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
 import { db } from '../services/firebase';
@@ -28,22 +29,44 @@ export const useTransactions = (currentDate: Date) => {
     if (!currentUser) return;
     setLoading(true);
 
+    // Define o início e fim do mês local
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    endOfMonth.setHours(23, 59, 59, 999);
+
+    // AMPLIAÇÃO DE SEGURANÇA PARA FUSO HORÁRIO:
+    // Subtraímos 1 dia do início e somamos 1 dia ao fim para a query do Firestore.
+    // Isso garante que se uma transação foi salva como UTC meia-noite (que seria dia anterior no Brasil),
+    // ou vice-versa, ela seja baixada. Depois filtramos com precisão na memória.
+    const queryStart = new Date(startOfMonth);
+    queryStart.setDate(queryStart.getDate() - 1);
+
+    const queryEnd = new Date(endOfMonth);
+    queryEnd.setDate(queryEnd.getDate() + 1);
 
     const query = db.collection('users')
       .doc(currentUser.uid)
       .collection('transactions')
-      .where('date', '>=', startOfMonth.toISOString())
-      .where('date', '<=', endOfMonth.toISOString())
+      .where('date', '>=', queryStart.toISOString())
+      .where('date', '<=', queryEnd.toISOString())
       .orderBy('date', 'desc');
 
     const unsubscribe = query.onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => ({
+      const rawData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Transaction[];
-      setTransactions(data);
+
+      // Filtro preciso em memória baseado no Mês/Ano selecionado visualmente
+      const filteredData = rawData.filter(t => {
+        const tDate = new Date(t.date);
+        return tDate.getMonth() === currentDate.getMonth() && 
+               tDate.getFullYear() === currentDate.getFullYear();
+      });
+
+      setTransactions(filteredData);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching transactions:", error);

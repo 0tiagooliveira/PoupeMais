@@ -1,8 +1,8 @@
+
 import React from 'react';
 import { Card } from '../../../components/ui/Card';
 import { formatCurrency } from '../../../utils/formatters';
 import { CategoryData } from '../../../types';
-import { incomeCategories, expenseCategories } from './NewTransactionModal';
 
 interface CategoryChartCardProps {
   title: string;
@@ -14,6 +14,7 @@ interface CategoryChartCardProps {
 export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, type, categories, total }) => {
   const isIncome = type === 'income';
   const textColor = isIncome ? 'text-success' : 'text-danger';
+  const titleColor = isIncome ? 'text-slate-700' : 'text-danger'; // Título colorido se for despesa para destaque
   
   const size = 160;
   const strokeWidth = 18;
@@ -23,33 +24,33 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
 
   let currentOffset = 0;
 
-  const getCategoryIcon = (name: string) => {
-    const all = [...incomeCategories, ...expenseCategories];
-    return all.find(c => c.name === name)?.icon || 'label';
-  };
-
   return (
     <Card className="!p-6 border-none shadow-sm">
-      <h3 className="mb-6 text-lg font-bold text-slate-700">{title}</h3>
+      <h3 className={`mb-6 text-lg font-bold ${type === 'expense' ? 'text-danger' : 'text-slate-700'}`}>{title}</h3>
       
       <div className="flex flex-col items-center gap-8 md:flex-row">
         <div className="relative flex-shrink-0">
           <svg width={size} height={size} className="transform -rotate-90">
-            {categories.length === 0 && (
-              <circle
-                cx={center}
-                cy={center}
-                r={radius}
-                fill="transparent"
-                stroke="#f1f5f9"
-                strokeWidth={strokeWidth}
-              />
-            )}
-            {categories.map((cat) => {
-              const percentage = total > 0 ? (cat.amount / total) : 0;
+            {/* Círculo de fundo para quando não houver dados */}
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="none"
+              stroke="#f1f5f9"
+              strokeWidth={strokeWidth}
+            />
+            
+            {/* Segmentos do gráfico */}
+            {total > 0 && categories.map((cat) => {
+              const percentage = Math.max(0, cat.amount / total);
               const strokeDasharray = `${percentage * circumference} ${circumference}`;
               const strokeDashoffset = -currentOffset;
+              
               currentOffset += percentage * circumference;
+              
+              // Evita renderizar segmentos minúsculos que causam artefatos
+              if (percentage < 0.005) return null;
 
               return (
                 <circle
@@ -57,7 +58,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
                   cx={center}
                   cy={center}
                   r={radius}
-                  fill="transparent"
+                  fill="none"
                   stroke={cat.color}
                   strokeWidth={strokeWidth}
                   strokeDasharray={strokeDasharray}
@@ -90,7 +91,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
                     style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
                   >
                     <span className="material-symbols-outlined text-xl">
-                      {getCategoryIcon(cat.name)}
+                      {cat.icon}
                     </span>
                   </div>
 

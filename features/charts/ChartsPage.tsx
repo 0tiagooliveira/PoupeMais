@@ -7,11 +7,241 @@ import { MonthSelector } from '../dashboard/components/MonthSelector';
 import { incomeCategories, expenseCategories } from '../dashboard/components/NewTransactionModal';
 
 type ChartTab = 'categories' | 'performance' | 'radar' | 'projection';
+type AccumulationType = 'income' | 'expense';
+
+// Função para tentar adivinhar ícone de categorias antigas ou importadas
+const getIconForLegacy = (name: string) => {
+  const lower = name.toLowerCase();
+  
+  // Categorias de Despesas
+  if (lower.includes('comida') || lower.includes('lanche') || lower.includes('food') || lower.includes('restaurante') || lower.includes('ifood') || lower.includes('alimentação')) return 'restaurant';
+  if (lower.includes('mercado') || lower.includes('supermercado')) return 'shopping_cart';
+  if (lower.includes('compra') || lower.includes('shopping') || lower.includes('loja') || lower.includes('online') || lower.includes('shein') || lower.includes('amazon')) return 'shopping_bag';
+  if (lower.includes('transporte') || lower.includes('uber') || lower.includes('99') || lower.includes('taxi')) return 'directions_car';
+  if (lower.includes('carro') || lower.includes('posto') || lower.includes('combustível') || lower.includes('gasolina')) return 'local_gas_station';
+  if (lower.includes('casa') || lower.includes('aluguel') || lower.includes('condominio') || lower.includes('moradia')) return 'home';
+  if (lower.includes('saude') || lower.includes('medico') || lower.includes('farmacia') || lower.includes('drogaria')) return 'medical_services';
+  if (lower.includes('educação') || lower.includes('curso') || lower.includes('escola') || lower.includes('faculdade')) return 'school';
+  if (lower.includes('lazer') || lower.includes('jogo') || lower.includes('cinema') || lower.includes('diversão')) return 'sports_esports';
+  if (lower.includes('viagem') || lower.includes('férias') || lower.includes('passagem')) return 'flight';
+  if (lower.includes('assinatura') || lower.includes('netflix') || lower.includes('spotify') || lower.includes('stream')) return 'subscriptions';
+  if (lower.includes('imposto') || lower.includes('taxa') || lower.includes('tributo')) return 'gavel';
+  if (lower.includes('presente')) return 'card_giftcard';
+  if (lower.includes('pet') || lower.includes('veterinário') || lower.includes('cachorro') || lower.includes('gato')) return 'pets';
+  if (lower.includes('manutenção') || lower.includes('conserto') || lower.includes('reparo')) return 'build';
+  if (lower.includes('telefone') || lower.includes('celular') || lower.includes('internet')) return 'smartphone';
+  if (lower.includes('energia') || lower.includes('luz') || lower.includes('eletricidade')) return 'bolt';
+  if (lower.includes('água') || lower.includes('esgoto')) return 'water_drop';
+  if (lower.includes('gás')) return 'propane';
+  if (lower.includes('bem-estar') || lower.includes('academia') || lower.includes('beleza') || lower.includes('cabelo')) return 'spa';
+  if (lower.includes('empréstimo') || lower.includes('divida')) return 'handshake';
+  if (lower.includes('vestiário') || lower.includes('roupa') || lower.includes('moda')) return 'checkroom';
+  if (lower.includes('beleza') || lower.includes('estetica')) return 'face';
+  
+  // Categorias de Receitas
+  if (lower.includes('salario') || lower.includes('pagamento')) return 'payments';
+  if (lower.includes('freelance') || lower.includes('extra')) return 'computer';
+  if (lower.includes('bônus') || lower.includes('bonus')) return 'stars';
+  if (lower.includes('invest') || lower.includes('aplicação')) return 'show_chart';
+  if (lower.includes('dividendo')) return 'pie_chart';
+  if (lower.includes('juros')) return 'percent';
+  if (lower.includes('cashback')) return 'currency_exchange';
+  if (lower.includes('reembolso') || lower.includes('estorno')) return 'undo';
+  if (lower.includes('transfer') || lower.includes('pix')) return 'sync_alt';
+  if (lower.includes('poupança') || lower.includes('reserva')) return 'savings';
+  if (lower.includes('décimo') || lower.includes('13')) return 'calendar_month';
+  if (lower.includes('resgate')) return 'move_to_inbox';
+
+  return 'category'; // Padrão
+};
+
+interface DonutChartProps {
+  data: any[];
+  total: number;
+  selectedName: string | null;
+  onSelect: (name: string | null) => void;
+}
+
+const DonutChart: React.FC<DonutChartProps> = ({ data, total, selectedName, onSelect }) => {
+  const size = 200;
+  const strokeWidth = 20;
+  const center = size / 2;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  let currentOffset = 0;
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full transform -rotate-90">
+      <circle
+        cx={center}
+        cy={center}
+        r={radius}
+        fill="none"
+        stroke="#f1f5f9"
+        strokeWidth={strokeWidth}
+      />
+      {total > 0 && data.map((cat, i) => {
+        const percentage = Math.max(0, cat.amount / total);
+        const strokeDasharray = `${percentage * circumference} ${circumference}`;
+        const strokeDashoffset = -currentOffset;
+        currentOffset += percentage * circumference;
+
+        if (percentage < 0.005) return null;
+
+        const isSelected = selectedName === cat.name;
+
+        return (
+          <circle
+            key={cat.name}
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke={cat.color}
+            strokeWidth={strokeWidth + (isSelected ? 6 : 0)}
+            strokeDasharray={strokeDasharray}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className={`transition-all duration-300 cursor-pointer ${isSelected ? 'opacity-100' : (selectedName ? 'opacity-30' : 'opacity-100')}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(isSelected ? null : cat.name);
+            }}
+          />
+        );
+      })}
+    </svg>
+  );
+};
+
+interface FlowLineChartProps {
+  data: any[];
+  type: 'income' | 'expense';
+  onFocus: (item: any) => void;
+}
+
+const FlowLineChart: React.FC<FlowLineChartProps> = ({ data, type, onFocus }) => {
+  if (!data || data.length === 0) return null;
+  
+  const width = 1000;
+  const height = 300;
+  const padding = 20;
+  const maxValue = Math.max(...data.map(d => d.value), 100);
+  
+  const getX = (i: number) => {
+    if (data.length <= 1) return width / 2;
+    return (i / (data.length - 1)) * (width - 2 * padding) + padding;
+  };
+
+  const points = data.map((d, i) => {
+    const x = getX(i);
+    const y = height - ((d.value / maxValue) * (height - 2 * padding)) - padding;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const areaPoints = `${points} ${width - padding},${height} ${padding},${height}`;
+  const color = type === 'income' ? '#10B981' : '#EF4444';
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={`gradient-${type}`} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      
+      {data.length > 1 && (
+         <polygon points={areaPoints} fill={`url(#gradient-${type})`} />
+      )}
+      
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      
+      {/* Invisible interaction layer */}
+      {data.map((d, i) => {
+        const x = getX(i);
+        const y = height - ((d.value / maxValue) * (height - 2 * padding)) - padding;
+        return (
+          <circle
+            key={i}
+            cx={x}
+            cy={y}
+            r="12"
+            fill="transparent"
+            className="cursor-pointer"
+            onClick={() => onFocus(d)}
+          />
+        );
+      })}
+    </svg>
+  );
+};
+
+interface RadarChartWithLabelsProps {
+  data: any[];
+}
+
+const RadarChartWithLabels: React.FC<RadarChartWithLabelsProps> = ({ data }) => {
+  const size = 300;
+  const center = size / 2;
+  const radius = 100;
+  const angleSlice = (Math.PI * 2) / data.length;
+
+  const getCoordinates = (percent: number, i: number) => {
+    const angle = i * angleSlice - Math.PI / 2;
+    const r = (percent / 100) * radius;
+    const x = center + r * Math.cos(angle);
+    const y = center + r * Math.sin(angle);
+    return [x, y];
+  };
+
+  const pathPoints = data.map((d, i) => getCoordinates(d.percent, i)).map(p => p.join(',')).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
+      {[25, 50, 75, 100].map(level => {
+        const pts = data.map((_, i) => getCoordinates(level, i)).map(p => p.join(',')).join(' ');
+        return <polygon key={level} points={pts} fill="none" stroke="#e2e8f0" strokeWidth="1" />;
+      })}
+      
+      {data.map((_, i) => {
+        const [x, y] = getCoordinates(100, i);
+        return <line key={i} x1={center} y1={center} x2={x} y2={y} stroke="#e2e8f0" strokeWidth="1" />;
+      })}
+      
+      <polygon points={pathPoints} fill="rgba(16, 185, 129, 0.2)" stroke="#10B981" strokeWidth="2" />
+      
+      {data.map((d, i) => {
+        const [x, y] = getCoordinates(115, i);
+        return (
+          <foreignObject key={i} x={x - 12} y={y - 12} width="24" height="24">
+            <div className="flex items-center justify-center w-full h-full text-slate-400">
+              <span className="material-symbols-outlined text-sm">{d.icon}</span>
+            </div>
+          </foreignObject>
+        );
+      })}
+    </svg>
+  );
+};
 
 export const ChartsPage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState<ChartTab>('categories');
+  const [accType, setAccType] = useState<AccumulationType>('expense');
   const [focusedItem, setFocusedItem] = useState<any>(null);
+  
+  // Drill-down State
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
   const { transactions, loading } = useTransactions(currentDate);
 
   const analytics = useMemo(() => {
@@ -19,13 +249,13 @@ export const ChartsPage: React.FC = () => {
     const expense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
     const balance = income - expense;
 
-    // Radar Data - Pilares de Vida Financeira
+    // Radar Data
     const radarData = [
-      { axis: 'Essenciais', value: 0, icon: 'home', desc: 'Contas fixas e sobrevivência' },
-      { axis: 'Lazer', value: 0, icon: 'local_activity', desc: 'Estilo de vida e diversão' },
-      { axis: 'Futuro', value: 0, icon: 'trending_up', desc: 'Investimentos e reserva' },
-      { axis: 'Educação', value: 0, icon: 'school', desc: 'Cursos e crescimento' },
-      { axis: 'Imprevistos', value: 0, icon: 'medical_services', desc: 'Gastos não planejados' }
+      { axis: 'Essenciais', value: 0, icon: 'home', desc: 'Contas fixas' },
+      { axis: 'Lazer', value: 0, icon: 'local_activity', desc: 'Diversão' },
+      { axis: 'Futuro', value: 0, icon: 'trending_up', desc: 'Investimentos' },
+      { axis: 'Educação', value: 0, icon: 'school', desc: 'Cursos' },
+      { axis: 'Imprevistos', value: 0, icon: 'medical_services', desc: 'Saúde/Outros' }
     ];
 
     transactions.forEach(t => {
@@ -42,33 +272,73 @@ export const ChartsPage: React.FC = () => {
     const maxRadar = Math.max(...radarData.map(d => d.value), 1);
     const normalizedRadar = radarData.map(d => ({ ...d, percent: (d.value / maxRadar) * 100 }));
 
-    // History
+    // History (Accumulated Logic - Single Line)
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+    let accumulatedValue = 0;
+    
     const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1;
-      const dayTrans = transactions.filter(t => new Date(t.date).getDate() === day);
-      const inc = dayTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-      const exp = dayTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-      return { day, income: inc, expense: exp, balance: inc - exp };
+      const dayTrans = transactions.filter(t => new Date(t.date).getDate() === day && t.type === accType);
+      const dayTotal = dayTrans.reduce((acc, t) => acc + t.amount, 0);
+      
+      accumulatedValue += dayTotal;
+
+      return { 
+        day, 
+        value: accumulatedValue,
+        dayTotal
+      };
     });
+
+    // Paleta de vermelhos para o gráfico de Despesas (igual ao Dashboard)
+    const expensePalette = [
+        '#EF4444', '#B91C1C', '#F87171', '#991B1B', '#FCA5A5', '#7F1D1D', '#FECACA',
+    ];
 
     const sortedCategories = Array.from(
       transactions.reduce((acc, t) => {
         if (t.type === 'expense') {
-          acc.set(t.category, (acc.get(t.category) || 0) + t.amount);
+          // Store amount and count/transactions for drill down
+          if (!acc.has(t.category)) {
+             acc.set(t.category, { amount: 0, transactions: [] });
+          }
+          const catData = acc.get(t.category)!;
+          catData.amount += t.amount;
+          catData.transactions.push(t);
         }
         return acc;
-      }, new Map<string, number>())
-    ).map(([name, amount]) => ({ 
-      name, 
-      amount, 
-      color: expenseCategories.find(c => c.name === name)?.color || '#94a3b8' 
-    })).sort((a, b) => b.amount - a.amount);
+      }, new Map<string, { amount: number, transactions: any[] }>())
+    ).map(([name, data], index) => {
+      // Logic to find exact icon
+      const ref = expenseCategories.find(c => c.name.toLowerCase() === name.toLowerCase());
+      
+      // Use Red Palette for expense chart
+      const color = expensePalette[index % expensePalette.length];
+      
+      // Use Correct Icon
+      const icon = ref ? ref.icon : getIconForLegacy(name);
+
+      return { 
+        name, 
+        amount: data.amount,
+        transactions: data.transactions,
+        color,
+        icon
+      };
+    }).sort((a, b) => b.amount - a.amount);
 
     return { income, expense, balance, normalizedRadar, dailyData, sortedCategories };
-  }, [transactions, currentDate]);
+  }, [transactions, currentDate, accType]);
 
-  useEffect(() => setFocusedItem(null), [activeTab]);
+  useEffect(() => {
+    setFocusedItem(null);
+    setSelectedCategory(null); // Reset selection on tab/date switch
+  }, [activeTab, accType, currentDate]);
+
+  const selectedCategoryData = useMemo(() => {
+     if (!selectedCategory) return null;
+     return analytics.sortedCategories.find(c => c.name === selectedCategory);
+  }, [selectedCategory, analytics.sortedCategories]);
 
   return (
     <div className="min-h-screen bg-[#FCFCFD] space-y-4 pb-32 px-2 md:px-6">
@@ -87,7 +357,7 @@ export const ChartsPage: React.FC = () => {
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
         {[
           { id: 'categories', label: 'Gastos', icon: 'pie_chart' },
-          { id: 'performance', label: 'Histórico', icon: 'query_stats' },
+          { id: 'performance', label: 'Acumulado', icon: 'trending_up' },
           { id: 'radar', label: 'Equilíbrio', icon: 'radar' },
           { id: 'projection', label: 'Futuro', icon: 'auto_graph' }
         ].map((tab) => (
@@ -116,75 +386,168 @@ export const ChartsPage: React.FC = () => {
           <div className="h-full flex flex-col">
             {activeTab === 'categories' && (
               <div className="flex-1 flex flex-col space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                <header>
-                  <h3 className="text-lg font-black text-slate-800">Para onde vai seu dinheiro?</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Distribuição por categorias</p>
+                <header className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800">Para onde vai seu dinheiro?</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                       {selectedCategory ? 'Detalhamento da categoria' : 'Distribuição por categorias'}
+                    </p>
+                  </div>
+                  {selectedCategory && (
+                      <button 
+                        onClick={() => setSelectedCategory(null)}
+                        className="text-xs font-bold text-primary hover:bg-slate-50 px-3 py-1.5 rounded-xl transition-colors"
+                      >
+                        Limpar seleção
+                      </button>
+                  )}
                 </header>
 
                 <div className="flex flex-col md:flex-row items-center gap-8">
-                  <div className="w-full max-w-[240px] aspect-square relative">
-                    <DonutChart data={analytics.sortedCategories} total={analytics.expense} />
+                  <div className="w-full max-w-[240px] aspect-square relative flex-shrink-0">
+                    <DonutChart 
+                        data={analytics.sortedCategories} 
+                        total={analytics.expense} 
+                        selectedName={selectedCategory}
+                        onSelect={setSelectedCategory}
+                    />
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                       <p className="text-[9px] font-black text-slate-400 uppercase">Total Saídas</p>
-                       <p className="text-xl font-black text-slate-800">{formatCurrency(analytics.expense)}</p>
+                       {selectedCategoryData ? (
+                           <>
+                             <div className="h-8 w-8 rounded-full flex items-center justify-center mb-1" style={{ backgroundColor: `${selectedCategoryData.color}20`, color: selectedCategoryData.color }}>
+                                <span className="material-symbols-outlined text-lg">{selectedCategoryData.icon}</span>
+                             </div>
+                             <p className="text-[10px] font-black uppercase text-slate-400 max-w-[100px] truncate">{selectedCategoryData.name}</p>
+                             <p className="text-xl font-black text-slate-800" style={{ color: selectedCategoryData.color }}>{formatCurrency(selectedCategoryData.amount)}</p>
+                             <p className="text-[9px] font-bold text-slate-300 mt-0.5">
+                                {((selectedCategoryData.amount / analytics.expense) * 100).toFixed(1)}% do total
+                             </p>
+                           </>
+                       ) : (
+                           <>
+                             <p className="text-[9px] font-black text-slate-400 uppercase">Total Saídas</p>
+                             <p className="text-xl font-black text-slate-800">{formatCurrency(analytics.expense)}</p>
+                           </>
+                       )}
                     </div>
                   </div>
 
-                  {/* Legends */}
-                  <div className="flex-1 w-full space-y-3">
-                    {analytics.sortedCategories.slice(0, 4).map((cat, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                        <div className="flex items-center gap-3">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color }}></div>
-                          <span className="text-xs font-black text-slate-700">{cat.name}</span>
+                  {/* Legends or Transactions List */}
+                  <div className="flex-1 w-full space-y-3 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
+                    {analytics.sortedCategories.length === 0 ? (
+                        <div className="p-4 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-400">
+                            Nenhuma despesa registrada neste mês.
                         </div>
-                        <span className="text-xs font-black text-slate-800">{formatCurrency(cat.amount)}</span>
-                      </div>
-                    ))}
+                    ) : selectedCategoryData ? (
+                        // Drill-down View: Show transactions for this category
+                        <div className="space-y-2 animate-in slide-in-from-right-2 duration-300">
+                            <p className="text-xs font-bold text-slate-400 px-1 mb-2">Transações recentes</p>
+                            {selectedCategoryData.transactions.map((t: any) => (
+                                <div key={t.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-xl flex items-center justify-center bg-white text-slate-400 shadow-sm text-xs font-bold">
+                                            {new Date(t.date).getDate()}
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-700">{t.description}</p>
+                                            <p className="text-[9px] font-bold text-slate-400">{new Date(t.date).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs font-black text-slate-800">{formatCurrency(t.amount)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        // Default View: Show category list with Colors and Icons
+                        analytics.sortedCategories.map((cat, i) => (
+                        <button 
+                            key={i} 
+                            onClick={() => setSelectedCategory(cat.name)}
+                            className="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:scale-[1.01] transition-all active:scale-95 text-left group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div 
+                                    className="h-10 w-10 rounded-full flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105" 
+                                    style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
+                                >
+                                    <span className="material-symbols-outlined text-lg">{cat.icon}</span>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-black text-slate-700 block">{cat.name}</span>
+                                    <div className="h-1.5 w-16 rounded-full bg-slate-200 mt-1 overflow-hidden">
+                                        <div className="h-full rounded-full" style={{ width: `${(cat.amount / analytics.expense) * 100}%`, backgroundColor: cat.color }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <span className="text-xs font-black text-slate-800">{formatCurrency(cat.amount)}</span>
+                        </button>
+                        ))
+                    )}
                   </div>
                 </div>
 
-                {/* Insight de Economia */}
-                <div className="mt-4 p-5 rounded-3xl bg-amber-50 border border-amber-100 flex items-start gap-4">
-                   <div className="h-10 w-10 flex-shrink-0 rounded-xl bg-amber-500 text-white flex items-center justify-center">
-                      <span className="material-symbols-outlined">lightbulb</span>
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Dica de Economia</p>
-                      <p className="text-xs font-bold text-slate-700 leading-snug">
-                        {analytics.sortedCategories[0] 
-                          ? `Seus gastos em "${analytics.sortedCategories[0].name}" representam a maior fatia. Tente reduzir 10% nesta categoria para poupar ${formatCurrency(analytics.sortedCategories[0].amount * 0.1)} este mês.`
-                          : "Adicione despesas para receber dicas personalizadas."}
-                      </p>
-                   </div>
-                </div>
+                {!selectedCategory && (
+                    <div className="mt-4 p-5 rounded-3xl bg-amber-50 border border-amber-100 flex items-start gap-4">
+                        <div className="h-10 w-10 flex-shrink-0 rounded-xl bg-amber-500 text-white flex items-center justify-center">
+                            <span className="material-symbols-outlined">lightbulb</span>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Dica de Economia</p>
+                            <p className="text-xs font-bold text-slate-700 leading-snug">
+                                {analytics.sortedCategories[0] 
+                                ? `Seus gastos em "${analytics.sortedCategories[0].name}" representam a maior fatia. Tente reduzir 10% nesta categoria para poupar ${formatCurrency(analytics.sortedCategories[0].amount * 0.1)} este mês.`
+                                : "Adicione despesas para receber dicas personalizadas."}
+                            </p>
+                        </div>
+                    </div>
+                )}
               </div>
             )}
 
             {activeTab === 'performance' && (
-              <div className="flex-1 flex flex-col space-y-6 animate-in slide-in-from-right-4 duration-500">
-                <header className="flex justify-between items-end">
+              <div className="flex-1 flex flex-col space-y-4 animate-in slide-in-from-right-4 duration-500">
+                <header className="flex justify-between items-start">
                    <div>
-                    <h3 className="text-lg font-black text-slate-800">Fluxo de Caixa</h3>
-                    <div className="flex gap-4 mt-1">
-                      <div className="flex items-center gap-1.5 text-[9px] font-bold text-primary uppercase"><div className="h-2 w-2 rounded-full bg-primary"></div> Ganhos</div>
-                      <div className="flex items-center gap-1.5 text-[9px] font-bold text-danger uppercase"><div className="h-2 w-2 rounded-full bg-danger"></div> Gastos</div>
-                    </div>
+                    <h3 className="text-lg font-black text-slate-800">
+                        {formatCurrency(accType === 'expense' ? analytics.expense : analytics.income)}
+                    </h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                        Total acumulado ({accType === 'expense' ? 'Saídas' : 'Entradas'})
+                    </p>
+                   </div>
+                   <div className="flex bg-slate-100 p-1 rounded-xl">
+                      <button 
+                        onClick={() => setAccType('expense')} 
+                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${accType === 'expense' ? 'bg-white text-danger shadow-sm' : 'text-slate-400'}`}
+                      >
+                        Despesa
+                      </button>
+                      <button 
+                        onClick={() => setAccType('income')} 
+                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${accType === 'income' ? 'bg-white text-primary shadow-sm' : 'text-slate-400'}`}
+                      >
+                        Receita
+                      </button>
                    </div>
                 </header>
-                <div className="flex-1 min-h-[250px] pt-4">
-                  <FlowLineChart data={analytics.dailyData} onFocus={setFocusedItem} />
+                
+                <div className="flex-1 min-h-[220px] max-h-[300px] w-full pt-4 relative">
+                  <FlowLineChart data={analytics.dailyData} type={accType} onFocus={setFocusedItem} />
                 </div>
+
                 <div className="min-h-[70px] bg-slate-50 rounded-2xl p-4 flex items-center justify-center border border-slate-100">
                   {focusedItem ? (
                     <div className="w-full flex justify-between items-center animate-in fade-in">
                        <p className="text-xs font-black text-slate-400">Dia {focusedItem.day}</p>
-                       <p className={`text-sm font-black ${focusedItem.balance >= 0 ? 'text-primary' : 'text-danger'}`}>
-                         Net: {formatCurrency(focusedItem.balance)}
-                       </p>
+                       <div className="flex flex-col items-end">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Acumulado até o dia</p>
+                         <p className={`text-lg font-black ${accType === 'expense' ? 'text-danger' : 'text-primary'}`}>
+                            {formatCurrency(focusedItem.value)}
+                         </p>
+                       </div>
                     </div>
                   ) : (
-                    <p className="text-[10px] font-bold text-slate-300 uppercase italic">Deslize para ver detalhes diários</p>
+                    <p className="text-[10px] font-bold text-slate-300 uppercase italic">Toque no gráfico para ver detalhes do dia</p>
                   )}
                 </div>
               </div>
@@ -231,126 +594,6 @@ export const ChartsPage: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
-  );
-};
-
-// --- COMPONENTES GRÁFICOS COM LEGENDAS ---
-
-const DonutChart = ({ data, total }: any) => {
-  let currentAngle = -Math.PI / 2;
-  const radius = 40;
-  const center = 50;
-  
-  return (
-    <svg viewBox="0 0 100 100" className="w-full h-full transform-gpu transition-transform hover:scale-105 duration-500">
-      {data.map((cat: any, i: number) => {
-        const sliceAngle = (cat.amount / (total || 1)) * 2 * Math.PI;
-        const x1 = center + radius * Math.cos(currentAngle);
-        const y1 = center + radius * Math.sin(currentAngle);
-        currentAngle += sliceAngle;
-        const x2 = center + radius * Math.cos(currentAngle);
-        const y2 = center + radius * Math.sin(currentAngle);
-        
-        const largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
-        const pathData = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
-        
-        return (
-          <path 
-            key={i} 
-            d={pathData} 
-            fill="none" 
-            stroke={cat.color} 
-            strokeWidth="12" 
-            className="animate-dash"
-            style={{ strokeDasharray: '252', strokeDashoffset: '252', animation: `dash 1.5s ease-out ${i * 0.1}s forwards` }}
-          />
-        );
-      })}
-    </svg>
-  );
-};
-
-const RadarChartWithLabels = ({ data }: any) => {
-  const points = data.map((d: any, i: number) => {
-    const angle = (i * 2 * Math.PI) / data.length - Math.PI / 2;
-    const r = d.percent * 0.35;
-    const x = 50 + r * Math.cos(angle);
-    const y = 50 + r * Math.sin(angle);
-    return `${x},${y}`;
-  }).join(' ');
-
-  return (
-    <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-      {[25, 50, 75, 100].map(r => (
-        <circle key={r} cx="50" cy="50" r={r * 0.35} fill="none" stroke="#f1f5f9" strokeWidth="0.5" />
-      ))}
-      {data.map((d: any, i: number) => {
-        const angle = (i * 2 * Math.PI) / data.length - Math.PI / 2;
-        const xAxis = 50 + 42 * Math.cos(angle);
-        const yAxis = 50 + 42 * Math.sin(angle);
-        return (
-          <g key={i}>
-            <line x1="50" y1="50" x2={xAxis} y2={yAxis} stroke="#f1f5f9" strokeWidth="0.5" />
-            <text 
-              x={50 + 46 * Math.cos(angle)} 
-              y={50 + 46 * Math.sin(angle)} 
-              fontSize="3.5" 
-              fontWeight="900" 
-              textAnchor="middle" 
-              fill="#94a3b8"
-              alignmentBaseline="middle"
-              className="uppercase"
-            >
-              {d.axis}
-            </text>
-          </g>
-        );
-      })}
-      <polygon 
-        points={points} 
-        fill="rgba(33, 194, 94, 0.2)" 
-        stroke="#21C25E" 
-        strokeWidth="1.5" 
-        className="animate-dash"
-      />
-    </svg>
-  );
-};
-
-const FlowLineChart = ({ data, onFocus }: any) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const max = Math.max(...data.map((d: any) => Math.max(d.income, d.expense)), 100);
-
-  const handleInteraction = (e: any) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-    const idx = Math.round((x / rect.width) * (data.length - 1));
-    const item = data[Math.max(0, Math.min(data.length - 1, idx))];
-    if (item) onFocus(item);
-  };
-
-  const getPath = (key: string) => data.map((d: any, i: number) => 
-    `${(i / (data.length - 1)) * 100},${100 - (d[key] / max) * 100}`
-  ).join(' L ');
-
-  return (
-    <div 
-      ref={containerRef} 
-      className="w-full h-full touch-none"
-      onMouseMove={handleInteraction}
-      onTouchMove={handleInteraction}
-    >
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-        <path d={`M 0,100 L ${getPath('income')}`} fill="none" stroke="#21C25E" strokeWidth="2.5" strokeLinecap="round" className="animate-dash" />
-        <path d={`M 0,100 L ${getPath('expense')}`} fill="none" stroke="#FF4444" strokeWidth="2.5" strokeLinecap="round" className="animate-dash" />
-        
-        {/* Day Markers */}
-        {[0, 10, 20, 30].map(d => (
-           <text key={d} x={(d/30)*100} y="110" fontSize="4" fontWeight="bold" fill="#cbd5e1" textAnchor="middle">{d || 1}</text>
-        ))}
-      </svg>
     </div>
   );
 };

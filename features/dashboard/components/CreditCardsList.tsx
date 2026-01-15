@@ -1,9 +1,11 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CreditCard } from '../../../types';
 import { Button } from '../../../components/ui/Button';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { formatCurrency } from '../../../utils/formatters';
+import { BankLogo } from './AccountsList';
 
 interface CreditCardsListProps {
   cards: CreditCard[];
@@ -11,18 +13,9 @@ interface CreditCardsListProps {
   onDeleteCard: (id: string) => void;
 }
 
-const getBankInfo = (name: string) => {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes('nubank')) return { color: '#820ad1', logo: 'https://poup-beta.web.app/Icon/Nubank.svg' };
-  if (lowerName.includes('bradesco')) return { color: '#cc092f', logo: 'https://poup-beta.web.app/Icon/bradesco.svg' };
-  if (lowerName.includes('itaú') || lowerName.includes('itau')) return { color: '#ec7000', logo: 'https://poup-beta.web.app/Icon/itau.svg' };
-  if (lowerName.includes('inter')) return { color: '#ff7a00', logo: 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20Inter%20S.A/inter.svg' };
-  if (lowerName.includes('santander')) return { color: '#ec0000', logo: 'https://poup-beta.web.app/Icon/santander.svg' };
-  return { color: '#64748b', logo: null };
-};
-
 export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, onAddCard, onDeleteCard }) => {
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleDeleteConfirm = () => {
     if (cardToDelete) {
@@ -31,12 +24,19 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, onAddCa
     }
   };
 
+  const goToCardsPage = () => {
+    navigate('/credit-cards');
+  };
+
   return (
     <div className="flex flex-col">
       <div className="mb-5 flex items-center justify-between px-1">
         <h3 className="text-xl font-bold text-slate-800 tracking-tight">Cartões de crédito</h3>
         {cards.length > 0 && (
-          <button className="text-xs font-bold text-success hover:opacity-80 transition-opacity">
+          <button 
+            onClick={goToCardsPage}
+            className="text-xs font-bold text-success hover:opacity-80 transition-opacity"
+          >
             Ver todos
           </button>
         )}
@@ -61,24 +61,22 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, onAddCa
       ) : (
         <div className="flex flex-col gap-5">
           {cards.map((card) => {
-            const info = getBankInfo(card.name);
             return (
               <div 
-                key={card.id} 
-                className="group relative overflow-hidden rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:scale-[1.01]"
+                key={card.id}
+                onClick={goToCardsPage} 
+                className="group relative overflow-hidden rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer"
               >
                 {/* Lateral Accent */}
-                <div className="absolute top-0 left-0 h-full w-2" style={{ backgroundColor: info.color }}></div>
+                <div className="absolute top-0 left-0 h-full w-2" style={{ backgroundColor: card.color }}></div>
                 
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-5">
-                    <div 
-                      className="flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-md relative overflow-hidden"
-                      style={{ backgroundColor: info.color }}
-                    >
-                      <div className="absolute inset-0 bg-white/5 pointer-events-none"></div>
-                      <span className="material-symbols-outlined text-3xl">credit_card</span>
+                    {/* Bank Logo Igual ao de Contas */}
+                    <div className="scale-110">
+                        <BankLogo name={card.name} color={card.color} size="md" />
                     </div>
+                    
                     <div>
                       <p className="text-lg font-bold text-slate-800 leading-none mb-1">{card.name}</p>
                       <p className="text-[11px] font-bold text-slate-400 tracking-tight">Vencimento dia {card.dueDay}</p>
@@ -86,7 +84,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, onAddCa
                   </div>
                   
                   <button 
-                    onClick={() => setCardToDelete(card.id)}
+                    onClick={(e) => { e.stopPropagation(); setCardToDelete(card.id); }}
                     className="text-slate-200 hover:text-danger transition-colors p-2 rounded-xl hover:bg-red-50"
                     title="Excluir cartão"
                   >

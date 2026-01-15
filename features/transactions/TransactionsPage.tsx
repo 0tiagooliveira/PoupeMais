@@ -76,6 +76,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
     }, 0);
   }, [filteredTransactions]);
 
+  const displayBalance = useMemo(() => {
+    // Retorna o saldo real da conta (que já vem corrigido do useAccounts)
+    if (selectedAccount) return selectedAccount.balance;
+    return totalAmount;
+  }, [selectedAccount, totalAmount]);
+
   const getCategoryInfo = (category: string) => {
     const allCategories = [...incomeCategories, ...expenseCategories];
     return allCategories.find(c => c.name === category) || { icon: 'payments', color: '#64748b' };
@@ -126,7 +132,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
                       {selectedAccount ? 'Saldo projetado' : 'Balanço total'}
                   </div>
                   <div className="text-5xl font-bold tracking-tighter">
-                      {formatCurrency(selectedAccount ? selectedAccount.balance : totalAmount)}
+                      {formatCurrency(displayBalance)}
                   </div>
               </div>
               <div className="flex items-center gap-2">

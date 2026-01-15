@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,6 +47,16 @@ export const useCreditCards = () => {
       });
   };
 
+  const updateCard = async (id: string, data: Partial<CreditCard>) => {
+    if (!currentUser) throw new Error("No user logged in");
+    
+    await db.collection('users')
+      .doc(currentUser.uid)
+      .collection('credit_cards')
+      .doc(id)
+      .update(data);
+  };
+
   const deleteCard = async (id: string) => {
     if (!currentUser) throw new Error("No user logged in");
     await db.collection('users')
@@ -59,6 +70,7 @@ export const useCreditCards = () => {
     cards,
     loading,
     addCard,
+    updateCard,
     deleteCard
   };
 };

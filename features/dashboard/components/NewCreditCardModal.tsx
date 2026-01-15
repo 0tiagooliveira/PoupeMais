@@ -1,15 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useNotification } from '../../../contexts/NotificationContext';
 import { BankLogo } from './AccountsList';
+import { CreditCard } from '../../../types';
 
 interface NewCreditCardModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
+  cardToEdit?: CreditCard | null;
 }
 
 const POPULAR_BANKS = [
@@ -24,7 +26,7 @@ const POPULAR_BANKS = [
   { name: 'Outro', color: '#64748b' },
 ];
 
-export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, onClose, onSave }) => {
+export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, onClose, onSave, cardToEdit }) => {
   const [name, setName] = useState('');
   const [limit, setLimit] = useState('');
   const [closingDay, setClosingDay] = useState('');
@@ -33,6 +35,28 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
+
+  useEffect(() => {
+    if (isOpen) {
+        if (cardToEdit) {
+            setName(cardToEdit.name);
+            setLimit(cardToEdit.limit.toString());
+            setClosingDay(cardToEdit.closingDay.toString());
+            setDueDay(cardToEdit.dueDay.toString());
+            setColor(cardToEdit.color);
+            // Tenta identificar o banco pelo nome para selecionar visualmente
+            const bank = POPULAR_BANKS.find(b => cardToEdit.name.toLowerCase().includes(b.name.toLowerCase()));
+            if (bank) setSelectedBank(bank.name);
+        } else {
+            setName('');
+            setLimit('');
+            setClosingDay('');
+            setDueDay('');
+            setColor('#64748b');
+            setSelectedBank(null);
+        }
+    }
+  }, [isOpen, cardToEdit]);
 
   const handleBankSelect = (bank: typeof POPULAR_BANKS[0]) => {
     setSelectedBank(bank.name);
@@ -51,7 +75,7 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
         dueDay: parseInt(dueDay),
         color,
       });
-      addNotification(`Cartão "${name}" salvo!`, 'success');
+      addNotification(cardToEdit ? `Cartão atualizado!` : `Cartão "${name}" salvo!`, 'success');
       onClose();
     } catch (error) {
       addNotification('Erro ao salvar.', 'error');
@@ -63,7 +87,7 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
   const isLightColor = color === '#fcf800' || color === '#FC0';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Novo cartão">
+    <Modal isOpen={isOpen} onClose={onClose} title={cardToEdit ? "Editar cartão" : "Novo cartão"}>
       {/* Card Preview */}
       <div className="mb-6 flex justify-center px-1">
         <div 
@@ -181,7 +205,7 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
             isLoading={loading} 
             className="flex-1 rounded-2xl font-bold text-sm bg-primary hover:bg-emerald-600 shadow-xl shadow-success/20 text-white h-12"
           >
-            Salvar
+            {cardToEdit ? 'Salvar alterações' : 'Salvar'}
           </Button>
         </div>
       </form>
