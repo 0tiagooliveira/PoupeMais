@@ -12,7 +12,13 @@ import { CategoryChartCard } from '../dashboard/components/CategoryChartCard';
 import { Transaction } from '../../types';
 
 // --- GRÁFICO ANUAL COM INTERATIVIDADE E FILTROS ---
-const AnnualMixedChart: React.FC<{ data: any[], selectedMonthIndex: number }> = ({ data, selectedMonthIndex }) => {
+interface AnnualMixedChartProps {
+  data: any[];
+  selectedMonthIndex: number;
+  onMonthClick: (index: number) => void;
+}
+
+const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonthIndex, onMonthClick }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [filters, setFilters] = useState({
     income: true,
@@ -275,7 +281,10 @@ const AnnualMixedChart: React.FC<{ data: any[], selectedMonthIndex: number }> = 
                    className="cursor-pointer"
                    onMouseEnter={() => setHoveredIndex(i)}
                    onMouseLeave={() => setHoveredIndex(null)}
-                   onClick={() => setHoveredIndex(i)}
+                   onClick={() => {
+                     setHoveredIndex(i);
+                     onMonthClick(i);
+                   }}
                  />
                );
              })}
@@ -431,6 +440,12 @@ export const ChartsPage: React.FC = () => {
     }));
   }, [annualTransactions]);
 
+  // Handler para clique no gráfico anual
+  const handleMonthClick = (monthIndex: number) => {
+    const newDate = new Date(currentYearDate.getFullYear(), monthIndex, 1);
+    setCurrentMonthDate(newDate);
+  };
+
   // Preparação de dados Mensais (Filtrados)
   const monthStats = useMemo(() => {
     let income = 0;
@@ -527,7 +542,11 @@ export const ChartsPage: React.FC = () => {
                 <button onClick={() => setCurrentYearDate(new Date(currentYearDate.getFullYear()+1, 0, 1))} className="p-1 hover:bg-slate-50 rounded-full"><span className="material-symbols-outlined text-slate-400">chevron_right</span></button>
             </div>
          </div>
-         <AnnualMixedChart data={annualData} selectedMonthIndex={currentMonthDate.getMonth()} />
+         <AnnualMixedChart 
+            data={annualData} 
+            selectedMonthIndex={currentMonthDate.getMonth()} 
+            onMonthClick={handleMonthClick}
+         />
       </div>
 
       <div className="flex items-center gap-4">
