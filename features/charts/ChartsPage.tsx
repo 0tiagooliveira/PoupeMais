@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useTransactions } from '../../hooks/useTransactions';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/formatters';
@@ -421,6 +421,11 @@ export const ChartsPage: React.FC = () => {
     income?: string;
     expense?: string;
   }>({});
+
+  // Efeito para limpar comentários ao trocar o mês
+  useEffect(() => {
+    setAiComments({});
+  }, [currentMonthDate]);
 
   // Preparação de dados Anuais (Filtrados)
   const annualData = useMemo(() => {

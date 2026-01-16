@@ -100,6 +100,10 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const [frequency, setFrequency] = useState<TransactionFrequency>('monthly');
   const [repeatCount, setRepeatCount] = useState('12');
   
+  // States para o seletor expandido
+  const [isCategorySelectorOpen, setIsCategorySelectorOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { addNotification } = useNotification();
@@ -133,6 +137,8 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
         setFrequency('monthly');
         setRepeatCount('12');
       }
+      setIsCategorySelectorOpen(false);
+      setCategorySearch('');
     }
   }, [isOpen, transactionToEdit, accounts, initialType]);
 
@@ -185,18 +191,73 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   };
 
   const filteredCategories = useMemo(() => {
-    return allCategories.filter(c => c.type === type);
-  }, [allCategories, type]);
+    return allCategories
+      .filter(c => c.type === type)
+      .filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase()));
+  }, [allCategories, type, categorySearch]);
+
+  const selectedCategoryData = useMemo(() => {
+    return allCategories.find(c => c.name === category && c.type === type);
+  }, [allCategories, category, type]);
 
   const themeColor = type === 'expense' ? 'text-danger' : 'text-success';
   const themeBg = type === 'expense' ? 'bg-danger' : 'bg-success';
   const themeBorder = type === 'expense' ? 'border-red-200' : 'border-emerald-200';
-  const themeLightBg = type === 'expense' ? 'bg-red-50' : 'bg-emerald-50';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={transactionToEdit ? 'Editar Lançamento' : 'Novo Lançamento'}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6 pt-2">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 pt-2 relative">
         
+        {/* OVERLAY DE SELEÇÃO DE CATEGORIA (Tela Cheia dentro do Modal) */}
+        {isCategorySelectorOpen && (
+          <div className="absolute inset-0 z-20 bg-surface flex flex-col animate-in slide-in-from-right duration-300">
+             <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-50">
+                <button type="button" onClick={() => setIsCategorySelectorOpen(false)} className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600">
+                   <span className="material-symbols-outlined">arrow_back</span>
+                </button>
+                <h3 className="text-sm font-bold text-slate-800">Selecione uma Categoria</h3>
+             </div>
+             
+             <div className="mb-4 relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <input 
+                  type="text" 
+                  placeholder="Buscar categoria..." 
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  className="w-full bg-slate-50 rounded-xl py-3 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-slate-100 transition-all"
+                  autoFocus
+                />
+             </div>
+
+             <div className="flex-1 overflow-y-auto custom-scrollbar pb-4 pr-1">
+                <div className="grid grid-cols-3 gap-3">
+                   {filteredCategories.map(cat => (
+                      <button
+                        key={cat.id || cat.name}
+                        type="button"
+                        onClick={() => { setCategory(cat.name); setIsCategorySelectorOpen(false); }}
+                        className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all active:scale-95"
+                      >
+                         <div 
+                            className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm text-white text-xl"
+                            style={{ backgroundColor: cat.color }}
+                         >
+                            <span className="material-symbols-outlined">{cat.icon || getIconByCategoryName(cat.name)}</span>
+                         </div>
+                         <span className="text-[10px] font-bold text-slate-600 text-center leading-tight line-clamp-2">{cat.name}</span>
+                      </button>
+                   ))}
+                </div>
+                {filteredCategories.length === 0 && (
+                   <div className="text-center py-10 text-slate-400">
+                      <p className="text-xs font-medium">Nenhuma categoria encontrada.</p>
+                   </div>
+                )}
+             </div>
+          </div>
+        )}
+
         {/* 1. SELETOR DE TIPO (Tabs) */}
         <div className="flex p-1 bg-slate-100 rounded-2xl relative">
           <div 
@@ -206,14 +267,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
           />
           <button
             type="button"
-            onClick={() => setType('expense')}
+            onClick={() => { setType('expense'); setCategory(''); }}
             className={`flex-1 relative z-10 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'expense' ? 'text-danger' : 'text-slate-400'}`}
           >
             Despesa
           </button>
           <button
             type="button"
-            onClick={() => setType('income')}
+            onClick={() => { setType('income'); setCategory(''); }}
             className={`flex-1 relative z-10 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'income' ? 'text-success' : 'text-slate-400'}`}
           >
             Receita
@@ -253,36 +314,41 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
              />
         </div>
 
-        {/* 4. CATEGORIAS (Grid - Melhor UX para PC e Mobile) */}
+        {/* 4. SELETOR DE CATEGORIA (TRIGGER) */}
         <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block px-1">Categoria</label>
-            <div className="grid grid-cols-4 gap-y-4 gap-x-2 pb-4 px-1">
-                {filteredCategories.map(cat => {
-                   const isSelected = category === cat.name;
-                   return (
-                    <button
-                        key={cat.id || cat.name}
-                        type="button"
-                        onClick={() => setCategory(cat.name)}
-                        className={`group flex flex-col items-center gap-2 transition-all active:scale-95 ${isSelected ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
-                    >
-                        <div 
-                            className={`h-12 w-12 sm:h-14 sm:w-14 rounded-2xl flex items-center justify-center shadow-sm transition-all border-2 ${
-                                isSelected 
-                                ? `${themeBg} border-${type === 'expense' ? 'red' : 'emerald'}-600 text-white shadow-lg scale-110` 
-                                : `bg-white border-slate-100 text-${cat.color.replace('#', '')} text-slate-400 group-hover:border-slate-200`
-                            }`}
-                            style={!isSelected ? { color: cat.color } : {}}
-                        >
-                            <span className="material-symbols-outlined text-xl sm:text-2xl">{cat.icon || getIconByCategoryName(cat.name)}</span>
-                        </div>
-                        <span className={`text-[9px] font-bold text-center truncate w-full px-1 ${isSelected ? 'text-slate-800' : 'text-slate-400'}`}>
-                            {cat.name}
-                        </span>
-                    </button>
-                   );
-                })}
-            </div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block px-1">Categoria</label>
+            <button
+               type="button"
+               onClick={() => setIsCategorySelectorOpen(true)}
+               className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all active:scale-[0.98] ${
+                  category 
+                  ? `bg-white ${themeBorder} shadow-sm` 
+                  : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200'
+               }`}
+            >
+               <div className="flex items-center gap-3">
+                  {category && selectedCategoryData ? (
+                     <div 
+                        className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm"
+                        style={{ backgroundColor: selectedCategoryData.color }}
+                     >
+                        <span className="material-symbols-outlined">{selectedCategoryData.icon || getIconByCategoryName(category)}</span>
+                     </div>
+                  ) : (
+                     <div className="h-10 w-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400">
+                        <span className="material-symbols-outlined">category</span>
+                     </div>
+                  )}
+                  
+                  <div className="text-left">
+                     <span className={`block text-sm font-bold ${category ? 'text-slate-800' : 'text-slate-400'}`}>
+                        {category || "Selecionar categoria"}
+                     </span>
+                     {category && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Toque para alterar</span>}
+                  </div>
+               </div>
+               <span className="material-symbols-outlined text-slate-300">chevron_right</span>
+            </button>
         </div>
 
         {/* 5. CONTA E DATA (Grid) */}
