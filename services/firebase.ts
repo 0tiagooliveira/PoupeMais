@@ -1,3 +1,4 @@
+
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
@@ -8,7 +9,7 @@ import 'firebase/compat/analytics';
 const meta = import.meta as any;
 const env = (meta && meta.env) ? meta.env : {};
 
-// Check if using default/fallback credentials which might cause permission errors
+// Check if using default/fallback credentials
 const isUsingDefaultConfig = !env.VITE_FIREBASE_API_KEY;
 
 const firebaseConfig = {
@@ -22,12 +23,17 @@ const firebaseConfig = {
 };
 
 if (isUsingDefaultConfig) {
-  console.warn("⚠️ AVISO: Usando credenciais do Firebase de demonstração. Se você receber erros de permissão, certifique-se de configurar seu próprio .env com as credenciais do seu projeto e atualizar as Regras de Segurança no Console.");
+  console.warn("⚠️ AVISO: Usando credenciais do Firebase de demonstração.");
 }
 
 // Initialize Firebase
 if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+  try {
+    firebase.initializeApp(firebaseConfig);
+    console.log("🔥 Firebase inicializado com sucesso.");
+  } catch (error) {
+    console.error("❌ Erro ao inicializar o Firebase:", error);
+  }
 }
 
 const app = firebase.app();
@@ -36,6 +42,17 @@ const app = firebase.app();
 export const auth = firebase.auth();
 export const db = firebase.firestore();
 export const storage = firebase.storage();
+
+// Habilita persistência de dados offline no Firestore (Opcional, mas melhora UX)
+try {
+  db.enablePersistence().catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn("Múltiplas abas abertas, persistência desabilitada.");
+    } else if (err.code === 'unimplemented') {
+      console.warn("O navegador não suporta persistência.");
+    }
+  });
+} catch (e) {}
 
 // Analytics (Safe initialization)
 let analytics = null;

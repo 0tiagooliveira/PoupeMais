@@ -3,8 +3,6 @@ import React from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 
-// Add photoURL to UserProfile to ensure it's available when using the interface, 
-// extending firebase.User should include it, but explicit definition helps in some TS environments.
 export interface UserProfile extends firebase.User {
   uid: string;
   email: string | null;
@@ -41,6 +39,7 @@ export interface Transaction {
   frequency?: TransactionFrequency;
   installmentNumber?: number; 
   totalInstallments?: number; 
+  bankTransactionId?: string; // Novo campo para evitar duplicidade
   createdAt: string;
 }
 
@@ -80,7 +79,7 @@ export interface NotificationItem {
   duration?: number;
   timestamp: Date;
   read: boolean;
-  addToHistory?: boolean; // Se false, não aparece na modal de notificações
+  addToHistory?: boolean; 
 }
 
 export interface NotificationContextType {

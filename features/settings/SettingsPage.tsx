@@ -23,6 +23,7 @@ const CATEGORY_KEYWORDS: Record<string, string> = {
   'carrefour': 'Mercado',
   'shopee': 'Compras',
   'shein': 'Compras',
+  'havan': 'Compras',
   'aliexpress': 'Compras',
   'mercadolivre': 'Compras',
   'mercado livre': 'Compras',
@@ -32,6 +33,7 @@ const CATEGORY_KEYWORDS: Record<string, string> = {
   'farmacia': 'Saúde',
   'drogaria': 'Saúde',
   'hospital': 'Saúde',
+  'puc pr': 'Educação',
   'academia': 'Bem-estar',
   'aluguel': 'Moradia',
   'condominio': 'Moradia',
@@ -42,7 +44,8 @@ const CATEGORY_KEYWORDS: Record<string, string> = {
   'vivo': 'Assinaturas',
   'claro': 'Assinaturas',
   'salario': 'Salário',
-  'pagamento': 'Salário', // Cuidado: Pagamentos recebidos de empresas geralmente são salários
+  'j10 paineis': 'Faturamento',
+  'pagamento': 'Salário',
   'recebimento': 'Receita',
   'pix recebido': 'Receita',
   'pix no credito': 'Transferência',
@@ -51,7 +54,6 @@ const CATEGORY_KEYWORDS: Record<string, string> = {
   'reembolso': 'Reembolso',
 };
 
-// Palavras-chave que indicam claramente que é uma despesa, mesmo se o valor for positivo no CSV
 const KNOWN_EXPENSES = [
   'uber', 'ifood', 'netflix', 'amazon', 'mercado', 'pagamento', 'compra', 'iof', 
   'shopee', 'shein', 'pix no credito', 'pix no crédito'
@@ -111,44 +113,6 @@ export const SettingsPage: React.FC = () => {
   const handleLogout = () => auth.signOut();
   const handleImportClick = () => !isImporting && fileInputRef.current?.click();
 
-  const handleResetData = async () => {
-    if (!currentUser) return;
-    setIsResetting(true);
-    addNotification('Limpando seus dados...', 'warning');
-
-    try {
-      const userRef = db.collection('users').doc(currentUser.uid);
-      const collections = ['transactions', 'accounts', 'credit_cards'];
-
-      for (const colName of collections) {
-        const snapshot = await userRef.collection(colName).get();
-        const chunks = [];
-        const docs = snapshot.docs;
-        
-        for (let i = 0; i < docs.length; i += 400) {
-          chunks.push(docs.slice(i, i + 400));
-        }
-
-        for (const chunk of chunks) {
-          const batch = db.batch();
-          chunk.forEach(doc => batch.delete(doc.ref));
-          await batch.commit();
-        }
-      }
-
-      addNotification('Sua conta foi resetada com sucesso.', 'success');
-      setTimeout(() => {
-         navigate('/');
-      }, 1000);
-    } catch (error) {
-      console.error('Erro ao resetar dados:', error);
-      addNotification('Erro ao limpar dados. Tente novamente.', 'error');
-    } finally {
-      setIsResetting(false);
-      setShowResetConfirm(false);
-    }
-  };
-
   const mapHeaders = (headers: string[]) => {
     const map: Record<string, string> = {};
     headers.forEach(h => {
@@ -162,6 +126,7 @@ export const SettingsPage: React.FC = () => {
       if (lower.includes('número') || lower.includes('numero') || lower === 'number') map.number = h;
       if (lower.includes('método') || lower.includes('metodo') || lower === 'method') map.method = h;
       if (lower.includes('tip') || lower === 'kind') map.type = h;
+      if (lower.includes('identificador') || lower === 'id' || lower === 'uuid' || lower.includes('transaction_id')) map.bankTransactionId = h;
     });
     return map;
   };
@@ -169,15 +134,9 @@ export const SettingsPage: React.FC = () => {
   const parseValue = (val: any): number => {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
     if (!val) return 0;
-    
     let clean = val.toString().replace(/R\$/g, '').replace(/\s/g, '').trim();
-    // Tratamento para formatos brasileiros e americanos misturados
-    if (clean.includes(',') && !clean.includes('.')) {
-       clean = clean.replace(',', '.');
-    } else if (clean.includes('.') && clean.includes(',')) {
-       clean = clean.replace(/\./g, '').replace(',', '.');
-    }
-    
+    if (clean.includes(',') && !clean.includes('.')) clean = clean.replace(',', '.');
+    else if (clean.includes('.') && clean.includes(',')) clean = clean.replace(/\./g, '').replace(',', '.');
     const parsed = parseFloat(clean);
     return isNaN(parsed) ? 0 : parsed;
   };
@@ -192,22 +151,17 @@ export const SettingsPage: React.FC = () => {
                 const month = parseInt(parts[1]) - 1;
                 let year = parseInt(parts[2]);
                 if (year < 100) year += 2000;
-                
                 const d = new Date(year, month, day);
                 if (!isNaN(d.getTime())) return d;
             }
         }
         const d = new Date(dateStr);
         return isNaN(d.getTime()) ? new Date() : d;
-    } catch (e) {
-        return new Date();
-    }
+    } catch (e) { return new Date(); }
   };
 
   const autoCategorize = (description: string, providedCategory?: string): string => {
-    if (providedCategory && providedCategory.toLowerCase() !== 'outros' && providedCategory.trim() !== '') {
-      return providedCategory;
-    }
+    if (providedCategory && providedCategory.toLowerCase() !== 'outros' && providedCategory.trim() !== '') return providedCategory;
     const desc = (description || '').toLowerCase();
     for (const [key, cat] of Object.entries(CATEGORY_KEYWORDS)) {
       if (desc.includes(key)) return cat;
@@ -230,6 +184,35 @@ export const SettingsPage: React.FC = () => {
     try {
       const userRef = db.collection('users').doc(currentUser.uid);
       
+      let minDate: Date | null = null;
+      let maxDate: Date | null = null;
+      data.forEach(row => {
+        const d = parseDate(row[hMap.date]);
+        if (!minDate || d < minDate) minDate = d;
+        if (!maxDate || d > maxDate) maxDate = d;
+      });
+
+      // Busca composta para de-duplicação (ID + Valor + Tipo)
+      const existingSignatures = new Set<string>();
+      if (minDate && maxDate && hMap.bankTransactionId) {
+        addNotification('Analisando registros existentes...', 'info', 2000);
+        const qStart = new Date(minDate); qStart.setDate(qStart.getDate() - 1);
+        const qEnd = new Date(maxDate); qEnd.setDate(qEnd.getDate() + 1);
+
+        const existingSnap = await userRef.collection('transactions')
+            .where('date', '>=', qStart.toISOString())
+            .where('date', '<=', qEnd.toISOString())
+            .get();
+        
+        existingSnap.docs.forEach(doc => {
+            const d = doc.data();
+            if (d.bankTransactionId) {
+                // Criamos uma assinatura única: ID_VALOR_TIPO
+                existingSignatures.add(`${d.bankTransactionId}_${d.amount}_${d.type}`);
+            }
+        });
+      }
+
       const accountsSnap = await userRef.collection('accounts').get();
       const accountMap = new Map<string, string>();
       accountsSnap.docs.forEach(doc => accountMap.set(doc.data().name.toLowerCase().trim(), doc.id));
@@ -242,24 +225,10 @@ export const SettingsPage: React.FC = () => {
       const totalRows = data.length;
       const CHUNK_SIZE = 400;
       let importedCount = 0;
-      let minDate: Date | null = null;
-      let maxDate: Date | null = null;
+      let skippedCount = 0;
 
-      // --- DETECÇÃO DE CONTEXTO ---
-      let useStandardSignConvention = true;
       const hasNegativeValues = data.some(row => parseValue(row[hMap.amount]) < 0);
-      
-      if (!hasNegativeValues) {
-         // Se não tem negativos, verificamos se tem "cara" de fatura de cartão (Uber, iFood positivos, Pix no crédito)
-         const seemsLikeCreditCard = data.slice(0, 20).some(row => {
-             const val = parseValue(row[hMap.amount]);
-             const desc = (row[hMap.description] || '').toLowerCase();
-             return val > 0 && KNOWN_EXPENSES.some(k => desc.includes(k));
-         });
-         if (seemsLikeCreditCard) {
-            useStandardSignConvention = false; // Modo Invertido (Nubank Card CSV): Positivo = Despesa
-         }
-      }
+      let useStandardSignConvention = hasNegativeValues;
 
       for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
         const chunk = data.slice(i, i + CHUNK_SIZE);
@@ -269,37 +238,37 @@ export const SettingsPage: React.FC = () => {
           const rawDateStr = row[hMap.date];
           const rawAmount = parseValue(row[hMap.amount]);
           const rawDesc = row[hMap.description] || 'Importado';
+          const bankTxId = hMap.bankTransactionId ? row[hMap.bankTransactionId]?.toString().trim() : null;
           const descLower = rawDesc.toLowerCase();
           
           if (!rawDateStr || isNaN(rawAmount) || rawAmount === 0) continue;
 
-          // --- CORREÇÃO DE DUPLICIDADE (REGRA GLOBAL) ---
-          // "Pagamento recebido" no CSV do Nubank é o crédito interno da fatura paga.
-          // Isso NUNCA deve ser tratado como receita. Ignoramos completamente.
-          if (descLower.includes('pagamento recebido') || descLower.includes('pagamento de fatura')) {
-             continue;
-          }
-
-          // Detecção de Cartão vs Conta ANTES de processar
-          const isCreditCardMethod = row[hMap.method] ? (row[hMap.method].toString().toUpperCase().includes('CREDIT') || row[hMap.method].toString().toUpperCase().includes('CRÉDITO')) : false;
-          const isCreditCardContext = !useStandardSignConvention || isCreditCardMethod;
-
           let finalAmount = Math.abs(rawAmount);
           let type: 'income' | 'expense';
+          if (useStandardSignConvention) type = rawAmount < 0 ? 'expense' : 'income';
+          else type = rawAmount > 0 ? 'expense' : 'income';
 
-          if (useStandardSignConvention) {
-              // Padrão Bancário: Negativo (< 0) é Despesa
-              type = rawAmount < 0 ? 'expense' : 'income';
-          } else {
-              // Padrão Cartão (Nubank CSV): Positivo (> 0) é Despesa
-              // Se vier algo negativo aqui, tratamos como estorno (Receita)
-              type = rawAmount > 0 ? 'expense' : 'income';
-          }
-
-          // REGRA DE SEGURANÇA: Pix no Crédito é sempre despesa
+          // Força tipo para casos específicos do Nubank
           if (descLower.includes('pix no credito') || descLower.includes('pix no crédito')) {
-             type = 'expense';
+             if (rawAmount < 0) type = 'expense';
+             else type = 'income'; // A entrada de ajuste
           }
+
+          // VERIFICAÇÃO DE DUPLICIDADE (Assinatura Composta)
+          if (bankTxId) {
+             const signature = `${bankTxId}_${finalAmount}_${type}`;
+             if (existingSignatures.has(signature)) {
+                skippedCount++;
+                continue;
+             }
+             // Adiciona à lista local para não duplicar se o mesmo item aparecer 2x no mesmo CSV
+             existingSignatures.add(signature);
+          }
+
+          if (descLower.includes('pagamento recebido') || descLower.includes('pagamento de fatura')) continue;
+
+          const isCreditCardMethod = row[hMap.method] ? (row[hMap.method].toString().toUpperCase().includes('CREDIT') || row[hMap.method].toString().toUpperCase().includes('CRÉDITO')) : false;
+          const isCreditCardContext = isCreditCardMethod;
 
           let targetId = '';
           const rawNumber = row[hMap.number] ? row[hMap.number].toString().trim() : '';
@@ -307,11 +276,8 @@ export const SettingsPage: React.FC = () => {
           
           if (isCreditCardContext) {
              let targetName = `Cartão Nubank ${rawNumber || 'Principal'}`.trim();
-             if (rawNumber === '6255') targetName = 'Cartão Físico'; 
-             
              const targetNameLower = targetName.toLowerCase();
              targetId = cardMap.get(targetNameLower) || '';
-
              if (!targetId) {
                 const newCardRef = userRef.collection('credit_cards').doc();
                 await newCardRef.set({ name: targetName, limit: 0, closingDay: 1, dueDay: 10, color: '#820ad1', createdAt: new Date().toISOString() });
@@ -319,11 +285,9 @@ export const SettingsPage: React.FC = () => {
                 cardMap.set(targetNameLower, targetId);
              }
           } else {
-             // Conta Corrente
              let targetName = rawNumber ? `${rawAccountName} ${rawNumber}` : rawAccountName;
              const targetNameLower = targetName.toLowerCase();
              targetId = accountMap.get(targetNameLower) || '';
-
              if (!targetId) {
                 const newAccRef = userRef.collection('accounts').doc();
                 await newAccRef.set({ name: targetName, type: 'Corrente', balance: 0, initialBalance: 0, color: '#820ad1', createdAt: new Date().toISOString() });
@@ -333,26 +297,13 @@ export const SettingsPage: React.FC = () => {
           }
 
           let category = autoCategorize(rawDesc, row[hMap.category]);
-          
-          // --- CORREÇÃO DE ESTORNOS E REEMBOLSOS ---
-          // Se for cartão de crédito e for 'income', é Reembolso (exceto se categorizado explicitamente diferente)
-          if (isCreditCardContext && type === 'income') {
-              category = 'Reembolso';
-          }
-          
-          // Regra Geral: Se descrição contiver "Estorno" ou "Crédito de" (sem ser salário/resgate), é Reembolso
-          if (descLower.includes('estorno') || (descLower.includes('crédito de') && !descLower.includes('salário') && !descLower.includes('salario') && !descLower.includes('resgate') && !descLower.includes('transferência'))) {
-              if (type === 'income') {
-                  category = 'Reembolso';
-              }
+          if (descLower.includes('estorno') || (descLower.includes('crédito de') && !descLower.includes('salário'))) {
+              if (type === 'income') category = 'Reembolso';
           }
 
           const dateObj = parseDate(rawDateStr);
-          
-          if (!minDate || dateObj < minDate) minDate = dateObj;
-          if (!maxDate || dateObj > maxDate) maxDate = dateObj;
-
           const transRef = userRef.collection('transactions').doc();
+          
           batch.set(transRef, {
             description: rawDesc,
             amount: finalAmount,
@@ -363,15 +314,14 @@ export const SettingsPage: React.FC = () => {
             status: 'completed',
             isFixed: false,
             isRecurring: false,
+            bankTransactionId: bankTxId || undefined,
             createdAt: new Date().toISOString()
           });
 
-          // Atualiza saldo APENAS se o destino for uma Conta (e não Cartão de Crédito)
           if (!isCreditCardContext) {
              const currentDelta = balanceChanges.get(targetId) || 0;
              balanceChanges.set(targetId, currentDelta + (type === 'income' ? finalAmount : -finalAmount));
           }
-          
           importedCount++;
         }
 
@@ -391,15 +341,11 @@ export const SettingsPage: React.FC = () => {
         await accBatch.commit();
       }
 
-      let dateMsg = "";
-      if (minDate && maxDate) {
-         const fmt = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' });
-         const d1 = fmt.format(minDate);
-         const d2 = fmt.format(maxDate);
-         dateMsg = d1 === d2 ? ` de ${d1}` : ` de ${d1} a ${d2}`;
-      }
-
-      addNotification(`Organizado! ${importedCount} itens importados${dateMsg}.`, 'success', 8000);
+      addNotification(
+        `Sucesso! ${importedCount} itens importados. ${skippedCount > 0 ? `(${skippedCount} duplicados ignorados)` : ''}`, 
+        'success', 
+        8000
+      );
 
     } catch (err) {
       console.error('Erro na importação:', err);
@@ -415,11 +361,6 @@ export const SettingsPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!Papa) {
-        addNotification("Biblioteca CSV não carregada.", "error");
-        return;
-    }
-
     const readFile = (file: File): Promise<string> => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -428,12 +369,7 @@ export const SettingsPage: React.FC = () => {
           const decoderUtf8 = new TextDecoder('utf-8', { fatal: true });
           const decoderIso = new TextDecoder('iso-8859-1');
           let text = '';
-          try {
-            text = decoderUtf8.decode(buffer);
-          } catch (err) {
-            console.warn("UTF-8 decoding failed, falling back to ISO-8859-1");
-            text = decoderIso.decode(buffer);
-          }
+          try { text = decoderUtf8.decode(buffer); } catch (err) { text = decoderIso.decode(buffer); }
           resolve(text);
         };
         reader.onerror = reject;
@@ -452,9 +388,36 @@ export const SettingsPage: React.FC = () => {
         });
       })
       .catch((err) => {
-        console.error("Erro na leitura do arquivo", err);
         addNotification("Não foi possível ler o arquivo.", "error");
       });
+  };
+
+  const handleResetData = async () => {
+    if (!currentUser) return;
+    setIsResetting(true);
+    addNotification('Limpando seus dados...', 'warning');
+    try {
+      const userRef = db.collection('users').doc(currentUser.uid);
+      const collections = ['transactions', 'accounts', 'credit_cards'];
+      for (const colName of collections) {
+        const snapshot = await userRef.collection(colName).get();
+        const chunks = [];
+        const docs = snapshot.docs;
+        for (let i = 0; i < docs.length; i += 400) chunks.push(docs.slice(i, i + 400));
+        for (const chunk of chunks) {
+          const batch = db.batch();
+          chunk.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        }
+      }
+      addNotification('Sua conta foi resetada com sucesso.', 'success');
+      setTimeout(() => navigate('/'), 1000);
+    } catch (error) {
+      addNotification('Erro ao limpar dados. Tente novamente.', 'error');
+    } finally {
+      setIsResetting(false);
+      setShowResetConfirm(false);
+    }
   };
 
   return (
@@ -501,11 +464,10 @@ export const SettingsPage: React.FC = () => {
           <SettingItem 
             icon={isImporting ? 'sync' : 'upload_file'} 
             label="Importar Nubank/CSV" 
-            description="Reconhece cartões físicos e virtuais automaticamente" 
+            description="Filtro inteligente de duplicados ativado" 
             onClick={handleImportClick}
             disabled={isImporting || isResetting}
           />
-          <SettingItem icon="download" label="Exportar Backup" onClick={() => addNotification('Em breve!', 'info')} />
         </div>
 
         <SectionHeader title="Zona de Perigo" icon="warning" />
@@ -517,12 +479,6 @@ export const SettingsPage: React.FC = () => {
             danger 
             onClick={() => setShowResetConfirm(true)}
             disabled={isImporting || isResetting}
-          />
-          <SettingItem 
-            icon="delete_forever" 
-            label="Excluir minha conta" 
-            danger 
-            onClick={() => addNotification('Funcionalidade disponível via suporte.', 'info')} 
           />
         </div>
       </div>

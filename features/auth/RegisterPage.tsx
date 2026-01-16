@@ -18,6 +18,23 @@ export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { addNotification } = useNotification();
 
+  const getFriendlyErrorMessage = (code: string) => {
+    switch (code) {
+      case 'auth/email-already-in-use':
+        return 'Este e-mail já está sendo usado por outra conta. Tente fazer login ou recupere sua senha.';
+      case 'auth/invalid-email':
+        return 'O endereço de e-mail informado não é válido.';
+      case 'auth/operation-not-allowed':
+        return 'O cadastro com e-mail e senha não está disponível.';
+      case 'auth/weak-password':
+        return 'Sua senha deve ter pelo menos 6 caracteres.';
+      case 'auth/network-request-failed':
+        return 'Não conseguimos conectar ao servidor. Verifique sua conexão.';
+      default:
+        return 'Não foi possível concluir seu cadastro agora. Tente novamente.';
+    }
+  };
+
   const initializeUser = async (user: firebase.User) => {
     const userDocRef = db.collection('users').doc(user.uid);
     const userDocSnap = await userDocRef.get();
@@ -39,12 +56,14 @@ export const RegisterPage: React.FC = () => {
       const result = await auth.signInWithPopup(provider);
       const user = result.user;
       if (user) await initializeUser(user);
-      addNotification('Cadastro realizado com sucesso!', 'success');
+      addNotification('Seja bem-vindo ao Poup+!', 'success', 3000, false);
       navigate('/');
     } catch (err: any) {
-      console.error("Google Signup Error:", err);
-      setError('Falha ao cadastrar com Google.');
-      addNotification('Erro no cadastro com Google.', 'error');
+      if (err.code !== 'auth/popup-closed-by-user') {
+        const msg = 'Houve um problema ao criar conta com o Google.';
+        setError(msg);
+        addNotification(msg, 'error', 5000, false);
+      }
     } finally {
       setLoading(false);
     }
@@ -52,28 +71,27 @@ export const RegisterPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return setError('Informe seu nome.');
-    if (password !== confirmPassword) return setError('As senhas não coincidem.');
-    if (password.length < 6) return setError('Mínimo 6 caracteres.');
+    if (!name.trim()) return setError('Por favor, informe seu nome.');
+    if (password !== confirmPassword) return setError('As senhas digitadas não são iguais.');
+    if (password.length < 6) return setError('A senha deve ter no mínimo 6 caracteres.');
+    
     setLoading(true);
     setError('');
     
-    // Clear logout flag when attempting to register
-    sessionStorage.removeItem('poup_logout');
-    
     try {
-      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      const userCredential = await auth.createUserWithEmailAndPassword(email.trim(), password);
       const user = userCredential.user;
       if (user) {
         await user.updateProfile({ displayName: name });
         await initializeUser(user);
       }
-      addNotification(`Bem-vindo, ${name}!`, 'success');
-      window.location.reload(); 
+      addNotification(`Tudo pronto! Bem-vindo, ${name}!`, 'success', 5000, false);
+      navigate('/');
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Erro ao criar conta.');
-      addNotification('Erro ao criar conta.', 'error');
+      const errorMessage = getFriendlyErrorMessage(err.code);
+      setError(errorMessage);
+      addNotification(errorMessage, 'error', 6000, false);
+    } finally {
       setLoading(false);
     }
   };
@@ -92,16 +110,19 @@ export const RegisterPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-2xl bg-red-50 p-4 text-sm text-red-600 font-bold border border-red-100">
-            {error}
+          <div className="mb-6 rounded-2xl bg-red-50 p-4 text-sm text-red-600 font-bold border border-red-100 animate-shake">
+            <div className="flex items-start gap-2">
+              <span className="material-symbols-outlined text-lg">info</span>
+              <span>{error}</span>
+            </div>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input label="Seu nome" type="text" placeholder="João da Silva" value={name} onChange={e => setName(e.target.value)} required icon="person" className="rounded-2xl" />
           <Input label="E-mail" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required icon="mail" className="rounded-2xl" />
-          <Input label="Crie uma senha" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required icon="key" className="rounded-2xl" />
-          <Input label="Confirme a senha" type="password" placeholder="••••••••" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required icon="check_circle" className="rounded-2xl" />
+          <Input label="Crie uma senha" type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={e => setPassword(e.target.value)} required icon="key" className="rounded-2xl" />
+          <Input label="Confirme a senha" type="password" placeholder="Repita a senha" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required icon="check_circle" className="rounded-2xl" />
 
           <Button type="submit" className="w-full py-5 rounded-[22px] bg-primary hover:bg-emerald-600 shadow-xl shadow-success/20 mt-4 font-bold text-sm tracking-tight text-white" isLoading={loading}>
             Finalizar cadastro

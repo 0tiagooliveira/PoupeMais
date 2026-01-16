@@ -23,13 +23,35 @@ export const LoginPage: React.FC = () => {
     localStorage.setItem('poup_remember_me', String(rememberMe));
   }, [rememberMe]);
 
+  const getFriendlyErrorMessage = (code: string) => {
+    switch (code) {
+      case 'auth/invalid-email':
+        return 'O formato do e-mail digitado não é válido.';
+      case 'auth/user-disabled':
+        return 'Esta conta de usuário foi desativada.';
+      case 'auth/user-not-found':
+        return 'Não encontramos nenhuma conta com este e-mail.';
+      case 'auth/wrong-password':
+        return 'A senha digitada está incorreta. Tente novamente.';
+      case 'auth/invalid-credential':
+        return 'E-mail ou senha incorretos. Por favor, verifique seus dados.';
+      case 'auth/network-request-failed':
+        return 'Falha na conexão. Verifique sua internet e tente novamente.';
+      case 'auth/too-many-requests':
+        return 'Acesso bloqueado temporariamente por muitas tentativas. Tente em alguns minutos.';
+      case 'auth/operation-not-allowed':
+        return 'O login com e-mail e senha não está habilitado.';
+      default:
+        return 'Ocorreu um erro inesperado ao tentar entrar. Tente novamente mais tarde.';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Clear logout flag when attempting to login
-    sessionStorage.removeItem('poup_logout');
+    const cleanEmail = email.trim();
 
     try {
       const persistence = rememberMe 
@@ -37,29 +59,32 @@ export const LoginPage: React.FC = () => {
         : firebase.auth.Auth.Persistence.SESSION;
         
       await auth.setPersistence(persistence);
-      await auth.signInWithEmailAndPassword(email, password);
+      await auth.signInWithEmailAndPassword(cleanEmail, password);
       
-      addNotification('Bem-vindo de volta ao Poup+!', 'success');
+      // Notificação de boas-vindas não precisa ir para o histórico (false)
+      addNotification('Que bom ter você de volta!', 'success', 3000, false);
       navigate('/');
     } catch (err: any) {
-      console.error("Login Error:", err);
-      let errorMessage = 'Falha ao fazer login.';
-      switch (err.code) {
-        case 'auth/invalid-credential':
-        case 'auth/wrong-password':
-        case 'auth/user-not-found':
-          errorMessage = 'E-mail ou senha incorretos.';
-          break;
-        case 'auth/too-many-requests':
-          errorMessage = 'Muitas tentativas. Tente mais tarde.';
-          break;
-        default:
-          errorMessage = 'Erro ao acessar conta. Verifique sua conexão.';
-      }
+      const errorMessage = getFriendlyErrorMessage(err.code);
       setError(errorMessage);
-      addNotification(errorMessage, 'error');
+      // Erros de login NÃO vão para o histórico (false)
+      addNotification(errorMessage, 'error', 5000, false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      addNotification('Para recuperar a senha, primeiro digite seu e-mail.', 'warning', 4000, false);
+      return;
+    }
+    
+    try {
+      await auth.sendPasswordResetEmail(email.trim());
+      addNotification('Enviamos um link de recuperação para o seu e-mail!', 'success', 6000, false);
+    } catch (err: any) {
+      addNotification('Não conseguimos enviar o e-mail de recuperação agora.', 'error', 5000, false);
     }
   };
 
@@ -71,9 +96,11 @@ export const LoginPage: React.FC = () => {
         ? firebase.auth.Auth.Persistence.LOCAL 
         : firebase.auth.Auth.Persistence.SESSION;
       await auth.setPersistence(persistence);
+      
       const provider = new firebase.auth.GoogleAuthProvider();
       const result = await auth.signInWithPopup(provider);
       const user = result.user;
+      
       if (user) {
         const userDocRef = db.collection('users').doc(user.uid);
         const userDocSnap = await userDocRef.get();
@@ -86,12 +113,14 @@ export const LoginPage: React.FC = () => {
           });
         }
       }
-      addNotification('Login realizado com sucesso!', 'success');
+      addNotification('Acesso autorizado!', 'success', 3000, false);
       navigate('/');
     } catch (err: any) {
-      console.error("Google Login Error:", err);
-      setError('Erro ao entrar com Google.');
-      addNotification('Erro ao entrar com Google.', 'error');
+      if (err.code !== 'auth/popup-closed-by-user') {
+        const msg = 'Houve um problema ao conectar com o Google.';
+        setError(msg);
+        addNotification(msg, 'error', 5000, false);
+      }
     } finally {
       setLoading(false);
     }
@@ -112,7 +141,7 @@ export const LoginPage: React.FC = () => {
         {error && (
           <div className="mb-6 rounded-2xl bg-red-50 p-4 text-sm text-red-600 flex items-center gap-3 border border-red-100 animate-shake">
             <span className="material-symbols-outlined text-xl font-bold">error</span>
-            <span className="font-bold">{error}</span>
+            <span className="font-bold flex-1">{error}</span>
           </div>
         )}
 
@@ -127,7 +156,7 @@ export const LoginPage: React.FC = () => {
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
           </svg>
           Entrar com Google
         </Button>
@@ -178,9 +207,13 @@ export const LoginPage: React.FC = () => {
               </span>
             </label>
             
-            <Link to="/register" className="text-[10px] font-bold text-success hover:underline tracking-tight">
+            <button 
+              type="button" 
+              onClick={handleForgotPassword}
+              className="text-[10px] font-bold text-success hover:underline tracking-tight bg-transparent border-none p-0 cursor-pointer"
+            >
                 Esqueci a senha
-            </Link>
+            </button>
           </div>
 
           <Button 
