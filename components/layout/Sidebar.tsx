@@ -8,6 +8,7 @@ export const Sidebar: React.FC = () => {
     { to: '/transactions', icon: 'receipt_long', label: 'Transações' },
     { to: '/credit-cards', icon: 'credit_card', label: 'Cartões' },
     { to: '/charts', icon: 'bar_chart', label: 'Análise' },
+    { to: '/categories', icon: 'category', label: 'Categorias' },
     { to: '/settings', icon: 'settings', label: 'Ajustes' },
   ];
 

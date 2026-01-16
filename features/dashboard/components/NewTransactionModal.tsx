@@ -4,8 +4,9 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
-import { TransactionType, Account, Transaction, TransactionStatus, TransactionFrequency } from '../../../types';
+import { TransactionType, Account, Transaction, TransactionStatus, TransactionFrequency, Category } from '../../../types';
 import { useNotification } from '../../../contexts/NotificationContext';
+import { useCategories } from '../../../hooks/useCategories';
 
 interface NewTransactionModalProps {
   isOpen: boolean;
@@ -18,59 +19,71 @@ interface NewTransactionModalProps {
 }
 
 export const incomeCategories = [
-  { name: 'Salário', icon: 'payments', color: '#10B981' }, // Emerald 500
-  { name: 'Freelance', icon: 'computer', color: '#0EA5E9' }, // Sky 500
-  { name: 'Bônus', icon: 'stars', color: '#F59E0B' }, // Amber 500
-  { name: 'Comissões', icon: 'trending_up', color: '#8B5CF6' }, // Violet 500
-  { name: 'Aluguel recebido', icon: 'real_estate_agent', color: '#6366F1' }, // Indigo 500
-  { name: 'Investimentos', icon: 'show_chart', color: '#14B8A6' }, // Teal 500
-  { name: 'Dividendos', icon: 'pie_chart', color: '#22C55E' }, // Green 500
-  { name: 'Juros recebidos', icon: 'percent', color: '#84CC16' }, // Lime 500
-  { name: 'Cashback', icon: 'currency_exchange', color: '#EC4899' }, // Pink 500
-  { name: 'Venda de produtos', icon: 'storefront', color: '#F97316' }, // Orange 500
-  { name: 'Venda de serviços', icon: 'design_services', color: '#06B6D4' }, // Cyan 500
-  { name: 'Reembolso', icon: 'undo', color: '#64748B' }, // Slate 500
-  { name: 'Restituição', icon: 'account_balance', color: '#3B82F6' }, // Blue 500
-  { name: 'Premiações', icon: 'emoji_events', color: '#EAB308' }, // Yellow 500
-  { name: 'Herança', icon: 'diversity_3', color: '#A855F7' }, // Purple 500
-  { name: 'Aposentadoria', icon: 'elderly', color: '#475569' }, // Slate 600
-  { name: 'Pensão', icon: 'child_friendly', color: '#FB7185' }, // Rose 400
-  { name: 'Doações', icon: 'volunteer_activism', color: '#F43F5E' }, // Rose 500
-  { name: 'Loteria', icon: 'casino', color: '#10B981' }, // Emerald
-  { name: 'Transferência', icon: 'sync_alt', color: '#94A3B8' }, // Slate 400
-  { name: 'Décimo terceiro', icon: 'calendar_month', color: '#059669' }, // Emerald 600
-  { name: 'Resgate', icon: 'move_to_inbox', color: '#0D9488' }, // Teal 600
-  { name: 'Lucros', icon: 'query_stats', color: '#4ADE80' }, // Green 400
-  { name: 'Outros', icon: 'more_horiz', color: '#CBD5E1' } // Slate 300
+  { name: 'Salário', icon: 'payments', color: '#10B981' },
+  { name: 'Freelance', icon: 'computer', color: '#0EA5E9' },
+  { name: 'Bônus', icon: 'stars', color: '#F59E0B' },
+  { name: 'Comissões', icon: 'trending_up', color: '#8B5CF6' },
+  { name: 'Aluguel recebido', icon: 'real_estate_agent', color: '#6366F1' },
+  { name: 'Investimentos', icon: 'show_chart', color: '#14B8A6' },
+  { name: 'Dividendos', icon: 'pie_chart', color: '#22C55E' },
+  { name: 'Juros recebidos', icon: 'percent', color: '#84CC16' },
+  { name: 'Cashback', icon: 'currency_exchange', color: '#EC4899' },
+  { name: 'Venda de produtos', icon: 'storefront', color: '#F97316' },
+  { name: 'Venda de serviços', icon: 'design_services', color: '#06B6D4' },
+  { name: 'Reembolso', icon: 'undo', color: '#64748B' },
+  { name: 'Restituição', icon: 'account_balance', color: '#3B82F6' },
+  { name: 'Premiações', icon: 'emoji_events', color: '#EAB308' },
+  { name: 'Herança', icon: 'diversity_3', color: '#A855F7' },
+  { name: 'Aposentadoria', icon: 'elderly', color: '#475569' },
+  { name: 'Pensão', icon: 'child_friendly', color: '#FB7185' },
+  { name: 'Doações', icon: 'volunteer_activism', color: '#F43F5E' },
+  { name: 'Loteria', icon: 'casino', color: '#10B981' },
+  { name: 'Transferência', icon: 'sync_alt', color: '#94A3B8' },
+  { name: 'Décimo terceiro', icon: 'calendar_month', color: '#059669' },
+  { name: 'Resgate', icon: 'move_to_inbox', color: '#0D9488' },
+  { name: 'Lucros', icon: 'query_stats', color: '#4ADE80' },
+  { name: 'Outros', icon: 'more_horiz', color: '#CBD5E1' }
 ];
 
 export const expenseCategories = [
-  { name: 'Alimentação', icon: 'restaurant', color: '#EF4444' }, // Red 500
-  { name: 'Transporte', icon: 'directions_car', color: '#3B82F6' }, // Blue 500
-  { name: 'Moradia', icon: 'home', color: '#6366F1' }, // Indigo 500
-  { name: 'Mercado', icon: 'shopping_cart', color: '#F59E0B' }, // Amber 500
-  { name: 'Compras', icon: 'shopping_bag', color: '#EC4899' }, // Pink 500
-  { name: 'Saúde', icon: 'medical_services', color: '#14B8A6' }, // Teal 500
-  { name: 'Educação', icon: 'school', color: '#8B5CF6' }, // Violet 500
-  { name: 'Lazer', icon: 'sports_esports', color: '#F97316' }, // Orange 500
-  { name: 'Viagem', icon: 'flight', color: '#0EA5E9' }, // Sky 500
-  { name: 'Assinaturas', icon: 'subscriptions', color: '#D946EF' }, // Fuchsia 500
-  { name: 'Cartão de crédito', icon: 'credit_card', color: '#475569' }, // Slate 600
-  { name: 'Impostos', icon: 'gavel', color: '#B91C1C' }, // Red 700
-  { name: 'Presentes', icon: 'card_giftcard', color: '#EAB308' }, // Yellow 500
-  { name: 'Pets', icon: 'pets', color: '#A855F7' }, // Purple 500
-  { name: 'Manutenção', icon: 'build', color: '#64748B' }, // Slate 500
-  { name: 'Telefonia', icon: 'smartphone', color: '#2563EB' }, // Blue 600
-  { name: 'Energia', icon: 'bolt', color: '#FBBF24' }, // Amber 400
-  { name: 'Água', icon: 'water_drop', color: '#06B6D4' }, // Cyan 500
-  { name: 'Gás', icon: 'propane', color: '#FB923C' }, // Orange 400
-  { name: 'Bem-estar', icon: 'spa', color: '#10B981' }, // Emerald 500
-  { name: 'Empréstimos', icon: 'handshake', color: '#991B1B' }, // Red 800
-  { name: 'Poupança', icon: 'savings', color: '#22C55E' }, // Green 500
-  { name: 'Vestiário', icon: 'checkroom', color: '#DB2777' }, // Pink 600
-  { name: 'Beleza', icon: 'face', color: '#F472B6' }, // Pink 400
-  { name: 'Carro', icon: 'local_gas_station', color: '#1E40AF' }, // Blue 800
-  { name: 'Outros', icon: 'more_horiz', color: '#94A3B8' } // Slate 400
+  { name: 'Alimentação', icon: 'restaurant', color: '#EF4444' },
+  { name: 'Transporte', icon: 'directions_car', color: '#3B82F6' },
+  { name: 'Moradia', icon: 'home', color: '#6366F1' },
+  { name: 'Mercado', icon: 'shopping_cart', color: '#F59E0B' },
+  { name: 'Compras', icon: 'shopping_bag', color: '#EC4899' },
+  { name: 'Saúde', icon: 'medical_services', color: '#14B8A6' },
+  { name: 'Educação', icon: 'school', color: '#8B5CF6' },
+  { name: 'Lazer', icon: 'sports_esports', color: '#F97316' },
+  { name: 'Viagem', icon: 'flight', color: '#0EA5E9' },
+  { name: 'Assinaturas', icon: 'subscriptions', color: '#D946EF' },
+  { name: 'Cartão de crédito', icon: 'credit_card', color: '#475569' },
+  { name: 'Impostos', icon: 'gavel', color: '#B91C1C' },
+  { name: 'Presentes', icon: 'card_giftcard', color: '#EAB308' },
+  { name: 'Pets', icon: 'pets', color: '#A855F7' },
+  { name: 'Manutenção', icon: 'build', color: '#64748B' },
+  { name: 'Telefonia', icon: 'smartphone', color: '#2563EB' },
+  { name: 'Energia', icon: 'bolt', color: '#FBBF24' },
+  { name: 'Água', icon: 'water_drop', color: '#06B6D4' },
+  { name: 'Gás', icon: 'propane', color: '#FB923C' },
+  { name: 'Bem-estar', icon: 'spa', color: '#10B981' },
+  { name: 'Empréstimos', icon: 'handshake', color: '#991B1B' },
+  { name: 'Poupança', icon: 'savings', color: '#22C55E' },
+  { name: 'Vestiário', icon: 'checkroom', color: '#DB2777' },
+  { name: 'Beleza', icon: 'face', color: '#F472B6' },
+  { name: 'Carro', icon: 'local_gas_station', color: '#1E40AF' },
+  { name: 'Outros', icon: 'more_horiz', color: '#94A3B8' }
+];
+
+const AVAILABLE_ICONS = [
+  'payments', 'shopping_cart', 'restaurant', 'directions_car', 'home', 
+  'medical_services', 'school', 'sports_esports', 'flight', 'subscriptions',
+  'credit_card', 'gavel', 'card_giftcard', 'pets', 'build', 'smartphone',
+  'bolt', 'water_drop', 'propane', 'spa', 'handshake', 'savings', 'checkroom',
+  'face', 'local_gas_station', 'more_horiz', 'computer', 'stars', 'trending_up',
+  'real_estate_agent', 'show_chart', 'pie_chart', 'percent', 'currency_exchange',
+  'storefront', 'design_services', 'undo', 'account_balance', 'emoji_events',
+  'diversity_3', 'elderly', 'child_friendly', 'volunteer_activism', 'casino',
+  'sync_alt', 'calendar_month', 'move_to_inbox', 'query_stats'
 ];
 
 export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ 
@@ -82,6 +95,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   transactionToEdit,
   initialType = 'expense'
 }) => {
+  const { allCategories, addCustomCategory } = useCategories();
   const [type, setType] = useState<TransactionType>(initialType);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -95,12 +109,22 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const [repeatCount, setRepeatCount] = useState('2'); 
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isNewCategoryOpen, setIsNewCategoryOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('category');
+  const [newCatColor, setNewCatColor] = useState('#21C25E');
+
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { addNotification } = useNotification();
 
-  const currentCategories = type === 'income' ? incomeCategories : expenseCategories;
-  const activeCategory = useMemo(() => currentCategories.find(c => c.name === category) || currentCategories[currentCategories.length - 1], [category, currentCategories]);
+  const currentCategories = useMemo(() => 
+    allCategories.filter(c => c.type === type), 
+  [allCategories, type]);
+
+  const activeCategory = useMemo(() => 
+    currentCategories.find(c => c.name === category) || { name: 'Outros', icon: 'more_horiz', color: '#94A3B8' }, 
+  [category, currentCategories]);
 
   useEffect(() => {
     if (isOpen) {
@@ -140,15 +164,20 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
       setLoading(false);
       return;
     }
-    if (!amount || parseFloat(amount) <= 0) {
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
         addNotification('Insira um valor válido.', 'warning');
         setLoading(false);
         return;
     }
+
+    const parsedRepeat = parseInt(repeatCount);
+    const finalRepeat = isNaN(parsedRepeat) ? 1 : Math.max(1, parsedRepeat);
+
     try {
       await onSave({
         description,
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         type,
         category,
         accountId: selectedAccount,
@@ -157,7 +186,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
         isFixed,
         isRecurring,
         frequency: isRecurring ? frequency : undefined,
-        repeatCount: isRecurring ? parseInt(repeatCount) : 1
+        repeatCount: isRecurring ? finalRepeat : 1
       });
       
       const successMsg = transactionToEdit 
@@ -167,9 +196,29 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
       addNotification(successMsg, 'finance', 4000, true);
       onClose();
     } catch (error) {
+      console.error("Save error:", error);
       addNotification('Erro ao salvar lançamento.', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCatName.trim()) return;
+    try {
+      await addCustomCategory({
+        name: newCatName,
+        icon: newCatIcon,
+        color: newCatColor,
+        type: type
+      });
+      setCategory(newCatName);
+      setIsNewCategoryOpen(false);
+      setIsPickerOpen(false);
+      setNewCatName('');
+      addNotification(`Categoria "${newCatName}" criada!`, 'success');
+    } catch (error) {
+      addNotification('Erro ao criar categoria.', 'error');
     }
   };
 
@@ -246,7 +295,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                         <option value="weekly">Semanal</option>
                         <option value="yearly">Anual</option>
                     </select>
-                    <input type="number" min="2" placeholder="Parcelas" value={repeatCount} onChange={(e) => setRepeatCount(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold outline-none" />
+                    <input type="number" min="1" placeholder="Parcelas" value={repeatCount} onChange={(e) => setRepeatCount(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold outline-none" />
                 </div>
             )}
         </div>
@@ -262,10 +311,19 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
     </Modal>
 
     <Modal isOpen={isPickerOpen} onClose={() => setIsPickerOpen(false)} title="Escolha a categoria">
-        <div className="grid grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto p-1 custom-scrollbar">
+        <div className="mb-4">
+            <button 
+                onClick={() => setIsNewCategoryOpen(true)}
+                className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-slate-200 rounded-2xl text-xs font-bold text-slate-400 hover:border-primary hover:text-primary transition-all"
+            >
+                <span className="material-symbols-outlined text-lg">add_circle</span>
+                Criar Nova Categoria
+            </button>
+        </div>
+        <div className="grid grid-cols-3 gap-3 max-h-[40vh] overflow-y-auto p-1 custom-scrollbar">
             {currentCategories.map((cat) => (
                 <button 
-                    key={cat.name} 
+                    key={cat.id || cat.name} 
                     type="button" 
                     onClick={() => { setCategory(cat.name); setIsPickerOpen(false); }} 
                     className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 transition-all duration-200 active:scale-95 ${
@@ -300,6 +358,66 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
         >
             Fechar
         </Button>
+    </Modal>
+
+    <Modal isOpen={isNewCategoryOpen} onClose={() => setIsNewCategoryOpen(false)} title="Nova Categoria">
+        <div className="flex flex-col gap-6">
+            <div className="flex flex-col items-center gap-4">
+                <div 
+                    className="h-16 w-16 rounded-full flex items-center justify-center shadow-lg"
+                    style={{ backgroundColor: `${newCatColor}20`, color: newCatColor }}
+                >
+                    <span className="material-symbols-outlined text-3xl">{newCatIcon}</span>
+                </div>
+                <Input 
+                    label="Nome da categoria" 
+                    placeholder="Ex: Jogos, Doações..." 
+                    value={newCatName} 
+                    onChange={e => setNewCatName(e.target.value)} 
+                    className="w-full"
+                />
+            </div>
+
+            <div>
+                <label className="text-xs font-bold text-slate-400 mb-3 block">Escolha um ícone</label>
+                <div className="grid grid-cols-6 gap-2 max-h-[150px] overflow-y-auto p-1 custom-scrollbar">
+                    {AVAILABLE_ICONS.map(icon => (
+                        <button 
+                            key={icon}
+                            onClick={() => setNewCatIcon(icon)}
+                            className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all ${newCatIcon === icon ? 'bg-primary text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                        >
+                            <span className="material-symbols-outlined text-lg">{icon}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div>
+                <label className="text-xs font-bold text-slate-400 mb-3 block">Cor</label>
+                <div className="flex flex-wrap gap-2">
+                    {['#21C25E', '#EF4444', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#0EA5E9', '#14B8A6'].map(color => (
+                        <button 
+                            key={color}
+                            onClick={() => setNewCatColor(color)}
+                            className={`h-8 w-8 rounded-full border-2 transition-all ${newCatColor === color ? 'border-slate-800 scale-110 shadow-md' : 'border-transparent'}`}
+                            style={{ backgroundColor: color }}
+                        />
+                    ))}
+                    <input 
+                        type="color" 
+                        value={newCatColor} 
+                        onChange={e => setNewCatColor(e.target.value)}
+                        className="h-8 w-8 rounded-full bg-transparent overflow-hidden cursor-pointer"
+                    />
+                </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+                <Button variant="ghost" onClick={() => setIsNewCategoryOpen(false)} className="flex-1 rounded-2xl font-bold">Cancelar</Button>
+                <Button onClick={handleCreateCategory} className="flex-1 rounded-2xl font-bold bg-primary text-white">Criar</Button>
+            </div>
+        </div>
     </Modal>
 
     <ConfirmationModal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} onConfirm={async () => { if (transactionToEdit && onDelete) { setLoading(true); await onDelete(transactionToEdit.id); setLoading(false); setShowDeleteConfirm(false); onClose(); } }} title="Excluir" message="Deseja realmente apagar este registro?" />

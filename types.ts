@@ -39,8 +39,17 @@ export interface Transaction {
   frequency?: TransactionFrequency;
   installmentNumber?: number; 
   totalInstallments?: number; 
-  bankTransactionId?: string; // Novo campo para evitar duplicidade
+  bankTransactionId?: string;
   createdAt: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  type: TransactionType;
+  isCustom?: boolean;
 }
 
 export interface Account {

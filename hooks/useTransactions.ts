@@ -29,17 +29,12 @@ export const useTransactions = (currentDate: Date) => {
     if (!currentUser) return;
     setLoading(true);
 
-    // Define o início e fim do mês local
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     startOfMonth.setHours(0, 0, 0, 0);
 
     const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     endOfMonth.setHours(23, 59, 59, 999);
 
-    // AMPLIAÇÃO DE SEGURANÇA PARA FUSO HORÁRIO:
-    // Subtraímos 1 dia do início e somamos 1 dia ao fim para a query do Firestore.
-    // Isso garante que se uma transação foi salva como UTC meia-noite (que seria dia anterior no Brasil),
-    // ou vice-versa, ela seja baixada. Depois filtramos com precisão na memória.
     const queryStart = new Date(startOfMonth);
     queryStart.setDate(queryStart.getDate() - 1);
 
@@ -59,7 +54,6 @@ export const useTransactions = (currentDate: Date) => {
         ...doc.data()
       })) as Transaction[];
 
-      // Filtro preciso em memória baseado no Mês/Ano selecionado visualmente
       const filteredData = rawData.filter(t => {
         const tDate = new Date(t.date);
         return tDate.getMonth() === currentDate.getMonth() && 
@@ -94,7 +88,7 @@ export const useTransactions = (currentDate: Date) => {
     const batch = db.batch();
     const isRecurring = data.isRecurring && data.frequency;
     const count = isRecurring ? (data.repeatCount || 1) : 1;
-    const safeCount = Math.min(count, 60); 
+    const safeCount = isNaN(count) ? 1 : Math.min(count, 60); 
     const baseDate = new Date(data.date);
 
     for (let i = 0; i < safeCount; i++) {
@@ -114,7 +108,7 @@ export const useTransactions = (currentDate: Date) => {
 
         batch.set(newTransRef, payload);
 
-        if (instanceStatus === 'completed') {
+        if (instanceStatus === 'completed' && !isNaN(data.amount)) {
             const accountRef = userRef.collection('accounts').doc(data.accountId);
             batch.update(accountRef, {
                 balance: firebase.firestore.FieldValue.increment(data.type === 'income' ? data.amount : -data.amount)
@@ -129,18 +123,21 @@ export const useTransactions = (currentDate: Date) => {
     const userRef = db.collection('users').doc(currentUser.uid);
     const transRef = userRef.collection('transactions').doc(id);
     const batch = db.batch();
+    
     const oldDoc = await transRef.get();
     if (!oldDoc.exists) throw new Error("Transação não encontrada");
     const oldData = oldDoc.data() as Transaction;
 
-    if (oldData.status === 'completed' && oldData.accountId) {
+    // 1. Reverter saldo antigo
+    if (oldData.status === 'completed' && oldData.accountId && !isNaN(oldData.amount)) {
         const oldAccountRef = userRef.collection('accounts').doc(oldData.accountId);
         batch.update(oldAccountRef, {
             balance: firebase.firestore.FieldValue.increment(oldData.type === 'income' ? -oldData.amount : oldData.amount)
         });
     }
 
-    if (newData.status === 'completed' && newData.accountId) {
+    // 2. Aplicar novo saldo
+    if (newData.status === 'completed' && newData.accountId && !isNaN(newData.amount)) {
         const newAccountRef = userRef.collection('accounts').doc(newData.accountId);
         batch.update(newAccountRef, {
              balance: firebase.firestore.FieldValue.increment(newData.type === 'income' ? newData.amount : -newData.amount)
@@ -162,7 +159,7 @@ export const useTransactions = (currentDate: Date) => {
     const data = doc.data() as Transaction;
     const batch = db.batch();
     batch.delete(transRef);
-    if (data.status === 'completed' && data.accountId) {
+    if (data.status === 'completed' && data.accountId && !isNaN(data.amount)) {
         const accountRef = userRef.collection('accounts').doc(data.accountId);
         batch.update(accountRef, {
             balance: firebase.firestore.FieldValue.increment(data.type === 'income' ? -data.amount : data.amount)

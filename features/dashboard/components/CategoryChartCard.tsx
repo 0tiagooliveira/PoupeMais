@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { formatCurrency } from '../../../utils/formatters';
 import { CategoryData } from '../../../types';
@@ -12,32 +12,51 @@ interface CategoryChartCardProps {
 }
 
 export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, type, categories, total }) => {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
   const isIncome = type === 'income';
   const textColor = isIncome ? 'text-success' : 'text-danger';
-  const titleColor = isIncome ? 'text-slate-700' : 'text-danger'; // Título colorido se for despesa para destaque
   
   const size = 160;
-  const strokeWidth = 18;
+  const strokeWidth = 20;
   const center = size / 2;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
   let currentOffset = 0;
 
+  const handleInteraction = (e: React.MouseEvent | React.TouchEvent, id: string) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    setHoveredId(id);
+    setTooltipPos({ x: clientX, y: clientY });
+  };
+
+  const hoveredCat = useMemo(() => 
+    categories.find(c => c.id === hoveredId), 
+  [categories, hoveredId]);
+
   return (
-    <Card className="!p-6 border-none shadow-sm">
-      <h3 className={`mb-6 text-lg font-bold ${type === 'expense' ? 'text-danger' : 'text-slate-700'}`}>{title}</h3>
+    <Card className="!p-6 border-none shadow-sm relative group">
+      <h3 className={`mb-6 text-lg font-black tracking-tight ${type === 'expense' ? 'text-rose-500' : 'text-slate-700'}`}>
+        {title}
+      </h3>
       
       <div className="flex flex-col items-center gap-8 md:flex-row">
         <div className="relative flex-shrink-0">
-          <svg width={size} height={size} className="transform -rotate-90">
-            {/* Círculo de fundo para quando não houver dados */}
+          <svg 
+            width={size} height={size} 
+            className="transform -rotate-90 overflow-visible"
+          >
+            {/* Círculo de fundo */}
             <circle
               cx={center}
               cy={center}
               r={radius}
               fill="none"
-              stroke="#f1f5f9"
+              stroke="#f8fafc"
               strokeWidth={strokeWidth}
             />
             
@@ -49,8 +68,9 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
               
               currentOffset += percentage * circumference;
               
-              // Evita renderizar segmentos minúsculos que causam artefatos
               if (percentage < 0.005) return null;
+
+              const isHovered = hoveredId === cat.id;
 
               return (
                 <circle
@@ -60,54 +80,70 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
                   r={radius}
                   fill="none"
                   stroke={cat.color}
-                  strokeWidth={strokeWidth}
+                  strokeWidth={isHovered ? strokeWidth + 4 : strokeWidth}
                   strokeDasharray={strokeDasharray}
                   strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="butt"
-                  className="transition-all duration-1000 ease-out"
+                  strokeLinecap="round"
+                  onMouseEnter={(e) => handleInteraction(e, cat.id)}
+                  onMouseMove={(e) => handleInteraction(e, cat.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onTouchStart={(e) => handleInteraction(e, cat.id)}
+                  className="transition-all duration-300 ease-out cursor-pointer origin-center"
+                  style={{ 
+                    opacity: hoveredId ? (isHovered ? 1 : 0.3) : 1,
+                    filter: isHovered ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' : 'none'
+                  }}
                 />
               );
             })}
           </svg>
           
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className={`text-xl font-bold leading-none ${textColor}`}>
-              {formatCurrency(total)}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+            <span className={`text-xl font-black leading-none tracking-tighter ${textColor}`}>
+              {formatCurrency(total).replace(',00', '')}
             </span>
-            <span className="mt-1 text-[10px] font-bold text-slate-400">Total</span>
+            <span className="mt-1 text-[9px] font-black text-slate-300 uppercase tracking-widest">Total</span>
           </div>
         </div>
 
-        <div className="flex-1 space-y-5 w-full">
+        <div className="flex-1 space-y-4 w-full">
           {categories.length === 0 ? (
-            <p className="text-center text-sm text-slate-400 italic py-4">Sem dados para exibir</p>
+            <div className="flex flex-col items-center justify-center py-6 text-slate-300">
+               <span className="material-symbols-outlined text-4xl opacity-20 mb-2">pie_chart</span>
+               <p className="text-[10px] font-black uppercase tracking-widest">Sem lançamentos</p>
+            </div>
           ) : (
             categories.slice(0, 5).map((cat) => {
               const percentage = total > 0 ? (cat.amount / total) * 100 : 0;
+              const isHovered = hoveredId === cat.id;
+              
               return (
-                <div key={cat.id} className="flex items-center gap-3">
+                <div 
+                  key={cat.id} 
+                  className={`flex items-center gap-3 transition-all duration-300 ${hoveredId && !isHovered ? 'opacity-30 blur-[0.5px]' : 'opacity-100'}`}
+                >
                   <div 
-                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:rotate-6"
+                    style={{ backgroundColor: `${cat.color}15`, color: cat.color }}
                   >
-                    <span className="material-symbols-outlined text-xl">
+                    <span className="material-symbols-outlined text-lg">
                       {cat.icon}
                     </span>
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-end mb-1">
-                      <span className="text-sm font-bold text-slate-700 truncate">{cat.name}</span>
+                      <span className="text-xs font-bold text-slate-700 truncate">{cat.name}</span>
                       <div className="text-right">
-                        <span className="text-sm font-bold text-slate-800 block leading-tight">
+                        <span className="text-[11px] font-black text-slate-800 block leading-tight">
                           {formatCurrency(cat.amount)}
                         </span>
-                        <span className="text-[11px] font-bold text-slate-400">{percentage.toFixed(0)}%</span>
+                        <span className="text-[9px] font-black text-slate-300">{percentage.toFixed(1)}%</span>
                       </div>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-slate-50 overflow-hidden border border-slate-100/50">
                       <div 
-                        className="h-full rounded-full transition-all duration-700"
+                        className="h-full rounded-full transition-all duration-700 shadow-sm"
                         style={{ width: `${percentage}%`, backgroundColor: cat.color }}
                       />
                     </div>
@@ -118,6 +154,36 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
           )}
         </div>
       </div>
+
+      {/* TOOLTIP FLUTUANTE DO GRÁFICO DE ROSCA */}
+      {hoveredId && hoveredCat && (
+        <div 
+          className="fixed z-[100] pointer-events-none transform -translate-x-1/2 -translate-y-[125%] animate-in fade-in zoom-in-95 duration-200"
+          style={{ left: tooltipPos.x, top: tooltipPos.y }}
+        >
+          <div className="bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3">
+             <div 
+               className="h-10 w-10 rounded-xl flex items-center justify-center shadow-inner"
+               style={{ backgroundColor: `${hoveredCat.color}20`, color: hoveredCat.color }}
+             >
+               <span className="material-symbols-outlined text-xl">{hoveredCat.icon}</span>
+             </div>
+             <div>
+                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none mb-1">
+                   {hoveredCat.name}
+                </p>
+                <div className="flex items-baseline gap-2">
+                   <span className="text-sm font-black text-white">
+                      {formatCurrency(hoveredCat.amount)}
+                   </span>
+                   <span className="text-[10px] font-black text-white/60">
+                      {((hoveredCat.amount / total) * 100).toFixed(1)}%
+                   </span>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 };

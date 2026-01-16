@@ -5,7 +5,6 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
-// Import auth and storage services
 import { auth, storage } from '../../services/firebase';
 
 interface EditProfileModalProps {
@@ -30,37 +29,45 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   }, [isOpen, currentUser]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && currentUser) {
-      const file = e.target.files[0];
-      
-      // Validação básica (Tamanho < 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        addNotification('A imagem deve ter no máximo 5MB.', 'error');
-        return;
-      }
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    
+    // Validação de Tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      addNotification('A imagem deve ter no máximo 5MB.', 'error');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
-      setUploading(true);
-      try {
-        const storageRef = storage.ref();
-        // Cria uma referência única para o usuário
-        const fileRef = storageRef.child(`avatars/${currentUser.uid}/profile_${Date.now()}`);
-        
-        await fileRef.put(file);
-        const url = await fileRef.getDownloadURL();
-        
-        setPhotoURL(url);
-        addNotification('Foto enviada com sucesso!', 'success');
-      } catch (error) {
-        console.error("Erro no upload:", error);
-        addNotification('Erro ao enviar a foto. Tente novamente.', 'error');
-      } finally {
-        setUploading(false);
-      }
+    setUploading(true);
+    try {
+      const storageRef = storage.ref();
+      const fileName = `profile_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+      const fileRef = storageRef.child(`avatars/${currentUser.uid}/${fileName}`);
+      
+      // Iniciando upload
+      const uploadTask = await fileRef.put(file);
+      const url = await uploadTask.ref.getDownloadURL();
+      
+      setPhotoURL(url);
+      addNotification('Foto processada! Clique em salvar para aplicar.', 'success');
+    } catch (error: any) {
+      console.error("Erro no upload:", error);
+      let errorMsg = 'Erro ao enviar a foto. Verifique sua conexão.';
+      if (error.code === 'storage/unauthorized') errorMsg = 'Sem permissão para upload. Contate o suporte.';
+      
+      addNotification(errorMsg, 'error');
+    } finally {
+      setUploading(false);
+      // Limpa o input para permitir selecionar o mesmo arquivo novamente se necessário
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleAvatarClick = () => {
-    fileInputRef.current?.click();
+    if (!uploading && !loading) {
+      fileInputRef.current?.click();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,49 +85,55 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
         
         addNotification('Perfil atualizado com sucesso!', 'success');
         onClose();
+        // Recarregar para garantir que o AuthContext e a UI reflitam a mudança globalmente
         window.location.reload(); 
       } else {
-        throw new Error("Usuário não encontrado.");
+        throw new Error("Usuário não autenticado no Firebase.");
       }
     } catch (error) {
-      console.error(error);
-      addNotification('Erro ao atualizar perfil.', 'error');
+      console.error("Erro ao salvar perfil:", error);
+      addNotification('Erro ao salvar as alterações.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Editar perfil">
-      <div className="mb-6 flex flex-col items-center">
+    <Modal isOpen={isOpen} onClose={onClose} title="Editar Perfil">
+      <div className="mb-8 flex flex-col items-center">
         <div 
           onClick={handleAvatarClick}
-          className="relative group cursor-pointer"
+          className={`relative group cursor-pointer ${uploading ? 'pointer-events-none' : ''}`}
         >
-          <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-slate-100 p-1 shadow-lg transition-all group-hover:border-primary group-hover:scale-105">
+          <div className={`h-32 w-32 overflow-hidden rounded-full border-4 transition-all duration-300 shadow-xl flex items-center justify-center bg-slate-50
+            ${uploading ? 'border-success animate-pulse' : 'border-slate-100 group-hover:border-primary group-hover:scale-[1.02]'}`}
+          >
             {uploading ? (
-               <div className="h-full w-full flex items-center justify-center bg-slate-100 rounded-full">
-                 <span className="material-symbols-outlined animate-spin text-slate-400">progress_activity</span>
+               <div className="flex flex-col items-center gap-2">
+                 <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+                 <span className="text-[10px] font-black text-primary uppercase tracking-tighter">Enviando...</span>
                </div>
             ) : (
               <img 
                 src={photoURL || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
-                alt="Preview" 
-                className="h-full w-full rounded-full object-cover transition-opacity group-hover:opacity-70"
+                alt="Foto de Perfil" 
+                className={`h-full w-full object-cover transition-opacity ${uploading ? 'opacity-30' : 'group-hover:opacity-60'}`}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
                 }}
               />
             )}
             
-            {/* Overlay Icon */}
-            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
-               <span className="material-symbols-outlined text-white text-3xl font-bold">upload</span>
-            </div>
+            {/* Hover Overlay */}
+            {!uploading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                 <span className="material-symbols-outlined text-white text-4xl">add_a_photo</span>
+              </div>
+            )}
           </div>
           
-          <div className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-md border-2 border-white transition-transform group-hover:scale-110">
-            <span className="material-symbols-outlined text-sm font-bold">photo_camera</span>
+          <div className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-lg border-2 border-white transition-transform group-hover:scale-110">
+            <span className="material-symbols-outlined text-xl">camera_alt</span>
           </div>
         </div>
         
@@ -135,50 +148,51 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
         <button 
           type="button" 
           onClick={handleAvatarClick} 
-          className="mt-3 text-[11px] font-bold text-primary hover:underline"
+          disabled={uploading}
+          className="mt-4 text-xs font-black text-primary hover:underline uppercase tracking-widest disabled:opacity-50"
         >
-          {uploading ? 'Enviando...' : 'Alterar foto'}
+          {uploading ? 'Processando imagem...' : 'Trocar foto de perfil'}
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <Input 
-          label="Nome completo" 
+          label="Seu nome" 
           placeholder="Como quer ser chamado?" 
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
           icon="person"
-          className="rounded-2xl"
+          className="rounded-2xl font-bold"
         />
 
-        <Input 
-          label="URL da foto (Opcional)" 
-          placeholder="Ou cole um link direto aqui" 
-          value={photoURL}
-          onChange={(e) => setPhotoURL(e.target.value)}
-          icon="link"
-          className="rounded-2xl"
-        />
-
-        <div className="rounded-2xl bg-success/5 p-4 border border-success/10">
-          <p className="text-[10px] font-bold text-primary mb-1 leading-tight">Dica</p>
-          <p className="text-[11px] font-medium text-slate-600 leading-snug">
-            Clique na foto acima para carregar uma imagem do seu dispositivo ou cole um link externo no campo URL.
+        <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="material-symbols-outlined text-primary text-sm">info</span>
+            <p className="text-[10px] font-black text-primary uppercase tracking-widest">Informação</p>
+          </div>
+          <p className="text-[11px] font-medium text-slate-500 leading-snug">
+            Sua foto de perfil ajuda na identificação rápida em extratos e notificações. Use uma imagem clara de até 5MB.
           </p>
         </div>
 
         <div className="mt-2 flex gap-3">
-          <Button type="button" variant="ghost" onClick={onClose} className="flex-1 rounded-2xl font-bold h-12">
+          <Button 
+            type="button" 
+            variant="ghost" 
+            onClick={onClose} 
+            disabled={loading || uploading}
+            className="flex-1 rounded-2xl font-bold h-12"
+          >
             Cancelar
           </Button>
           <Button 
             type="submit" 
-            isLoading={loading || uploading} 
-            disabled={uploading}
+            isLoading={loading} 
+            disabled={uploading || !name.trim()}
             className="flex-1 rounded-2xl font-bold h-12 bg-primary hover:bg-emerald-600 shadow-xl shadow-success/20 text-white"
           >
-            Salvar alterações
+            Salvar Perfil
           </Button>
         </div>
       </form>

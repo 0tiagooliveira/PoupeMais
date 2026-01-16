@@ -18,52 +18,7 @@ import { NewAccountModal } from './components/NewAccountModal';
 import { NewCreditCardModal } from './components/NewCreditCardModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { Account, TransactionType } from '../../types';
-
-// Função para tentar adivinhar ícone de categorias antigas ou importadas
-const getIconForLegacy = (name: string) => {
-  const lower = name.toLowerCase();
-  
-  // Categorias de Despesas
-  if (lower.includes('comida') || lower.includes('lanche') || lower.includes('food') || lower.includes('restaurante') || lower.includes('ifood') || lower.includes('alimentação')) return 'restaurant';
-  if (lower.includes('mercado') || lower.includes('supermercado')) return 'shopping_cart';
-  if (lower.includes('compra') || lower.includes('shopping') || lower.includes('loja') || lower.includes('online') || lower.includes('shein') || lower.includes('amazon')) return 'shopping_bag';
-  if (lower.includes('transporte') || lower.includes('uber') || lower.includes('99') || lower.includes('taxi')) return 'directions_car';
-  if (lower.includes('carro') || lower.includes('posto') || lower.includes('combustível') || lower.includes('gasolina')) return 'local_gas_station';
-  if (lower.includes('casa') || lower.includes('aluguel') || lower.includes('condominio') || lower.includes('moradia')) return 'home';
-  if (lower.includes('saude') || lower.includes('medico') || lower.includes('farmacia') || lower.includes('drogaria')) return 'medical_services';
-  if (lower.includes('educação') || lower.includes('curso') || lower.includes('escola') || lower.includes('faculdade')) return 'school';
-  if (lower.includes('lazer') || lower.includes('jogo') || lower.includes('cinema') || lower.includes('diversão')) return 'sports_esports';
-  if (lower.includes('viagem') || lower.includes('férias') || lower.includes('passagem')) return 'flight';
-  if (lower.includes('assinatura') || lower.includes('netflix') || lower.includes('spotify') || lower.includes('stream')) return 'subscriptions';
-  if (lower.includes('imposto') || lower.includes('taxa') || lower.includes('tributo')) return 'gavel';
-  if (lower.includes('presente')) return 'card_giftcard';
-  if (lower.includes('pet') || lower.includes('veterinário') || lower.includes('cachorro') || lower.includes('gato')) return 'pets';
-  if (lower.includes('manutenção') || lower.includes('conserto') || lower.includes('reparo')) return 'build';
-  if (lower.includes('telefone') || lower.includes('celular') || lower.includes('internet')) return 'smartphone';
-  if (lower.includes('energia') || lower.includes('luz') || lower.includes('eletricidade')) return 'bolt';
-  if (lower.includes('água') || lower.includes('esgoto')) return 'water_drop';
-  if (lower.includes('gás')) return 'propane';
-  if (lower.includes('bem-estar') || lower.includes('academia') || lower.includes('beleza') || lower.includes('cabelo')) return 'spa';
-  if (lower.includes('empréstimo') || lower.includes('divida')) return 'handshake';
-  if (lower.includes('vestiário') || lower.includes('roupa') || lower.includes('moda')) return 'checkroom';
-  if (lower.includes('beleza') || lower.includes('estetica')) return 'face';
-  
-  // Categorias de Receitas
-  if (lower.includes('salario') || lower.includes('pagamento')) return 'payments';
-  if (lower.includes('freelance') || lower.includes('extra')) return 'computer';
-  if (lower.includes('bônus') || lower.includes('bonus')) return 'stars';
-  if (lower.includes('invest') || lower.includes('aplicação')) return 'show_chart';
-  if (lower.includes('dividendo')) return 'pie_chart';
-  if (lower.includes('juros')) return 'percent';
-  if (lower.includes('cashback')) return 'currency_exchange';
-  if (lower.includes('reembolso') || lower.includes('estorno')) return 'undo';
-  if (lower.includes('transfer') || lower.includes('pix')) return 'sync_alt';
-  if (lower.includes('poupança') || lower.includes('reserva')) return 'savings';
-  if (lower.includes('décimo') || lower.includes('13')) return 'calendar_month';
-  if (lower.includes('resgate')) return 'move_to_inbox';
-
-  return 'category'; // Padrão
-};
+import { getIconByCategoryName } from '../../utils/categoryIcons';
 
 export const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
@@ -103,24 +58,10 @@ export const Dashboard: React.FC = () => {
     const mapToCategories = (map: Map<string, number>, type: 'income' | 'expense') => {
       const refCategories = type === 'income' ? incomeCategories : expenseCategories;
       
-      // Paleta de verdes para o gráfico de Receitas
-      const incomePalette = [
-        '#21C25E', '#10B981', '#34D399', '#059669', '#6EE7B7', '#047857', '#A7F3D0',
-      ];
-
-      // Paleta de vermelhos para o gráfico de Despesas (Monocromático)
-      const expensePalette = [
-        '#EF4444', // Red 500
-        '#B91C1C', // Red 700
-        '#F87171', // Red 400
-        '#991B1B', // Red 800
-        '#FCA5A5', // Red 300
-        '#7F1D1D', // Red 900
-        '#FECACA', // Red 200
-      ];
+      const incomePalette = ['#21C25E', '#10B981', '#34D399', '#059669', '#6EE7B7', '#047857', '#A7F3D0'];
+      const expensePalette = ['#EF4444', '#B91C1C', '#F87171', '#991B1B', '#FCA5A5', '#7F1D1D', '#FECACA'];
 
       return Array.from(map.entries()).map(([name, amount], index) => {
-        // 1. Tenta achar na lista oficial para pegar ícone correto
         const ref = refCategories.find(c => c.name.toLowerCase() === name.toLowerCase());
         
         let color: string;
@@ -132,8 +73,8 @@ export const Dashboard: React.FC = () => {
             color = expensePalette[index % expensePalette.length];
         }
 
-        // Garante que o ícone seja o correto da categoria, ou tenta adivinhar pelo nome
-        icon = ref ? ref.icon : getIconForLegacy(name);
+        // Inteligência de ícones centralizada
+        icon = ref ? ref.icon : getIconByCategoryName(name);
 
         return {
           id: `cat-${name}-${index}`,
@@ -156,7 +97,6 @@ export const Dashboard: React.FC = () => {
   }, [transactions]);
 
   const globalBalance = useMemo(() => {
-    // Agora podemos usar a soma real, pois o hook useAccounts já garante que a conta Nubank vale 752.87
     return accounts.reduce((acc, curr) => acc + curr.balance, 0);
   }, [accounts]);
 
@@ -195,7 +135,6 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-24">
-      {/* Header Animado */}
       <div className="flex items-center justify-between bg-white border border-slate-50 p-4 rounded-[28px] shadow-sm animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="flex items-center gap-4">
            <div className="h-14 w-14 rounded-full border-2 border-success p-0.5 overflow-hidden flex-shrink-0 shadow-sm transition-transform hover:scale-110">
@@ -228,7 +167,6 @@ export const Dashboard: React.FC = () => {
       </div>
 
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-1000 stagger-1">
-        {/* Month Selector Outside Cards */}
         <div className="flex justify-center">
             <MonthSelector 
                 currentDate={currentDate} 
@@ -237,10 +175,8 @@ export const Dashboard: React.FC = () => {
             />
         </div>
 
-        {/* Saldo Geral */}
         <BalanceCard balance={globalBalance} />
         
-        {/* Grid de Receitas e Despesas - Apenas 2 colunas agora */}
         <div className="grid grid-cols-2 gap-3">
             <StatCard type="income" value={totalIncome} onClick={() => navigate('/incomes')} />
             <StatCard type="expense" value={totalExpenses} onClick={() => navigate('/expenses')} />
@@ -258,6 +194,7 @@ export const Dashboard: React.FC = () => {
 
           <CreditCardsList
             cards={cards}
+            transactions={transactions}
             onAddCard={() => setIsCreditCardModalOpen(true)}
             onDeleteCard={deleteCard}
           />
