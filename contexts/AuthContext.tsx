@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useContext } from 'react';
 import { auth } from '../services/firebase';
 import { AuthContextType, UserProfile } from '../types';
@@ -11,7 +12,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Subscribe to auth state changes using v8 syntax
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      setCurrentUser(user as UserProfile);
+      if (user) {
+        // Fazemos o cast para UserProfile para suportar nossa extensão de tipos
+        const userProfile = user as UserProfile;
+        
+        // HACK DE ACESSO TOTAL: 
+        // Se o usuário logado for o email de teste solicitado, 
+        // forçamos o status PRO para liberar todas as funcionalidades da IA e do SaaS.
+        if (user.email === 'teste@gmail.com') {
+          userProfile.isPro = true;
+        }
+        
+        setCurrentUser(userProfile);
+      } else {
+        setCurrentUser(null);
+      }
       setLoading(false);
     });
 

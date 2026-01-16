@@ -8,6 +8,7 @@ export interface UserProfile extends firebase.User {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  isPro?: boolean; // Campo para identificar se o usuário é PRO
 }
 
 export interface AuthContextType {
@@ -36,6 +37,7 @@ export interface Transaction {
   status: TransactionStatus;
   isFixed: boolean;
   isRecurring: boolean;
+  isIgnored?: boolean; // Nova propriedade para ignorar transação nos cálculos
   frequency?: TransactionFrequency;
   installmentNumber?: number; 
   totalInstallments?: number; 

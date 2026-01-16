@@ -146,6 +146,7 @@ export const CreditCardsPage: React.FC = () => {
 
         const cardTrans = allTransactions.filter(t => 
           t.accountId === card.id && 
+          !t.isIgnored && // Ignora transações marcadas
           new Date(t.date) >= cycleStart && 
           new Date(t.date) < cycleEnd
         );
@@ -174,6 +175,8 @@ export const CreditCardsPage: React.FC = () => {
 
       let totalInstallments = 0;
       allTransactions.forEach(t => {
+        if (t.isIgnored) return; // Ignora se marcado
+
         const isCardTrans = cards.some(c => c.id === t.accountId);
         if (!isCardTrans) return;
 
@@ -215,6 +218,7 @@ export const CreditCardsPage: React.FC = () => {
 
         const invTransactions = allTransactions.filter(t => 
           t.accountId === activeCard.id && 
+          !t.isIgnored && // Filtra ignoradas
           new Date(t.date) >= cycleStartDate && 
           new Date(t.date) < cycleCutoffDate
         );

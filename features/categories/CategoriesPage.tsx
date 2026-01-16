@@ -1,12 +1,12 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCategories } from '../../hooks/useCategories';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { useNotification } from '../../contexts/NotificationContext';
-import { TransactionType } from '../../types';
+import { TransactionType, Category } from '../../types';
 
 const AVAILABLE_ICONS = [
   'payments', 'shopping_cart', 'restaurant', 'directions_car', 'home', 
@@ -17,42 +17,77 @@ const AVAILABLE_ICONS = [
   'real_estate_agent', 'show_chart', 'pie_chart', 'percent', 'currency_exchange',
   'storefront', 'design_services', 'undo', 'account_balance', 'emoji_events',
   'diversity_3', 'elderly', 'child_friendly', 'volunteer_activism', 'casino',
-  'sync_alt', 'calendar_month', 'move_to_inbox', 'query_stats'
+  'sync_alt', 'calendar_month', 'move_to_inbox', 'query_stats', 'miscellaneous_services'
 ];
 
 export const CategoriesPage: React.FC = () => {
-  const { allCategories, addCustomCategory, deleteCustomCategory, loading } = useCategories();
+  const { allCategories, addCustomCategory, updateCustomCategory, deleteCustomCategory, loading } = useCategories();
   const { addNotification } = useNotification();
   const [filterType, setFilterType] = useState<TransactionType>('expense');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('category');
   const [newColor, setNewColor] = useState('#21C25E');
-  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const filteredCategories = useMemo(() => {
     return allCategories.filter(c => c.type === filterType);
   }, [allCategories, filterType]);
 
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
-    setCreating(true);
-    try {
-      await addCustomCategory({
-        name: newName,
-        icon: newIcon,
-        color: newColor,
-        type: filterType
-      });
-      addNotification(`Categoria "${newName}" criada!`, 'success');
+  useEffect(() => {
+    if (editingCategory) {
+      setNewName(editingCategory.name);
+      setNewIcon(editingCategory.icon);
+      setNewColor(editingCategory.color);
+    } else {
       setNewName('');
-      setIsModalOpen(false);
-    } catch (error) {
-      addNotification('Erro ao criar categoria.', 'error');
-    } finally {
-      setCreating(false);
+      setNewIcon('category');
+      setNewColor('#21C25E');
     }
+  }, [editingCategory, isModalOpen]);
+
+  const handleSave = async () => {
+    if (!newName.trim()) {
+      addNotification('Informe um nome para a categoria.', 'warning');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingCategory) {
+        await updateCustomCategory(editingCategory.id, {
+          name: newName,
+          icon: newIcon,
+          color: newColor,
+          type: filterType
+        });
+        addNotification(`Categoria "${newName}" atualizada!`, 'success');
+      } else {
+        await addCustomCategory({
+          name: newName,
+          icon: newIcon,
+          color: newColor,
+          type: filterType
+        });
+        addNotification(`Categoria "${newName}" criada!`, 'success');
+      }
+      handleCloseModal();
+    } catch (error) {
+      addNotification('Erro ao processar categoria.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditClick = (cat: Category) => {
+    setEditingCategory(cat);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingCategory(null);
   };
 
   return (
@@ -66,7 +101,7 @@ export const CategoriesPage: React.FC = () => {
           </div>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => { setEditingCategory(null); setIsModalOpen(true); }}
           className="flex h-12 w-12 items-center justify-center rounded-2xl bg-success text-white shadow-lg shadow-success/20 transition-all active:scale-90"
         >
           <span className="material-symbols-outlined font-bold">add</span>
@@ -120,73 +155,91 @@ export const CategoriesPage: React.FC = () => {
                 </div>
               </div>
               
-              {cat.isCustom && (
-                <button 
-                  onClick={() => deleteCustomCategory(cat.id)}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-danger hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                >
-                  <span className="material-symbols-outlined text-lg">delete</span>
-                </button>
-              )}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {cat.isCustom ? (
+                  <>
+                    <button 
+                      onClick={() => handleEditClick(cat)}
+                      className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-primary hover:bg-blue-50 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-lg">edit</span>
+                    </button>
+                    <button 
+                      onClick={() => deleteCustomCategory(cat.id)}
+                      className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-danger hover:bg-red-50 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-[10px] font-bold text-slate-200 uppercase mr-2 px-2 py-1 rounded-lg border border-slate-50">Fixa</span>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nova Categoria">
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingCategory ? "Editar Categoria" : "Nova Categoria"}>
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-4">
             <div 
               className="h-16 w-16 rounded-full flex items-center justify-center shadow-lg"
               style={{ backgroundColor: `${newColor}20`, color: newColor }}
             >
-              <span className="material-symbols-outlined text-3xl">{newIcon}</span>
+              <span className="material-symbols-outlined text-3xl leading-none">{newIcon}</span>
             </div>
             <Input 
               label="Nome da categoria" 
               placeholder="Ex: Doações, Academia..." 
               value={newName} 
               onChange={e => setNewName(e.target.value)} 
-              className="w-full"
+              className="w-full font-bold"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Tipo</label>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setFilterType('expense')}
-                className={`flex-1 py-3 rounded-xl text-xs font-bold border transition-all ${filterType === 'expense' ? 'bg-red-50 border-danger text-danger' : 'border-slate-100 text-slate-400'}`}
-              >
-                Despesa
-              </button>
-              <button 
-                onClick={() => setFilterType('income')}
-                className={`flex-1 py-3 rounded-xl text-xs font-bold border transition-all ${filterType === 'income' ? 'bg-emerald-50 border-success text-success' : 'border-slate-100 text-slate-400'}`}
-              >
-                Receita
-              </button>
-            </div>
-          </div>
-
-          <div>
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Ícone</label>
-            <div className="grid grid-cols-6 gap-2 max-h-[150px] overflow-y-auto p-1 custom-scrollbar">
+            <div className="grid grid-cols-6 gap-2 max-h-[180px] overflow-y-auto p-1 custom-scrollbar">
               {AVAILABLE_ICONS.map(icon => (
                 <button 
                   key={icon}
+                  type="button"
                   onClick={() => setNewIcon(icon)}
-                  className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all ${newIcon === icon ? 'bg-primary text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                  className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all ${newIcon === icon ? 'bg-primary text-white shadow-md scale-110' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
                 >
-                  <span className="material-symbols-outlined text-lg">{icon}</span>
+                  <span className="material-symbols-outlined text-lg leading-none">{icon}</span>
                 </button>
               ))}
             </div>
           </div>
 
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Cor</label>
+            <div className="flex flex-wrap gap-2">
+              {['#21C25E', '#EF4444', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#0EA5E9', '#14B8A6', '#64748B', '#000000'].map(color => (
+                <button 
+                  key={color}
+                  type="button"
+                  onClick={() => setNewColor(color)}
+                  className={`h-8 w-8 rounded-full border-2 transition-all ${newColor === color ? 'border-slate-800 scale-110 shadow-md' : 'border-transparent'}`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+              <input 
+                type="color" 
+                value={newColor} 
+                onChange={e => setNewColor(e.target.value)}
+                className="h-8 w-8 rounded-full bg-transparent overflow-hidden cursor-pointer border-none"
+              />
+            </div>
+          </div>
+
           <div className="flex gap-2 pt-2">
-            <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="flex-1 rounded-2xl font-bold">Cancelar</Button>
-            <Button onClick={handleCreate} isLoading={creating} className="flex-1 rounded-2xl font-bold bg-primary text-white">Criar</Button>
+            <Button variant="ghost" onClick={handleCloseModal} className="flex-1 rounded-2xl font-bold h-12">Cancelar</Button>
+            <Button onClick={handleSave} isLoading={saving} className="flex-1 rounded-2xl font-bold bg-primary text-white h-12 shadow-lg shadow-primary/20">
+              {editingCategory ? 'Salvar' : 'Criar'}
+            </Button>
           </div>
         </div>
       </Modal>

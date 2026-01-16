@@ -12,7 +12,9 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(() => {
-    return localStorage.getItem('poup_remember_me') !== 'false';
+    const saved = localStorage.getItem('poup_remember_me');
+    // Por padrão, deixamos como 'true' para evitar logins chatos
+    return saved !== null ? saved === 'true' : true; 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,10 +41,8 @@ export const LoginPage: React.FC = () => {
         return 'Falha na conexão. Verifique sua internet e tente novamente.';
       case 'auth/too-many-requests':
         return 'Acesso bloqueado temporariamente por muitas tentativas. Tente em alguns minutos.';
-      case 'auth/operation-not-allowed':
-        return 'O login com e-mail e senha não está habilitado.';
       default:
-        return 'Ocorreu um erro inesperado ao tentar entrar. Tente novamente mais tarde.';
+        return 'Ocorreu um erro ao entrar. Verifique seus dados.';
     }
   };
 
@@ -51,40 +51,24 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError('');
 
-    const cleanEmail = email.trim();
-
     try {
+      // PERSISTÊNCIA: LOCAL mantém o usuário logado mesmo após fechar o navegador.
+      // SESSION desloga ao fechar a aba.
       const persistence = rememberMe 
         ? firebase.auth.Auth.Persistence.LOCAL 
         : firebase.auth.Auth.Persistence.SESSION;
         
       await auth.setPersistence(persistence);
-      await auth.signInWithEmailAndPassword(cleanEmail, password);
+      await auth.signInWithEmailAndPassword(email.trim(), password);
       
-      // Notificação de boas-vindas não precisa ir para o histórico (false)
       addNotification('Que bom ter você de volta!', 'success', 3000, false);
       navigate('/');
     } catch (err: any) {
       const errorMessage = getFriendlyErrorMessage(err.code);
       setError(errorMessage);
-      // Erros de login NÃO vão para o histórico (false)
       addNotification(errorMessage, 'error', 5000, false);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    if (!email.trim()) {
-      addNotification('Para recuperar a senha, primeiro digite seu e-mail.', 'warning', 4000, false);
-      return;
-    }
-    
-    try {
-      await auth.sendPasswordResetEmail(email.trim());
-      addNotification('Enviamos um link de recuperação para o seu e-mail!', 'success', 6000, false);
-    } catch (err: any) {
-      addNotification('Não conseguimos enviar o e-mail de recuperação agora.', 'error', 5000, false);
     }
   };
 
@@ -117,9 +101,7 @@ export const LoginPage: React.FC = () => {
       navigate('/');
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
-        const msg = 'Houve um problema ao conectar com o Google.';
-        setError(msg);
-        addNotification(msg, 'error', 5000, false);
+        setError('Falha ao autenticar com Google.');
       }
     } finally {
       setLoading(false);
@@ -139,9 +121,8 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-2xl bg-red-50 p-4 text-sm text-red-600 flex items-center gap-3 border border-red-100 animate-shake">
-            <span className="material-symbols-outlined text-xl font-bold">error</span>
-            <span className="font-bold flex-1">{error}</span>
+          <div className="mb-6 rounded-2xl bg-red-50 p-4 text-sm text-red-600 font-bold border border-red-100">
+            {error}
           </div>
         )}
 
@@ -150,7 +131,7 @@ export const LoginPage: React.FC = () => {
           variant="secondary" 
           onClick={handleGoogleLogin} 
           disabled={loading}
-          className="w-full mb-8 py-4 rounded-2xl border-gray-100 hover:border-success/30 hover:bg-success/5 transition-all font-bold text-sm tracking-tight"
+          className="w-full mb-8 py-4 rounded-2xl border-gray-100 font-bold text-sm"
         >
           <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -161,12 +142,6 @@ export const LoginPage: React.FC = () => {
           Entrar com Google
         </Button>
         
-        <div className="relative flex items-center mb-8">
-          <div className="flex-grow border-t border-gray-100"></div>
-          <span className="mx-4 flex-shrink text-[10px] font-bold tracking-tight text-slate-300">ou e-mail</span>
-          <div className="flex-grow border-t border-gray-100"></div>
-        </div>
-
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <Input
             label="E-mail"
@@ -189,36 +164,23 @@ export const LoginPage: React.FC = () => {
             className="rounded-2xl"
           />
 
-          <div className="flex items-center justify-between px-1 mb-2">
+          <div className="flex items-center justify-between px-1">
             <label className="flex items-center gap-2 cursor-pointer group">
-              <div className="relative flex items-center">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border-2 border-gray-100 transition-all checked:bg-success checked:border-success"
-                />
-                <span className="material-symbols-outlined absolute text-white text-[12px] font-bold opacity-0 peer-checked:opacity-100 pointer-events-none left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                    check
-                </span>
-              </div>
-              <span className="text-xs font-bold text-slate-400 group-hover:text-slate-600 transition-colors tracking-tight">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <span className="text-xs font-bold text-slate-500 group-hover:text-slate-800 transition-colors">
                 Manter conectado
               </span>
             </label>
-            
-            <button 
-              type="button" 
-              onClick={handleForgotPassword}
-              className="text-[10px] font-bold text-success hover:underline tracking-tight bg-transparent border-none p-0 cursor-pointer"
-            >
-                Esqueci a senha
-            </button>
           </div>
 
           <Button 
             type="submit" 
-            className="w-full py-5 rounded-[22px] shadow-xl shadow-success/20 mt-2 bg-success hover:bg-emerald-600 font-bold text-sm tracking-tight text-white" 
+            className="w-full py-5 rounded-[22px] shadow-xl shadow-success/20 mt-2 bg-success font-bold text-sm tracking-tight text-white" 
             isLoading={loading}
           >
             Acessar plataforma

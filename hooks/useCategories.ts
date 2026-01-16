@@ -40,22 +40,19 @@ export const useCategories = () => {
     
     const combined = [...system, ...customCategories];
     
-    // FILTRAGEM DE UNICIDADE: Garante que apenas uma categoria com o mesmo nome e tipo apareça no app
     const uniqueMap = new Map<string, Category>();
     
     combined.forEach(cat => {
-      // Chave única composta por nome normalizado e tipo
       const key = `${cat.name.trim().toLowerCase()}_${cat.type}`;
       
       if (!uniqueMap.has(key)) {
         uniqueMap.set(key, cat);
       } else {
-        // Se já existe, damos preferência para a categoria de SISTEMA se a atual for CUSTOM
         const existing = uniqueMap.get(key)!;
         if (!existing.isCustom && cat.isCustom) {
             // Mantém o sistema
         } else if (existing.isCustom && !cat.isCustom) {
-            uniqueMap.set(key, cat); // Substitui pela de sistema
+            uniqueMap.set(key, cat); 
         }
       }
     });
@@ -66,14 +63,13 @@ export const useCategories = () => {
   const addCustomCategory = async (category: Omit<Category, 'id' | 'isCustom'>) => {
     if (!currentUser) return;
     
-    // Verificação de segurança extra antes de adicionar no Firebase
     const normalizedNew = category.name.trim().toLowerCase();
     const exists = allCategories.some(c => 
       c.type === category.type && 
       c.name.trim().toLowerCase() === normalizedNew
     );
 
-    if (exists) return; // Já existe, não faz nada
+    if (exists) return;
 
     await db.collection('users')
       .doc(currentUser.uid)
@@ -81,6 +77,18 @@ export const useCategories = () => {
       .add({
         ...category,
         name: category.name.trim()
+      });
+  };
+
+  const updateCustomCategory = async (id: string, category: Partial<Category>) => {
+    if (!currentUser) return;
+    await db.collection('users')
+      .doc(currentUser.uid)
+      .collection('custom_categories')
+      .doc(id)
+      .update({
+        ...category,
+        name: category.name?.trim()
       });
   };
 
@@ -98,6 +106,7 @@ export const useCategories = () => {
     customCategories, 
     loading, 
     addCustomCategory, 
+    updateCustomCategory,
     deleteCustomCategory 
   };
 };

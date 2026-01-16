@@ -1,448 +1,617 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { useTransactions } from '../../hooks/useTransactions';
+import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/formatters';
-import { BackButton } from '../../components/ui/BackButton';
 import { incomeCategories, expenseCategories } from '../dashboard/components/NewTransactionModal';
+import { Button } from '../../components/ui/Button';
+import { GoogleGenAI } from "@google/genai";
+import { getIconByCategoryName } from '../../utils/categoryIcons';
+import { MonthSelector } from '../dashboard/components/MonthSelector';
+import { CategoryChartCard } from '../dashboard/components/CategoryChartCard';
 import { Transaction } from '../../types';
 
-type AnalysisView = 'tudo' | 'receitas' | 'despesas' | 'fluxo';
-type BreakdownType = 'grupos' | 'categorias';
-
-// --- COMPONENTE DE GRÁFICO HÍBRIDO INTERATIVO ---
-const AnnualMixedChart: React.FC<{ 
-  data: any[], 
-  view: AnalysisView,
-  selectedMonthIndex: number 
-}> = ({ data, view, selectedMonthIndex }) => {
+// --- GRÁFICO ANUAL COM INTERATIVIDADE E FILTROS ---
+const AnnualMixedChart: React.FC<{ data: any[], selectedMonthIndex: number }> = ({ data, selectedMonthIndex }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  
-  const width = 1000;
-  const height = 400;
-  const paddingX = 70;
-  const paddingY = 50;
-  
-  // Encontrar limites para escala
-  const allVals = data.flatMap(d => [d.income, d.expense, d.flow]);
-  const maxVal = Math.max(...allVals, 8000) * 1.1;
-  const minVal = Math.min(...allVals, -3000) * 1.2;
-  const totalRange = maxVal - minVal;
+  const [filters, setFilters] = useState({
+    income: true,
+    expense: true,
+    flow: true
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const getX = (i: number) => (i / 11) * (width - paddingX * 2) + paddingX;
+  const toggleFilter = (key: keyof typeof filters) => {
+    setFilters(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Configurações do SVG (ViewBox Fixo, mas renderizado responsivamente via CSS)
+  const viewBoxWidth = 1000;
+  const viewBoxHeight = 350;
+  const paddingX = 50; 
+  const paddingY = 30;
+  const topPadding = 40;
+
+  const chartHeight = viewBoxHeight - paddingY - topPadding;
+  const chartWidth = viewBoxWidth - paddingX * 2;
+
+  // 1. Calcular Escalas dinâmicas baseadas nos filtros ativos
+  const activeValues: number[] = [0]; // Inicializa com 0 para evitar erros se tudo estiver desmarcado
+  if (filters.income) activeValues.push(...data.map(d => d.income));
+  if (filters.expense) activeValues.push(...data.map(d => d.expense));
+  if (filters.flow) activeValues.push(...data.map(d => d.income - d.expense));
+  
+  // Definir limites (Max e Min) para o eixo Y
+  let maxVal = Math.max(...activeValues);
+  let minVal = Math.min(...activeValues); 
+
+  // Ajustes de margem para o gráfico não tocar nas bordas
+  if (maxVal === 0 && minVal === 0) maxVal = 1000; // Valor padrão se vazio
+  maxVal = maxVal * 1.1; 
+  if (minVal < 0) minVal = minVal * 1.2;
+
+  const range = maxVal - minVal;
+  
+  // Função Y: Valor -> Pixel
   const getY = (val: number) => {
-    const zeroPos = height - paddingY - (Math.abs(minVal) / totalRange) * (height - paddingY * 2);
-    return zeroPos - (val / totalRange) * (height - paddingY * 2);
+    if (range === 0) return topPadding + chartHeight;
+    const percentage = (val - minVal) / range; 
+    return topPadding + (chartHeight * (1 - percentage));
   };
 
   const zeroY = getY(0);
 
-  // Pontos para a linha de fluxo
-  const flowPoints = data.map((d, i) => ({ x: getX(i), y: getY(d.flow) }));
-  let lineD = `M ${flowPoints[0].x} ${flowPoints[0].y}`;
-  for (let i = 0; i < flowPoints.length - 1; i++) {
-    const p0 = flowPoints[i];
-    const p1 = flowPoints[i + 1];
-    const cp1x = p0.x + (p1.x - p0.x) / 2;
-    lineD += ` C ${cp1x} ${p0.y}, ${cp1x} ${p1.y}, ${p1.x} ${p1.y}`;
-  }
+  // Função X: Índice -> Pixel
+  const stepX = chartWidth / (data.length - 1 || 1);
+  const getX = (i: number) => paddingX + (i * stepX);
 
-  // Geração das linhas de grade (Y-Axis)
+  // Largura das barras
+  const barWidth = 16;
+
+  // 2. Grid Lines
   const gridLines = [];
-  const step = 2000;
-  for (let v = Math.floor(minVal / step) * step; v <= maxVal; v += step) {
-    gridLines.push(v);
+  const gridCount = 5;
+  for (let i = 0; i <= gridCount; i++) {
+    const val = minVal + (range * (i / gridCount));
+    gridLines.push(val);
   }
 
-  const handleMouseMove = (e: React.MouseEvent, index: number) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setHoveredIndex(index);
-    setTooltipPos({
-      x: e.clientX,
-      y: e.clientY
-    });
-  };
+  // 3. Caminho da Linha de Fluxo
+  let pathD = "";
+  if (filters.flow && data.length > 0) {
+    const flowPoints = data.map((d, i) => ({ 
+        x: getX(i), 
+        y: getY(d.income - d.expense) 
+    }));
+    pathD = `M ${flowPoints[0].x} ${flowPoints[0].y}`;
+    for (let i = 0; i < flowPoints.length - 1; i++) {
+        const p0 = flowPoints[i];
+        const p1 = flowPoints[i + 1];
+        const cp1x = p0.x + (p1.x - p0.x) / 2;
+        pathD += ` C ${cp1x} ${p0.y}, ${cp1x} ${p1.y}, ${p1.x} ${p1.y}`;
+    }
+  }
+
+  // Dados Ativos (Hover)
+  const activeIndex = hoveredIndex;
+  const activeData = activeIndex !== null ? data[activeIndex] : null;
 
   return (
-    <div className="relative w-full overflow-hidden">
-      {/* Título do Gráfico */}
-      <div className="mb-6 px-2">
-        <h3 className="text-lg font-black text-slate-800 tracking-tight">Desempenho Anual de Caixa</h3>
-        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Comparativo de entradas, saídas e saldo líquido</p>
+    <div ref={containerRef} className="w-full bg-white rounded-[32px] p-4 sm:p-6 border border-slate-100 shadow-sm relative group select-none">
+      {/* Cabeçalho / Legenda Interativa */}
+      <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-4">
+         <h3 className="text-sm font-bold text-slate-700">Panorama Anual</h3>
+         
+         {/* Botões de Filtro */}
+         <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl overflow-x-auto max-w-full">
+            <button 
+                onClick={() => setFilters({ income: true, expense: true, flow: true })}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap bg-white shadow-sm text-slate-800 border border-slate-100 hover:bg-slate-50"
+            >
+              Tudo
+            </button>
+            <button 
+                onClick={() => toggleFilter('income')}
+                className={`px-3 py-1.5 flex items-center gap-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${filters.income ? 'bg-white shadow-sm text-slate-700 border border-slate-100' : 'text-slate-400 opacity-60 hover:opacity-100'}`}
+            >
+              <span className={`w-2 h-2 rounded-full ${filters.income ? 'bg-[#10B981]' : 'bg-slate-300'}`}></span> Receitas
+            </button>
+            <button 
+                onClick={() => toggleFilter('expense')}
+                className={`px-3 py-1.5 flex items-center gap-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${filters.expense ? 'bg-white shadow-sm text-slate-700 border border-slate-100' : 'text-slate-400 opacity-60 hover:opacity-100'}`}
+            >
+              <span className={`w-2 h-2 rounded-full ${filters.expense ? 'bg-[#F43F5E]' : 'bg-slate-300'}`}></span> Despesas
+            </button>
+            <button 
+                onClick={() => toggleFilter('flow')}
+                className={`px-3 py-1.5 flex items-center gap-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${filters.flow ? 'bg-white shadow-sm text-slate-700 border border-slate-100' : 'text-slate-400 opacity-60 hover:opacity-100'}`}
+            >
+              <span className={`w-2 h-2 rounded-full ${filters.flow ? 'bg-slate-800' : 'bg-slate-300'}`}></span> Fluxo
+            </button>
+         </div>
       </div>
 
-      {/* Legenda Customizada */}
-      <div className="flex flex-wrap gap-5 mb-8 px-2">
-        <div className="flex items-center gap-2">
-           <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm" />
-           <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Receitas</span>
-        </div>
-        <div className="flex items-center gap-2">
-           <div className="w-3 h-3 rounded-full bg-rose-400 shadow-sm" />
-           <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Despesas</span>
-        </div>
-        <div className="flex items-center gap-2">
-           <div className="w-6 h-0.5 bg-slate-900 rounded-full" />
-           <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Fluxo de Caixa</span>
-        </div>
-      </div>
-
-      <div className="w-full overflow-x-auto no-scrollbar">
-        <div className="min-w-[900px]">
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible select-none">
-            {/* Linhas de Grade e Eixo Y */}
-            {gridLines.map((val, i) => (
-              <g key={i}>
-                <line 
-                  x1={paddingX} y1={getY(val)} 
-                  x2={width - paddingX} y2={getY(val)} 
-                  stroke={val === 0 ? "#cbd5e1" : "#f1f5f9"} 
-                  strokeWidth={val === 0 ? "1.5" : "1"} 
-                  strokeDasharray={val === 0 ? "0" : "4 4"} 
-                />
-                <text 
-                  x={paddingX - 12} y={getY(val) + 4} 
-                  textAnchor="end" 
-                  className={`text-[11px] font-black ${val === 0 ? 'fill-slate-500' : 'fill-slate-300'}`}
-                >
-                  {val === 0 ? 'R$ 0' : `R$ ${val >= 1000 || val <= -1000 ? `${(val/1000).toFixed(0)}k` : val}`}
-                </text>
-              </g>
-            ))}
-
-            {/* Colunas e Interação */}
-            {data.map((d, i) => {
-              const xBase = getX(i);
-              const barWidth = 22;
-              const isSelected = i === selectedMonthIndex;
-              const isHovered = i === hoveredIndex;
-              
-              return (
-                <g 
-                  key={i} 
-                  onMouseMove={(e) => handleMouseMove(e, i)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                  onTouchStart={(e) => {
-                    setHoveredIndex(i);
-                    const touch = e.touches[0];
-                    setTooltipPos({ x: touch.clientX, y: touch.clientY });
-                  }}
-                  className="cursor-pointer"
-                >
-                  {/* Área de interação invisível maior */}
-                  <rect 
-                    x={xBase - 40} y={0} width={80} height={height} 
-                    fill="transparent" 
-                  />
-
-                  {/* Barra de Despesa */}
-                  {(view === 'tudo' || view === 'despesas') && (
-                    <rect
-                      x={xBase - barWidth - 3}
-                      y={getY(d.expense)}
-                      width={barWidth}
-                      height={zeroY - getY(d.expense)}
-                      rx="6"
-                      fill={isHovered ? '#f43f5e' : (isSelected ? '#f87171' : '#fecaca')}
-                      className="transition-all duration-300 shadow-sm"
-                    />
-                  )}
-                  {/* Barra de Receita */}
-                  {(view === 'tudo' || view === 'receitas') && (
-                    <rect
-                      x={xBase + 3}
-                      y={getY(d.income)}
-                      width={barWidth}
-                      height={zeroY - getY(d.income)}
-                      rx="6"
-                      fill={isHovered ? '#10b981' : (isSelected ? '#34d399' : '#a7f3d0')}
-                      className="transition-all duration-300 shadow-sm"
-                    />
-                  )}
-                  {/* Label Meses */}
-                  <text 
-                    x={xBase} y={height - 15} 
-                    textAnchor="middle" 
-                    className={`text-[12px] font-black transition-colors ${isHovered || isSelected ? 'fill-slate-800' : 'fill-slate-300'}`}
-                  >
-                    {d.label}
-                  </text>
-
-                  {/* Destaque de Hover no Fundo */}
-                  {isHovered && (
-                    <rect 
-                        x={xBase - 40} y={paddingY} width={80} height={height - paddingY*2} 
-                        fill="rgba(0,0,0,0.02)" rx="20"
-                    />
-                  )}
-                </g>
-              );
-            })}
-
-            {/* Linha de Fluxo (Spline) */}
-            {(view === 'tudo' || view === 'fluxo') && (
-              <g pointerEvents="none">
-                <path 
-                    d={lineD} fill="none" 
-                    stroke="#0f172a" strokeWidth="3" 
-                    strokeLinecap="round" strokeLinejoin="round"
-                    className="animate-dash"
-                />
-                {flowPoints.map((p, i) => (
-                  <circle 
-                    key={i} cx={p.x} cy={p.y} r="5" 
-                    fill="#0f172a" stroke="#fff" strokeWidth="2.5" 
-                    className="shadow-xl"
-                  />
-                ))}
-              </g>
-            )}
-          </svg>
-        </div>
-      </div>
-
-      {/* TOOLTIP FLUTUANTE */}
-      {hoveredIndex !== null && (
-        <div 
-          className="fixed z-[100] pointer-events-none transform -translate-x-1/2 -translate-y-[120%] animate-in fade-in zoom-in-95 duration-200"
-          style={{ left: tooltipPos.x, top: tooltipPos.y }}
+      {/* Container SVG Responsivo */}
+      <div className="w-full relative">
+        <svg 
+            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} 
+            preserveAspectRatio="xMidYMid meet"
+            className="w-full h-auto overflow-visible touch-pan-x"
         >
-          <div className="bg-slate-900/95 backdrop-blur-md text-white p-4 rounded-3xl shadow-2xl border border-white/10 min-w-[160px]">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-white/5 pb-2">
-               Resumo de {data[hoveredIndex].label}
-            </p>
-            <div className="space-y-2">
-               <div className="flex justify-between items-center gap-4">
-                  <span className="text-[10px] font-bold text-white/60">Receitas</span>
-                  <span className="text-xs font-black text-emerald-400">{formatCurrency(data[hoveredIndex].income)}</span>
-               </div>
-               <div className="flex justify-between items-center gap-4">
-                  <span className="text-[10px] font-bold text-white/60">Despesas</span>
-                  <span className="text-xs font-black text-rose-400">{formatCurrency(data[hoveredIndex].expense)}</span>
-               </div>
-               <div className="mt-2 pt-2 border-t border-white/5 flex justify-between items-center gap-4">
-                  <span className="text-[10px] font-black text-white/40 uppercase">Fluxo Líquido</span>
-                  <span className={`text-sm font-black ${data[hoveredIndex].flow >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {formatCurrency(data[hoveredIndex].flow)}
-                  </span>
-               </div>
-            </div>
-          </div>
-        </div>
-      )}
+             {/* GRID & LABELS */}
+             <g className="grid-lines">
+               {gridLines.map((val, i) => {
+                 const y = getY(val);
+                 return (
+                   <g key={`grid-${i}`}>
+                     <line 
+                        x1={paddingX} y1={y} x2={viewBoxWidth - 20} y2={y} 
+                        stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" 
+                     />
+                     <text 
+                        x={paddingX - 10} y={y + 4} 
+                        textAnchor="end" 
+                        className="text-[10px] fill-slate-400 font-medium"
+                     >
+                        {formatCurrency(val).replace(',00', '')}
+                     </text>
+                   </g>
+                 );
+               })}
+             </g>
+
+             {/* Linha Zero */}
+             <line x1={paddingX} y1={zeroY} x2={viewBoxWidth - 20} y2={zeroY} stroke="#94a3b8" strokeWidth="1" />
+
+             {/* BARRAS */}
+             {data.map((d, i) => {
+               const x = getX(i);
+               const yIncome = getY(d.income);
+               const yExpense = getY(d.expense);
+               
+               const isHovered = hoveredIndex === i;
+               const isSelected = selectedMonthIndex === i;
+
+               const incomeColor = isHovered || isSelected ? '#10B981' : '#A7F3D0';
+               const expenseColor = isHovered || isSelected ? '#F43F5E' : '#FECACA';
+               // Aumentamos a opacidade base para melhorar visibilidade no mobile
+               const opacity = (hoveredIndex !== null && !isHovered) ? 0.6 : 1;
+
+               return (
+                 <g key={`bars-${i}`} style={{ opacity, transition: 'opacity 0.2s' }}>
+                    {filters.expense && (
+                        <rect 
+                        x={x - barWidth - 2} 
+                        y={yExpense} 
+                        width={barWidth} 
+                        height={Math.max(0, zeroY - yExpense)} 
+                        fill={expenseColor}
+                        rx="3" ry="3"
+                        className="transition-colors duration-200"
+                        />
+                    )}
+                    
+                    {filters.income && (
+                        <rect 
+                        x={x + 2} 
+                        y={yIncome} 
+                        width={barWidth} 
+                        height={Math.max(0, zeroY - yIncome)} 
+                        fill={incomeColor}
+                        rx="3" ry="3"
+                        className="transition-colors duration-200"
+                        />
+                    )}
+                 </g>
+               );
+             })}
+
+             {/* LINHA DE FLUXO */}
+             {filters.flow && (
+                 <path 
+                    d={pathD} 
+                    fill="none" 
+                    stroke="#1e293b" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className="pointer-events-none drop-shadow-sm"
+                 />
+             )}
+
+             {/* PONTOS & LABELS X */}
+             {data.map((d, i) => {
+                const x = getX(i);
+                const yFlow = getY(d.income - d.expense);
+                const isHovered = hoveredIndex === i;
+                const isSelected = selectedMonthIndex === i;
+
+                return (
+                  <g key={`points-${i}`}>
+                    {/* Linha Vertical de Cursor (Hover) */}
+                    {isHovered && (
+                      <line 
+                        x1={x} y1={topPadding} x2={x} y2={viewBoxHeight - paddingY} 
+                        stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3"
+                        className="pointer-events-none"
+                      />
+                    )}
+
+                    {/* Pontos da Linha de Fluxo */}
+                    {filters.flow && (
+                        <circle 
+                        cx={x} cy={yFlow} 
+                        r={isHovered ? 5 : 3} 
+                        fill="#1e293b" 
+                        stroke="white" strokeWidth="2"
+                        className="transition-all duration-200 pointer-events-none"
+                        />
+                    )}
+                    
+                    {/* Label Eixo X */}
+                    <text 
+                      x={x} y={viewBoxHeight - 5} 
+                      textAnchor="middle" 
+                      className={`text-[12px] font-bold transition-colors duration-200 ${isHovered || isSelected ? 'fill-slate-800' : 'fill-slate-400'}`}
+                    >
+                      {d.label}
+                    </text>
+                  </g>
+                );
+             })}
+
+             {/* HIT AREAS (Retângulos Invisíveis Largos para Interação) */}
+             {data.map((_, i) => {
+               const x = getX(i);
+               const colWidth = stepX;
+               return (
+                 <rect 
+                   key={`hit-${i}`}
+                   x={x - colWidth / 2} 
+                   y={0} 
+                   width={colWidth} 
+                   height={viewBoxHeight} 
+                   fill="transparent"
+                   className="cursor-pointer"
+                   onMouseEnter={() => setHoveredIndex(i)}
+                   onMouseLeave={() => setHoveredIndex(null)}
+                   onClick={() => setHoveredIndex(i)}
+                 />
+               );
+             })}
+          </svg>
+
+          {/* TOOLTIP FLUTUANTE HTML (Posicionado via style relativo ao container do gráfico) */}
+          {activeData && activeIndex !== null && (
+             <div 
+               className="absolute z-20 pointer-events-none animate-in fade-in zoom-in-95 duration-150"
+               style={{ 
+                 // Cálculo de porcentagem para posicionar o tooltip responsivamente
+                 left: `${((getX(activeIndex)) / viewBoxWidth) * 100}%`,
+                 top: 0,
+                 transform: 'translateX(-50%) translateY(10px)'
+               }}
+             >
+                <div className="bg-white p-3 rounded-2xl shadow-xl border border-slate-100 min-w-[140px]">
+                   <p className="text-xs font-bold text-slate-800 mb-2 border-b border-slate-50 pb-1.5 text-center">
+                     {activeData.label}
+                   </p>
+                   
+                   <div className="space-y-1.5">
+                      {filters.income && (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#10B981]"></div>
+                                <span className="text-[10px] font-bold text-slate-500">Rec.</span>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-700">{formatCurrency(activeData.income)}</span>
+                          </div>
+                      )}
+
+                      {filters.expense && (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#F43F5E]"></div>
+                                <span className="text-[10px] font-bold text-slate-500">Desp.</span>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-700">{formatCurrency(activeData.expense)}</span>
+                          </div>
+                      )}
+
+                      {filters.flow && (
+                          <div className="flex items-center justify-between gap-3 pt-1.5 border-t border-slate-50 mt-1">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-800"></div>
+                                <span className="text-[10px] font-bold text-slate-500">Fluxo</span>
+                            </div>
+                            <span className={`text-[11px] font-black ${(activeData.income - activeData.expense) >= 0 ? 'text-[#059669]' : 'text-rose-500'}`}>
+                                {formatCurrency(activeData.income - activeData.expense)}
+                            </span>
+                          </div>
+                      )}
+                   </div>
+                </div>
+                {/* Seta do Tooltip */}
+                <div className="w-2.5 h-2.5 bg-white border-r border-b border-slate-100 transform rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1 shadow-sm"></div>
+             </div>
+          )}
+      </div>
     </div>
   );
 };
 
-// --- COMPONENTE DE ITEM DE LISTA COM BARRA DE PROGRESSO ---
-const BreakdownItem: React.FC<{ 
-  item: { name: string, amount: number, icon: string, color: string, percentage: number },
-  type: 'income' | 'expense'
-}> = ({ item, type }) => {
-  const isIncome = type === 'income';
+// --- BALÃO DE COMENTÁRIO DA IA (Mantido Igual) ---
+const AICommentBubble: React.FC<{ text?: string, loading?: boolean, type?: 'success' | 'warning' | 'neutral', label: string }> = ({ text, loading, type = 'neutral', label }) => {
+  if (!text && !loading) return null;
+
+  const colors = {
+    success: 'bg-emerald-50 text-emerald-800 border-emerald-100',
+    warning: 'bg-rose-50 text-rose-800 border-rose-100',
+    neutral: 'bg-indigo-50 text-indigo-800 border-indigo-100'
+  };
 
   return (
-    <div className="relative group overflow-hidden rounded-[24px] border border-slate-50 bg-white p-4 mb-2 transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
-      {/* Barra de Progresso de Fundo */}
-      <div 
-        className={`absolute left-0 top-0 h-full transition-all duration-1000 ease-out opacity-10 ${isIncome ? 'bg-emerald-500' : 'bg-rose-500'}`}
-        style={{ width: `${item.percentage}%` }}
-      />
-      
-      <div className="relative z-10 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div 
-            className="flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm transition-transform group-hover:rotate-12"
-            style={{ backgroundColor: `${item.color}20`, color: item.color }}
-          >
-            <span className="material-symbols-outlined text-xl">{item.icon}</span>
-          </div>
-          <div>
-            <p className="text-sm font-bold text-slate-700 leading-tight">{item.name}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.percentage.toFixed(1)}% do total</p>
-          </div>
+    <div className={`mt-4 p-4 rounded-2xl border ${colors[type]} relative animate-in fade-in slide-in-from-bottom-2`}>
+        <div className="absolute -top-3 left-4 bg-white rounded-full px-2 py-0.5 shadow-sm border border-slate-100 flex items-center gap-1">
+             <span className="material-symbols-outlined text-xs bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">auto_awesome</span>
+             <span className="text-[9px] font-bold text-slate-500 uppercase">{label}</span>
         </div>
-        
-        <div className="text-right">
-          <p className="text-sm font-black text-slate-800">
-            {formatCurrency(item.amount)}
-          </p>
-        </div>
-      </div>
+        {loading ? (
+             <div className="flex gap-1 h-5 items-center justify-center py-2">
+                 <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></div>
+                 <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75"></div>
+                 <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150"></div>
+             </div>
+        ) : (
+             <p className="text-xs font-medium leading-relaxed">
+                 "{text}"
+             </p>
+        )}
     </div>
   );
 };
 
 export const ChartsPage: React.FC = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [activeView, setActiveView] = useState<AnalysisView>('tudo');
-  const [incomeBreakdown, setIncomeBreakdown] = useState<BreakdownType>('categorias');
-  const [expenseBreakdown, setExpenseBreakdown] = useState<BreakdownType>('categorias');
+  const { currentUser } = useAuth();
+  const [currentYearDate, setCurrentYearDate] = useState(new Date());
+  const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
+  
+  // Dados Anuais (apenas para o gráfico do topo)
+  const { transactions: annualTransactions } = useTransactions(currentYearDate, 'year');
+  
+  // LÓGICA DE FILTRAGEM DE ANÁLISE
+  const shouldIncludeInAnalysis = (t: Transaction) => {
+    if (t.isIgnored) return false;
 
-  const { transactions } = useTransactions(currentDate);
+    const cleanDesc = t.description.toLowerCase();
+    const cleanCat = t.category.toLowerCase();
 
-  const annualData = useMemo(() => {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return months.map((m, i) => {
-      if (i === currentDate.getMonth()) {
-        const inc = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-        const exp = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-        return { label: m, income: inc, expense: exp, flow: inc - exp };
-      }
-      const mockInc = 3500 + Math.random() * 2500;
-      const mockExp = 2500 + Math.random() * 3000;
-      return { label: m, income: mockInc, expense: mockExp, flow: mockInc - mockExp };
+    const isCreditCardPayment = 
+        cleanCat.includes('pagamento de cartão') || 
+        cleanCat.includes('fatura') ||
+        cleanDesc.includes('pagamento de fatura') ||
+        (cleanDesc.includes('fatura') && (cleanDesc.includes('cartão') || cleanDesc.includes('card') || cleanDesc.includes('nubank') || cleanDesc.includes('itau')));
+
+    if (isCreditCardPayment) return false;
+
+    return true;
+  };
+  
+  // Dados Mensais para análise focada
+  const monthlyTransactions = useMemo(() => {
+    return annualTransactions.filter(t => {
+       const tDate = new Date(t.date);
+       return tDate.getMonth() === currentMonthDate.getMonth() && 
+              tDate.getFullYear() === currentMonthDate.getFullYear();
     });
-  }, [transactions, currentDate]);
+  }, [annualTransactions, currentMonthDate]);
 
-  const stats = useMemo(() => {
-    const current = annualData[currentDate.getMonth()];
-    const saved = current.income > 0 ? (current.flow / current.income) * 100 : 0;
-    return { ...current, saved };
-  }, [annualData, currentDate]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiComments, setAiComments] = useState<{
+    general?: string;
+    income?: string;
+    expense?: string;
+  }>({});
 
-  const getBreakdown = (type: 'income' | 'expense') => {
-    const dataMap = new Map<string, number>();
-    const trans = transactions.filter(t => t.type === type);
-    const total = trans.reduce((acc, t) => acc + t.amount, 0);
+  // Preparação de dados Anuais (Filtrados)
+  const annualData = useMemo(() => {
+    const monthsData = Array(12).fill(0).map(() => ({ income: 0, expense: 0 }));
+    annualTransactions.forEach(t => {
+      if (!shouldIncludeInAnalysis(t)) return;
 
-    trans.forEach(t => dataMap.set(t.category, (dataMap.get(t.category) || 0) + t.amount));
+      const tDate = new Date(t.date);
+      const m = tDate.getMonth();
+      if (t.type === 'income') monthsData[m].income += t.amount;
+      else monthsData[m].expense += t.amount;
+    });
+    return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, i) => ({
+      label: m,
+      income: monthsData[i].income,
+      expense: monthsData[i].expense
+    }));
+  }, [annualTransactions]);
 
-    const refCats = type === 'income' ? incomeCategories : expenseCategories;
-    
-    return Array.from(dataMap.entries()).map(([name, amount]) => {
-      const ref = refCats.find(c => c.name === name);
-      return {
-        name,
-        amount,
-        icon: ref ? ref.icon : 'category',
-        color: ref ? ref.color : '#94a3b8',
-        percentage: total > 0 ? (amount / total) * 100 : 0
-      };
-    }).sort((a, b) => b.amount - a.amount);
+  // Preparação de dados Mensais (Filtrados)
+  const monthStats = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    const incCats = new Map<string, number>();
+    const expCats = new Map<string, number>();
+
+    monthlyTransactions.forEach(t => {
+      if (!shouldIncludeInAnalysis(t)) return;
+
+      if (t.type === 'income') {
+         income += t.amount;
+         incCats.set(t.category, (incCats.get(t.category) || 0) + t.amount);
+      } else {
+         expense += t.amount;
+         expCats.set(t.category, (expCats.get(t.category) || 0) + t.amount);
+      }
+    });
+
+    const formatCats = (map: Map<string, number>, type: 'income' | 'expense') => {
+        const palette = type === 'income' 
+            ? ['#21C25E', '#10B981', '#34D399', '#059669', '#6EE7B7'] 
+            : ['#EF4444', '#B91C1C', '#F87171', '#991B1B', '#FCA5A5'];
+        
+        return Array.from(map.entries()).map(([name, amount], index) => ({
+            id: name,
+            name,
+            amount,
+            color: palette[index % palette.length],
+            icon: getIconByCategoryName(name)
+        })).sort((a, b) => b.amount - a.amount);
+    };
+
+    return {
+        income,
+        expense,
+        result: income - expense,
+        incomeCats: formatCats(incCats, 'income'),
+        expenseCats: formatCats(expCats, 'expense')
+    };
+  }, [monthlyTransactions]);
+
+  const handleAnalyze = async () => {
+    if (!currentUser?.isPro) return;
+    setIsAnalyzing(true);
+    setAiComments({}); 
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const prompt = `
+            Você é a IA do Poup+. Analise APENAS os dados deste mês de ${new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(currentMonthDate)}:
+            
+            1. Receitas Totais: R$ ${monthStats.income.toFixed(2)}
+               Principais Fontes: ${monthStats.incomeCats.slice(0,3).map(c => `${c.name} (${c.amount})`).join(', ')}
+            
+            2. Despesas Totais: R$ ${monthStats.expense.toFixed(2)}
+               Maiores Gastos: ${monthStats.expenseCats.slice(0,3).map(c => `${c.name} (${c.amount})`).join(', ')}
+            
+            3. Balanço Final: R$ ${monthStats.result.toFixed(2)}
+
+            Gere um JSON com 3 comentários curtos (máximo 1 frase cada) e diretos para o usuário:
+            {
+                "income": "Comentário sobre as receitas (elogie se for bom, ou sugira diversificação)",
+                "expense": "Comentário sobre os gastos (alerte sobre a categoria mais alta se necessário)",
+                "general": "Comentário final sobre o resultado do mês (saldo positivo/negativo)"
+            }
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: { responseMimeType: "application/json" }
+        });
+
+        const text = response.text || "{}";
+        const json = JSON.parse(text.replace(/```json|```/g, '').trim());
+        setAiComments(json);
+
+    } catch (error) {
+        console.error("Erro IA:", error);
+    } finally {
+        setIsAnalyzing(false);
+    }
   };
 
   return (
-    <div className="space-y-6 pb-24 animate-in fade-in duration-500">
-      {/* HEADER E NAVEGAÇÃO */}
-      <div className="bg-white rounded-[40px] p-8 border border-slate-50 shadow-sm">
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-4">
-             <button onClick={() => { const d = new Date(currentDate); d.setMonth(d.getMonth() - 1); setCurrentDate(d); }} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-slate-800 transition-all active:scale-90">
-               <span className="material-symbols-outlined">chevron_left</span>
-             </button>
-             <div className="text-center">
-                <h2 className="text-2xl font-black text-slate-800 tracking-tight capitalize leading-none mb-1">
-                  {new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(currentDate)}
-                </h2>
-                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{currentDate.getFullYear()}</p>
-             </div>
-             <button onClick={() => { const d = new Date(currentDate); d.setMonth(d.getMonth() + 1); setCurrentDate(d); }} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-slate-800 transition-all active:scale-90">
-               <span className="material-symbols-outlined">chevron_right</span>
-             </button>
-          </div>
-
-          <div className="hidden sm:flex gap-2">
-             <div className="bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Análise Ativa</span>
-             </div>
-          </div>
-        </div>
-
-        {/* FILTROS E GRÁFICO */}
-        <div className="flex flex-col gap-10">
-          <div className="flex justify-center">
-            <div className="inline-flex items-center bg-slate-100/50 p-1.5 rounded-[24px] border border-slate-100">
-              {[
-                { id: 'tudo', label: 'Visão Geral' },
-                { id: 'receitas', label: 'Ganhos', color: '#10b981' },
-                { id: 'despesas', label: 'Gastos', color: '#f43f5e' },
-                { id: 'fluxo', label: 'Liquidez', color: '#0f172a' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveView(tab.id as AnalysisView)}
-                  className={`px-6 py-3 rounded-2xl text-[11px] font-black transition-all flex items-center gap-2 ${
-                    activeView === tab.id ? 'bg-white shadow-lg text-slate-800 scale-105' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  {tab.color && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tab.color }} />}
-                  {tab.label}
-                </button>
-              ))}
+    <div className="space-y-8 pb-32 animate-in fade-in duration-500">
+      {/* 1. Contexto Anual (Design Novo) */}
+      <div className="space-y-4">
+         <div className="flex justify-between items-center px-2">
+            <h2 className="text-xl font-black text-slate-800 tracking-tight">{currentYearDate.getFullYear()}</h2>
+            <div className="flex gap-2">
+                <button onClick={() => setCurrentYearDate(new Date(currentYearDate.getFullYear()-1, 0, 1))} className="p-1 hover:bg-slate-50 rounded-full"><span className="material-symbols-outlined text-slate-400">chevron_left</span></button>
+                <button onClick={() => setCurrentYearDate(new Date(currentYearDate.getFullYear()+1, 0, 1))} className="p-1 hover:bg-slate-50 rounded-full"><span className="material-symbols-outlined text-slate-400">chevron_right</span></button>
             </div>
-          </div>
-
-          <AnnualMixedChart 
-            data={annualData} 
-            view={activeView} 
-            selectedMonthIndex={currentDate.getMonth()} 
-          />
-        </div>
+         </div>
+         <AnnualMixedChart data={annualData} selectedMonthIndex={currentMonthDate.getMonth()} />
       </div>
 
-      {/* MÉTRICAS DE IMPACTO */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Entradas', value: stats.income, color: 'text-emerald-500', icon: 'trending_up', bg: 'bg-emerald-50' },
-          { label: 'Saídas', value: stats.expense, color: 'text-rose-500', icon: 'trending_down', bg: 'bg-rose-50' },
-          { label: 'Resultado', value: stats.flow, color: stats.flow >= 0 ? 'text-emerald-600' : 'text-rose-600', icon: 'account_balance', bg: 'bg-slate-50' },
-          { label: 'Poupança', value: `${stats.saved.toFixed(0)}%`, color: 'text-slate-900', icon: 'savings', bg: 'bg-indigo-50', isPercentage: true }
-        ].map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-[32px] border border-slate-50 shadow-sm transition-all hover:shadow-md">
-             <div className={`w-10 h-10 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center mb-4`}>
-                <span className="material-symbols-outlined text-xl">{stat.icon}</span>
-             </div>
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-             <p className={`text-xl font-black tracking-tighter ${stat.color}`}>
-                {stat.isPercentage ? stat.value : formatCurrency(stat.value as number).replace(',00', '')}
-             </p>
-          </div>
-        ))}
+      <div className="flex items-center gap-4">
+         <div className="h-px bg-slate-200 flex-1"></div>
+         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Análise Detalhada</span>
+         <div className="h-px bg-slate-200 flex-1"></div>
       </div>
 
-      {/* DETALHAMENTO POR CATEGORIA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-lg font-black text-slate-800">Distribuição de Receitas</h3>
-            <div className="flex bg-slate-50 p-1 rounded-xl">
-               <button onClick={() => setIncomeBreakdown('categorias')} className="px-4 py-1.5 rounded-lg text-[10px] font-black bg-white shadow-sm text-emerald-600">Mensal</button>
-            </div>
-          </div>
-          <div className="space-y-1">
-            {getBreakdown('income').map((item, i) => (
-              <BreakdownItem key={i} item={item} type="income" />
-            ))}
-            {getBreakdown('income').length === 0 && (
-                <div className="py-20 text-center rounded-[32px] border-2 border-dashed border-slate-100">
-                    <span className="material-symbols-outlined text-slate-200 text-4xl mb-2">payments</span>
-                    <p className="text-xs font-bold text-slate-300">Sem receitas neste mês</p>
-                </div>
+      {/* 2. Filtro de Mês + Botão de Análise IA */}
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm py-2 flex flex-col md:flex-row items-center justify-between gap-4">
+         <div className="bg-white p-1.5 rounded-[20px] shadow-sm border border-slate-100">
+            <MonthSelector currentDate={currentMonthDate} onMonthChange={setCurrentMonthDate} />
+         </div>
+         
+         <Button 
+            onClick={handleAnalyze}
+            disabled={isAnalyzing || !currentUser?.isPro}
+            className={`rounded-2xl font-bold shadow-lg transition-all ${currentUser?.isPro ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-105' : 'bg-slate-100 text-slate-400'}`}
+         >
+            {isAnalyzing ? (
+                <span className="flex items-center gap-2"><span className="material-symbols-outlined animate-spin">sync</span> Analisando dados...</span>
+            ) : (
+                <span className="flex items-center gap-2"><span className="material-symbols-outlined">auto_awesome</span> Comentar Mês com IA</span>
             )}
-          </div>
-        </div>
+         </Button>
+      </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-lg font-black text-slate-800">Principais Gastos</h3>
-            <div className="flex bg-slate-50 p-1 rounded-xl">
-               <button onClick={() => setExpenseBreakdown('categorias')} className="px-4 py-1.5 rounded-lg text-[10px] font-black bg-white shadow-sm text-rose-600">Mensal</button>
+      {/* 3. Colunas de Análise (Rosquinhas) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         {/* Receitas */}
+         <div className="space-y-4">
+             <CategoryChartCard 
+                title="Entradas do Mês" 
+                type="income" 
+                categories={monthStats.incomeCats} 
+                total={monthStats.income} 
+             />
+             <AICommentBubble text={aiComments.income} loading={isAnalyzing} type="success" label="IA sobre Entradas" />
+         </div>
+
+         {/* Despesas */}
+         <div className="space-y-4">
+             <CategoryChartCard 
+                title="Saídas do Mês" 
+                type="expense" 
+                categories={monthStats.expenseCats} 
+                total={monthStats.expense} 
+             />
+             <AICommentBubble text={aiComments.expense} loading={isAnalyzing} type="warning" label="IA sobre Saídas" />
+         </div>
+      </div>
+
+      {/* 4. Resultado Geral */}
+      <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden">
+         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Balanço Líquido ({new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(currentMonthDate)})</p>
+                <div className="flex items-baseline gap-2">
+                    <span className={`text-4xl font-black tracking-tighter ${monthStats.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {formatCurrency(monthStats.result)}
+                    </span>
+                    {monthStats.income > 0 && (
+                        <span className="text-xs font-bold bg-white/10 px-2 py-1 rounded-lg text-white/80">
+                            {((monthStats.result / monthStats.income) * 100).toFixed(0)}% poupado
+                        </span>
+                    )}
+                </div>
             </div>
-          </div>
-          <div className="space-y-1">
-            {getBreakdown('expense').map((item, i) => (
-              <BreakdownItem key={i} item={item} type="expense" />
-            ))}
-            {getBreakdown('expense').length === 0 && (
-                <div className="py-20 text-center rounded-[32px] border-2 border-dashed border-slate-100">
-                    <span className="material-symbols-outlined text-slate-200 text-4xl mb-2">shopping_bag</span>
-                    <p className="text-xs font-bold text-slate-300">Sem despesas registradas</p>
+            {/* Balão de comentário geral da IA integrado */}
+            {(aiComments.general || isAnalyzing) && (
+                <div className="md:max-w-xs bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                   <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-xs text-indigo-300">psychology</span>
+                      <span className="text-[9px] font-bold text-indigo-200 uppercase">Veredito da IA</span>
+                   </div>
+                   {isAnalyzing ? (
+                       <div className="h-4 w-24 bg-white/10 rounded animate-pulse"></div>
+                   ) : (
+                       <p className="text-xs font-medium leading-relaxed text-indigo-50">"{aiComments.general}"</p>
+                   )}
                 </div>
             )}
-          </div>
-        </div>
+         </div>
+         <span className="material-symbols-outlined absolute -right-6 -bottom-6 text-white/5 text-[150px] rotate-12">account_balance_wallet</span>
       </div>
     </div>
   );

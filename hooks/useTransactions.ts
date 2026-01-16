@@ -9,7 +9,7 @@ interface AddTransactionData extends Omit<Transaction, 'id' | 'createdAt'> {
   repeatCount?: number;
 }
 
-export const useTransactions = (currentDate: Date) => {
+export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 'month') => {
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,16 +29,31 @@ export const useTransactions = (currentDate: Date) => {
     if (!currentUser) return;
     setLoading(true);
 
-    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    let startQueryDate: Date;
+    let endQueryDate: Date;
 
-    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-    endOfMonth.setHours(23, 59, 59, 999);
+    if (viewMode === 'year') {
+      // Começo do ano (Jan 1)
+      startQueryDate = new Date(currentDate.getFullYear(), 0, 1);
+      startQueryDate.setHours(0, 0, 0, 0);
+      
+      // Fim do ano (Dec 31)
+      endQueryDate = new Date(currentDate.getFullYear(), 11, 31);
+      endQueryDate.setHours(23, 59, 59, 999);
+    } else {
+      // Lógica original mensal
+      startQueryDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      startQueryDate.setHours(0, 0, 0, 0);
 
-    const queryStart = new Date(startOfMonth);
+      endQueryDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      endQueryDate.setHours(23, 59, 59, 999);
+    }
+
+    // Margem de segurança para timezone
+    const queryStart = new Date(startQueryDate);
     queryStart.setDate(queryStart.getDate() - 1);
 
-    const queryEnd = new Date(endOfMonth);
+    const queryEnd = new Date(endQueryDate);
     queryEnd.setDate(queryEnd.getDate() + 1);
 
     const query = db.collection('users')
@@ -56,8 +71,12 @@ export const useTransactions = (currentDate: Date) => {
 
       const filteredData = rawData.filter(t => {
         const tDate = new Date(t.date);
-        return tDate.getMonth() === currentDate.getMonth() && 
-               tDate.getFullYear() === currentDate.getFullYear();
+        if (viewMode === 'year') {
+           return tDate.getFullYear() === currentDate.getFullYear();
+        } else {
+           return tDate.getMonth() === currentDate.getMonth() && 
+                  tDate.getFullYear() === currentDate.getFullYear();
+        }
       });
 
       setTransactions(filteredData);
@@ -68,7 +87,7 @@ export const useTransactions = (currentDate: Date) => {
     });
 
     return unsubscribe;
-  }, [currentUser, currentDate]);
+  }, [currentUser, currentDate, viewMode]);
 
   const calculateFutureDate = (baseDate: Date, frequency: TransactionFrequency, index: number) => {
     const newDate = new Date(baseDate);
@@ -108,8 +127,11 @@ export const useTransactions = (currentDate: Date) => {
 
         batch.set(newTransRef, payload);
 
-        if (instanceStatus === 'completed' && !isNaN(data.amount)) {
+        // Só atualiza saldo se não for ignorado
+        if (instanceStatus === 'completed' && !isNaN(data.amount) && !data.isIgnored) {
             const accountRef = userRef.collection('accounts').doc(data.accountId);
+            // Verifica existência apenas se for uma nova transação simples, mas como é create, assumimos que usuário selecionou conta existente na UI.
+            // Para robustez em add, o ideal também seria checar, mas o erro relatado foi em update.
             batch.update(accountRef, {
                 balance: firebase.firestore.FieldValue.increment(data.type === 'income' ? data.amount : -data.amount)
             });
@@ -128,20 +150,30 @@ export const useTransactions = (currentDate: Date) => {
     if (!oldDoc.exists) throw new Error("Transação não encontrada");
     const oldData = oldDoc.data() as Transaction;
 
-    // 1. Reverter saldo antigo
-    if (oldData.status === 'completed' && oldData.accountId && !isNaN(oldData.amount)) {
+    // 1. Reverter saldo antigo (apenas se não era ignorada)
+    if (oldData.status === 'completed' && oldData.accountId && !isNaN(oldData.amount) && !oldData.isIgnored) {
         const oldAccountRef = userRef.collection('accounts').doc(oldData.accountId);
-        batch.update(oldAccountRef, {
-            balance: firebase.firestore.FieldValue.increment(oldData.type === 'income' ? -oldData.amount : oldData.amount)
-        });
+        const oldAccountDoc = await oldAccountRef.get();
+        
+        // CORREÇÃO: Só tenta atualizar se a conta ainda existir
+        if (oldAccountDoc.exists) {
+            batch.update(oldAccountRef, {
+                balance: firebase.firestore.FieldValue.increment(oldData.type === 'income' ? -oldData.amount : oldData.amount)
+            });
+        }
     }
 
-    // 2. Aplicar novo saldo
-    if (newData.status === 'completed' && newData.accountId && !isNaN(newData.amount)) {
+    // 2. Aplicar novo saldo (apenas se não for ignorada)
+    if (newData.status === 'completed' && newData.accountId && !isNaN(newData.amount) && !newData.isIgnored) {
         const newAccountRef = userRef.collection('accounts').doc(newData.accountId);
-        batch.update(newAccountRef, {
-             balance: firebase.firestore.FieldValue.increment(newData.type === 'income' ? newData.amount : -newData.amount)
-        });
+        const newAccountDoc = await newAccountRef.get();
+        
+        // CORREÇÃO: Só tenta atualizar se a conta ainda existir
+        if (newAccountDoc.exists) {
+            batch.update(newAccountRef, {
+                 balance: firebase.firestore.FieldValue.increment(newData.type === 'income' ? newData.amount : -newData.amount)
+            });
+        }
     }
 
     const payload = sanitize(newData);
@@ -159,11 +191,18 @@ export const useTransactions = (currentDate: Date) => {
     const data = doc.data() as Transaction;
     const batch = db.batch();
     batch.delete(transRef);
-    if (data.status === 'completed' && data.accountId && !isNaN(data.amount)) {
+
+    // Reverter saldo apenas se não era ignorada
+    if (data.status === 'completed' && data.accountId && !isNaN(data.amount) && !data.isIgnored) {
         const accountRef = userRef.collection('accounts').doc(data.accountId);
-        batch.update(accountRef, {
-            balance: firebase.firestore.FieldValue.increment(data.type === 'income' ? -data.amount : data.amount)
-        });
+        const accountDoc = await accountRef.get();
+        
+        // CORREÇÃO: Só tenta atualizar se a conta ainda existir
+        if (accountDoc.exists) {
+            batch.update(accountRef, {
+                balance: firebase.firestore.FieldValue.increment(data.type === 'income' ? -data.amount : data.amount)
+            });
+        }
     }
     await batch.commit();
   };

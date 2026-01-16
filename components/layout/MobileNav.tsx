@@ -12,67 +12,62 @@ export const MobileNav: React.FC = () => {
 
   const links = [
     { to: '/', icon: 'home', label: 'Início' },
-    { to: '/credit-cards', icon: 'credit_card', label: 'Cartões' },
-    { to: '/charts', icon: 'bar_chart', label: 'Gráficos' },
+    { to: '/ai-analysis', icon: 'psychology', label: 'IA' }, // Novo link
+    { to: '/charts', icon: 'bar_chart', label: 'Análise' },
     { to: '/settings', icon: 'settings', label: 'Ajustes' },
   ];
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-gray-100 bg-white px-4 pb-safe pt-2 md:hidden shadow-[0_-8px_20px_-6px_rgba(0,0,0,0.08)]">
-        <div className="flex items-center justify-between relative">
-          <div className="flex flex-1 justify-around">
-            {links.slice(0, 2).map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                className={({ isActive }) =>
-                  `flex flex-col items-center gap-1 p-2 transition-all ${
-                    isActive ? 'text-primary' : 'text-slate-400'
-                  }`
-                }
-              >
-                {/* Fix: Use functional children to correctly access isActive scope */}
-                {({ isActive }) => (
-                  <>
-                    <span className={`material-symbols-outlined text-2xl ${isActive ? 'fill-1' : ''}`}>{link.icon}</span>
-                    <span className="text-[10px] font-bold">{link.label}</span>
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </div>
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-100/50 bg-white/80 px-4 pb-safe pt-1 md:hidden backdrop-blur-xl">
+        <div className="mx-auto flex max-w-lg items-center justify-around h-14 relative">
+          
+          {links.slice(0, 2).map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center justify-center gap-1 nav-transition ${
+                  isActive ? 'text-success' : 'text-slate-400'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span className={`material-symbols-outlined text-[22px] ${isActive ? 'icon-fill' : 'icon-outline'}`}>{link.icon}</span>
+                  <span className="text-[9px] font-medium tracking-tight uppercase">{link.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
 
-          <div className="relative -top-6">
+          <div className="flex-shrink-0 relative -top-3 px-2">
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-success text-white shadow-lg shadow-success/30 active:scale-90 transition-transform"
+              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-success to-emerald-600 text-white shadow-lg shadow-success/30 active:scale-90 nav-transition"
             >
-              <span className="material-symbols-outlined text-3xl font-bold">add</span>
+              <span className="material-symbols-outlined text-[28px] font-light">add</span>
             </button>
           </div>
 
-          <div className="flex flex-1 justify-around">
-            {links.slice(2).map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                className={({ isActive }) =>
-                  `flex flex-col items-center gap-1 p-2 transition-all ${
-                    isActive ? 'text-primary' : 'text-slate-400'
-                  }`
-                }
-              >
-                {/* Fix: Use functional children to correctly access isActive scope */}
-                {({ isActive }) => (
-                  <>
-                    <span className={`material-symbols-outlined text-2xl ${isActive ? 'fill-1' : ''}`}>{link.icon}</span>
-                    <span className="text-[10px] font-bold">{link.label}</span>
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </div>
+          {links.slice(2).map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center justify-center gap-1 nav-transition ${
+                  isActive ? 'text-success' : 'text-slate-400'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span className={`material-symbols-outlined text-[22px] ${isActive ? 'icon-fill' : 'icon-outline'}`}>{link.icon}</span>
+                  <span className="text-[9px] font-medium tracking-tight uppercase">{link.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
         </div>
       </nav>
 

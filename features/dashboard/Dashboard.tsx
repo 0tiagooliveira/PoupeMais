@@ -17,7 +17,7 @@ import { NewTransactionModal, incomeCategories, expenseCategories } from './comp
 import { NewAccountModal } from './components/NewAccountModal';
 import { NewCreditCardModal } from './components/NewCreditCardModal';
 import { NotificationsModal } from './components/NotificationsModal';
-import { Account, TransactionType } from '../../types';
+import { Account, TransactionType, Transaction } from '../../types';
 import { getIconByCategoryName } from '../../utils/categoryIcons';
 
 export const Dashboard: React.FC = () => {
@@ -37,6 +37,25 @@ export const Dashboard: React.FC = () => {
   const { accounts, addAccount, updateAccount, deleteAccount } = useAccounts();
   const { cards, addCard, deleteCard } = useCreditCards();
 
+  // Helper para identificar movimentações neutras (Pagamento de Fatura, Estornos)
+  // Essas transações não devem contar como "Receita" real.
+  const isNeutralIncome = (t: Transaction) => {
+    if (t.type !== 'income') return false;
+    const desc = t.description.toLowerCase();
+    const cat = t.category.toLowerCase();
+    
+    const isPayment = desc.includes('pagamento de cartão') || 
+                      desc.includes('fatura') || 
+                      cat.includes('pagamento de cartão');
+                      
+    const isRefund = desc.includes('estorno') || 
+                     cat.includes('estorno') || 
+                     desc.includes('reembolso') ||
+                     desc.includes('crédito de'); // Opcional: Reembolso às vezes é neutro
+
+    return isPayment || isRefund;
+  };
+
   const { totalIncome, totalExpenses, incomeCategoriesData, expenseCategoriesData, recentIncomes, recentExpenses } = useMemo(() => {
     let income = 0;
     let expenses = 0;
@@ -46,9 +65,15 @@ export const Dashboard: React.FC = () => {
     const sortedTrans = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     sortedTrans.forEach(t => {
+      // Ignora se estiver marcado como ignorado
+      if (t.isIgnored) return;
+
       if (t.type === 'income') {
-        income += t.amount;
-        incCatMap.set(t.category, (incCatMap.get(t.category) || 0) + t.amount);
+        // CORREÇÃO: Não soma pagamento de cartão ou estorno como receita
+        if (!isNeutralIncome(t)) {
+            income += t.amount;
+            incCatMap.set(t.category, (incCatMap.get(t.category) || 0) + t.amount);
+        }
       } else {
         expenses += t.amount;
         expCatMap.set(t.category, (expCatMap.get(t.category) || 0) + t.amount);
@@ -91,7 +116,7 @@ export const Dashboard: React.FC = () => {
       totalExpenses: expenses,
       incomeCategoriesData: mapToCategories(incCatMap, 'income'),
       expenseCategoriesData: mapToCategories(expCatMap, 'expense'),
-      recentIncomes: sortedTrans.filter(t => t.type === 'income').slice(0, 4),
+      recentIncomes: sortedTrans.filter(t => t.type === 'income' && !isNeutralIncome(t)).slice(0, 4),
       recentExpenses: sortedTrans.filter(t => t.type === 'expense').slice(0, 4)
     };
   }, [transactions]);

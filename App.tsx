@@ -12,6 +12,8 @@ import { ChartsPage } from './features/charts/ChartsPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { CategoriesPage } from './features/categories/CategoriesPage';
 import { CreditCardsPage } from './features/credit-cards/CreditCardsPage';
+import { AIAnalysisPage } from './features/ai/AIAnalysisPage';
+import { PricingPage } from './features/pricing/PricingPage';
 import { Layout } from './components/layout/Layout';
 
 const App: React.FC = () => {
@@ -31,9 +33,11 @@ const App: React.FC = () => {
                   <Route path="/incomes" element={<TransactionsPage title="Receitas" filterType="income" />} />
                   <Route path="/expenses" element={<TransactionsPage title="Despesas" filterType="expense" />} />
                   <Route path="/charts" element={<ChartsPage />} />
+                  <Route path="/ai-analysis" element={<AIAnalysisPage />} />
                   <Route path="/categories" element={<CategoriesPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/credit-cards" element={<CreditCardsPage />} />
+                  <Route path="/pricing" element={<PricingPage />} />
                </Route>
             </Route>
 
