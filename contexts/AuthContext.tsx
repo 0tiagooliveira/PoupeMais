@@ -17,9 +17,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userProfile = user as UserProfile;
         
         // HACK DE ACESSO TOTAL: 
-        // Se o usuário logado for o email de teste solicitado, 
+        // Se o usuário logado for um dos e-mails de teste solicitados, 
         // forçamos o status PRO para liberar todas as funcionalidades da IA e do SaaS.
-        if (user.email === 'teste@gmail.com') {
+        const email = user.email?.toLowerCase();
+        if (email === 'teste@gmail.com' || email === 'marisa@gmail.com') {
           userProfile.isPro = true;
         }
         

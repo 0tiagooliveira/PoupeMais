@@ -1,0 +1,22 @@
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Regra para a pasta de avatares
+    match /avatars/{userId}/{allPaths=**} {
+      
+      // Qualquer usuário autenticado pode visualizar as fotos de perfil
+      allow read: if request.auth != null;
+      
+      // Regras de escrita (Upload/Delete/Update)
+      allow write: if request.auth != null              // Usuário deve estar logado
+                   && request.auth.uid == userId        // O UID do logado deve ser o mesmo da pasta
+                   && request.resource.size < 5 * 1024 * 1024 // Limite de 5MB
+                   && request.resource.contentType.matches('image/.*'); // Deve ser uma imagem
+    }
+    
+    // Bloqueio padrão para qualquer outro caminho não especificado
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

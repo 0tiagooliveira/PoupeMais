@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Transaction } from '../../../types';
 import { formatCurrency } from '../../../utils/formatters';
@@ -10,6 +11,7 @@ interface TransactionSummaryCardProps {
   transactions: Transaction[];
   onViewAll: () => void;
   onAdd: () => void;
+  onItemClick?: (transaction: Transaction) => void;
 }
 
 export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
@@ -17,7 +19,8 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
   total,
   transactions,
   onViewAll,
-  onAdd
+  onAdd,
+  onItemClick
 }) => {
   const isIncome = type === 'income';
   const colorClass = isIncome ? 'text-success' : 'text-danger';
@@ -64,25 +67,28 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
           transactions.map((t) => {
             const cat = getCategoryInfo(t.category);
             const isParcelado = t.totalInstallments && t.totalInstallments > 1;
+            const isIgnored = !!t.isIgnored;
+
             return (
-              <div 
+              <button 
                 key={t.id} 
-                className="group flex items-center justify-between rounded-[18px] border border-slate-50/50 bg-slate-50/30 p-3 hover:bg-slate-50 transition-all"
+                onClick={() => onItemClick?.(t)}
+                className={`group flex w-full items-center justify-between rounded-[18px] border border-slate-50/50 bg-slate-50/30 p-3 hover:bg-slate-50 transition-all text-left active:scale-[0.98] ${isIgnored ? 'opacity-50' : ''}`}
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div 
-                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[12px] shadow-sm transition-transform group-hover:scale-105 ${themeBg} ${colorClass}`}
+                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[12px] shadow-sm transition-transform group-hover:scale-105 ${isIgnored ? 'bg-slate-200 text-slate-400' : `${themeBg} ${colorClass}`}`}
                   >
                     <span className="material-symbols-outlined text-lg">
-                      {cat.icon}
+                      {isIgnored ? 'visibility_off' : cat.icon}
                     </span>
                   </div>
                   <div className="flex flex-col overflow-hidden">
                     <div className="flex items-center gap-1">
-                      <span className="truncate text-xs font-bold text-slate-700 leading-tight">
+                      <span className={`truncate text-xs font-bold leading-tight ${isIgnored ? 'text-slate-400 line-through decoration-slate-400 decoration-2' : 'text-slate-700'}`}>
                         {t.description}
                       </span>
-                      {isParcelado && (
+                      {isParcelado && !isIgnored && (
                         <span className={`text-[8px] font-bold px-1 rounded bg-white/50 border border-slate-100 ${colorClass}`}>
                           {t.installmentNumber}/{t.totalInstallments}
                         </span>
@@ -94,11 +100,11 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
                   </div>
                 </div>
                 <div className="text-right ml-2">
-                    <span className={`text-xs font-bold tracking-tight ${colorClass}`}>
+                    <span className={`text-xs font-bold tracking-tight ${isIgnored ? 'text-slate-400 line-through' : colorClass}`}>
                        {formatCurrency(t.amount)}
                     </span>
                 </div>
-              </div>
+              </button>
             );
           })
         )}

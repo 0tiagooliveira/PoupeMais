@@ -19,6 +19,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   const [photoURL, setPhotoURL] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -30,37 +31,79 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser) return;
+    if (!file) return;
+
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      addNotification('Sessão expirada. Faça login novamente.', 'error');
+      return;
+    }
     
-    // Validação de Tamanho (5MB)
+    // Validações básicas de arquivo
     if (file.size > 5 * 1024 * 1024) {
       addNotification('A imagem deve ter no máximo 5MB.', 'error');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
+    if (!file.type.startsWith('image/')) {
+      addNotification('Selecione um arquivo de imagem válido.', 'error');
+      return;
+    }
+
     setUploading(true);
+    setUploadProgress(1); // Força 1% para mostrar que começou
+
     try {
-      const storageRef = storage.ref();
-      const fileName = `profile_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-      const fileRef = storageRef.child(`avatars/${currentUser.uid}/${fileName}`);
+      const fileExtension = file.name.split('.').pop() || 'png';
+      const fileName = `profile_${firebaseUser.uid}_${Date.now()}.${fileExtension}`;
+      const fileRef = storage.ref().child(`avatars/${firebaseUser.uid}/${fileName}`);
       
-      // Iniciando upload
-      const uploadTask = await fileRef.put(file);
-      const url = await uploadTask.ref.getDownloadURL();
+      const metadata = { contentType: file.type };
       
-      setPhotoURL(url);
-      addNotification('Foto processada! Clique em salvar para aplicar.', 'success');
-    } catch (error: any) {
-      console.error("Erro no upload:", error);
-      let errorMsg = 'Erro ao enviar a foto. Verifique sua conexão.';
-      if (error.code === 'storage/unauthorized') errorMsg = 'Sem permissão para upload. Contate o suporte.';
-      
-      addNotification(errorMsg, 'error');
-    } finally {
+      // O uso do objeto File diretamente é geralmente mais estável para o SDK gerenciar o stream
+      const uploadTask = fileRef.put(file, metadata);
+
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(Math.max(1, Math.round(progress)));
+        },
+        (error: any) => {
+          console.error("Erro no upload Storage:", error);
+          setUploading(false);
+          setUploadProgress(0);
+          
+          let errorMsg = 'Erro no envio da imagem.';
+          if (error.code === 'storage/unauthorized') {
+            errorMsg = 'Permissão negada no servidor. Verifique as regras de segurança.';
+          } else if (error.code === 'storage/retry-limit-exceeded') {
+            errorMsg = 'Falha na conexão. Verifique sua internet.';
+          }
+          
+          addNotification(errorMsg, 'error');
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        },
+        async () => {
+          try {
+            const url = await uploadTask.snapshot.ref.getDownloadURL();
+            setPhotoURL(url);
+            addNotification('Foto enviada!', 'success', 2000);
+          } catch (err) {
+            addNotification('Erro ao processar imagem final.', 'error');
+          } finally {
+            setUploading(false);
+            setUploadProgress(0);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+          }
+        }
+      );
+    } catch (err) {
+      console.error("Erro ao iniciar upload:", err);
       setUploading(false);
-      // Limpa o input para permitir selecionar o mesmo arquivo novamente se necessário
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setUploadProgress(0);
+      addNotification('Erro ao preparar arquivo.', 'error');
     }
   };
 
@@ -72,27 +115,28 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) return;
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      addNotification('Usuário não autenticado.', 'error');
+      return;
+    }
     
     setLoading(true);
     try {
-      const firebaseUser = auth.currentUser;
-      if (firebaseUser) {
-        await firebaseUser.updateProfile({
-          displayName: name,
-          photoURL: photoURL
-        });
-        
-        addNotification('Perfil atualizado com sucesso!', 'success');
-        onClose();
-        // Recarregar para garantir que o AuthContext e a UI reflitam a mudança globalmente
+      await firebaseUser.updateProfile({
+        displayName: name.trim(),
+        photoURL: photoURL
+      });
+      
+      addNotification('Perfil atualizado com sucesso!', 'success', 2000);
+      
+      setTimeout(() => {
         window.location.reload(); 
-      } else {
-        throw new Error("Usuário não autenticado no Firebase.");
-      }
-    } catch (error) {
+      }, 1000);
+      
+    } catch (error: any) {
       console.error("Erro ao salvar perfil:", error);
-      addNotification('Erro ao salvar as alterações.', 'error');
+      addNotification('Erro ao atualizar dados do perfil.', 'error');
     } finally {
       setLoading(false);
     }
@@ -103,37 +147,46 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       <div className="mb-8 flex flex-col items-center">
         <div 
           onClick={handleAvatarClick}
-          className={`relative group cursor-pointer ${uploading ? 'pointer-events-none' : ''}`}
+          className={`relative group cursor-pointer transition-transform active:scale-95 ${uploading ? 'pointer-events-none' : ''}`}
         >
           <div className={`h-32 w-32 overflow-hidden rounded-full border-4 transition-all duration-300 shadow-xl flex items-center justify-center bg-slate-50
-            ${uploading ? 'border-success animate-pulse' : 'border-slate-100 group-hover:border-primary group-hover:scale-[1.02]'}`}
+            ${uploading ? 'border-primary' : 'border-white group-hover:border-primary/40'}`}
           >
             {uploading ? (
-               <div className="flex flex-col items-center gap-2">
-                 <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
-                 <span className="text-[10px] font-black text-primary uppercase tracking-tighter">Enviando...</span>
+               <div className="flex flex-col items-center justify-center">
+                 <div className="relative h-14 w-14 flex items-center justify-center">
+                    <svg className="absolute h-full w-full -rotate-90" viewBox="0 0 36 36">
+                        <circle cx="18" cy="18" r="16" fill="none" stroke="#f1f5f9" strokeWidth="4" />
+                        <circle 
+                            cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="4" 
+                            strokeDasharray={`${uploadProgress}, 100`}
+                            className="text-primary transition-all duration-500 stroke-round"
+                        />
+                    </svg>
+                    <span className="text-[12px] font-black text-primary">{uploadProgress}%</span>
+                 </div>
+                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-1">Enviando</p>
                </div>
             ) : (
               <img 
                 src={photoURL || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
                 alt="Foto de Perfil" 
-                className={`h-full w-full object-cover transition-opacity ${uploading ? 'opacity-30' : 'group-hover:opacity-60'}`}
+                className={`h-full w-full object-cover transition-opacity ${uploading ? 'opacity-20' : 'group-hover:opacity-80'}`}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
                 }}
               />
             )}
             
-            {/* Hover Overlay */}
             {!uploading && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                 <span className="material-symbols-outlined text-white text-4xl">add_a_photo</span>
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/10 opacity-0 transition-opacity group-hover:opacity-100">
+                 <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
               </div>
             )}
           </div>
           
-          <div className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-lg border-2 border-white transition-transform group-hover:scale-110">
-            <span className="material-symbols-outlined text-xl">camera_alt</span>
+          <div className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-lg border-2 border-white">
+            <span className="material-symbols-outlined text-lg">add_a_photo</span>
           </div>
         </div>
         
@@ -141,24 +194,19 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           type="file" 
           ref={fileInputRef} 
           onChange={handleFileChange} 
-          accept="image/png, image/jpeg, image/jpg" 
+          accept="image/*" 
           className="hidden" 
         />
         
-        <button 
-          type="button" 
-          onClick={handleAvatarClick} 
-          disabled={uploading}
-          className="mt-4 text-xs font-black text-primary hover:underline uppercase tracking-widest disabled:opacity-50"
-        >
-          {uploading ? 'Processando imagem...' : 'Trocar foto de perfil'}
-        </button>
+        <p className="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+          {uploading ? 'Aguarde o processamento...' : 'Clique para alterar a foto'}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <Input 
-          label="Seu nome" 
-          placeholder="Como quer ser chamado?" 
+          label="Nome de exibição" 
+          placeholder="Seu nome" 
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -169,10 +217,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
         <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
           <div className="flex items-center gap-2 mb-1">
             <span className="material-symbols-outlined text-primary text-sm">info</span>
-            <p className="text-[10px] font-black text-primary uppercase tracking-widest">Informação</p>
+            <p className="text-[10px] font-black text-primary uppercase tracking-widest">Dica</p>
           </div>
           <p className="text-[11px] font-medium text-slate-500 leading-snug">
-            Sua foto de perfil ajuda na identificação rápida em extratos e notificações. Use uma imagem clara de até 5MB.
+            Ao clicar em alterar, seu navegador poderá solicitar acesso à câmera ou galeria de fotos.
           </p>
         </div>
 

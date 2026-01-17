@@ -14,6 +14,7 @@ import { CategoriesPage } from './features/categories/CategoriesPage';
 import { CreditCardsPage } from './features/credit-cards/CreditCardsPage';
 import { AIAnalysisPage } from './features/ai/AIAnalysisPage';
 import { PricingPage } from './features/pricing/PricingPage';
+import { StatementImportPage } from './features/import/StatementImportPage';
 import { Layout } from './components/layout/Layout';
 
 const App: React.FC = () => {
@@ -38,6 +39,7 @@ const App: React.FC = () => {
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/credit-cards" element={<CreditCardsPage />} />
                   <Route path="/pricing" element={<PricingPage />} />
+                  <Route path="/import-statement" element={<StatementImportPage />} />
                </Route>
             </Route>
 
