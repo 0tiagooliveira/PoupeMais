@@ -14,7 +14,6 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Função para remover campos undefined que o Firebase rejeita
   const sanitize = (obj: any) => {
     const clean = { ...obj };
     Object.keys(clean).forEach(key => {
@@ -33,26 +32,19 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
     let endQueryDate: Date;
 
     if (viewMode === 'year') {
-      // Começo do ano (Jan 1)
       startQueryDate = new Date(currentDate.getFullYear(), 0, 1);
       startQueryDate.setHours(0, 0, 0, 0);
-      
-      // Fim do ano (Dec 31)
       endQueryDate = new Date(currentDate.getFullYear(), 11, 31);
       endQueryDate.setHours(23, 59, 59, 999);
     } else {
-      // Lógica original mensal
       startQueryDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       startQueryDate.setHours(0, 0, 0, 0);
-
       endQueryDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
       endQueryDate.setHours(23, 59, 59, 999);
     }
 
-    // Margem de segurança para timezone
     const queryStart = new Date(startQueryDate);
     queryStart.setDate(queryStart.getDate() - 1);
-
     const queryEnd = new Date(endQueryDate);
     queryEnd.setDate(queryEnd.getDate() + 1);
 
@@ -127,11 +119,8 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
 
         batch.set(newTransRef, payload);
 
-        // Só atualiza saldo se não for ignorado
-        if (instanceStatus === 'completed' && !isNaN(data.amount) && !data.isIgnored) {
+        if (instanceStatus === 'completed' && !isNaN(data.amount) && !data.isIgnored && data.accountId) {
             const accountRef = userRef.collection('accounts').doc(data.accountId);
-            // Verifica existência apenas se for uma nova transação simples, mas como é create, assumimos que usuário selecionou conta existente na UI.
-            // Para robustez em add, o ideal também seria checar, mas o erro relatado foi em update.
             batch.update(accountRef, {
                 balance: firebase.firestore.FieldValue.increment(data.type === 'income' ? data.amount : -data.amount)
             });
@@ -150,12 +139,9 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
     if (!oldDoc.exists) throw new Error("Transação não encontrada");
     const oldData = oldDoc.data() as Transaction;
 
-    // 1. Reverter saldo antigo (apenas se não era ignorada)
     if (oldData.status === 'completed' && oldData.accountId && !isNaN(oldData.amount) && !oldData.isIgnored) {
         const oldAccountRef = userRef.collection('accounts').doc(oldData.accountId);
         const oldAccountDoc = await oldAccountRef.get();
-        
-        // CORREÇÃO: Só tenta atualizar se a conta ainda existir
         if (oldAccountDoc.exists) {
             batch.update(oldAccountRef, {
                 balance: firebase.firestore.FieldValue.increment(oldData.type === 'income' ? -oldData.amount : oldData.amount)
@@ -163,12 +149,9 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
         }
     }
 
-    // 2. Aplicar novo saldo (apenas se não for ignorada)
     if (newData.status === 'completed' && newData.accountId && !isNaN(newData.amount) && !newData.isIgnored) {
         const newAccountRef = userRef.collection('accounts').doc(newData.accountId);
         const newAccountDoc = await newAccountRef.get();
-        
-        // CORREÇÃO: Só tenta atualizar se a conta ainda existir
         if (newAccountDoc.exists) {
             batch.update(newAccountRef, {
                  balance: firebase.firestore.FieldValue.increment(newData.type === 'income' ? newData.amount : -newData.amount)
@@ -192,12 +175,9 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
     const batch = db.batch();
     batch.delete(transRef);
 
-    // Reverter saldo apenas se não era ignorada
     if (data.status === 'completed' && data.accountId && !isNaN(data.amount) && !data.isIgnored) {
         const accountRef = userRef.collection('accounts').doc(data.accountId);
         const accountDoc = await accountRef.get();
-        
-        // CORREÇÃO: Só tenta atualizar se a conta ainda existir
         if (accountDoc.exists) {
             batch.update(accountRef, {
                 balance: firebase.firestore.FieldValue.increment(data.type === 'income' ? -data.amount : data.amount)

@@ -72,7 +72,7 @@ export const StatementImportPage: React.FC = () => {
   const processStatement = async () => {
     if (!file || !currentUser) return;
     if (!currentUser.isPro) {
-      addNotification("Funcionalidade exclusiva para usuários PRO.", "info");
+      addNotification("Funcionalidade exclusiva para usuários PRO.", "info", 5000, false);
       return;
     }
 
@@ -134,7 +134,7 @@ export const StatementImportPage: React.FC = () => {
       addNotification(`${results.length} transações processadas com sucesso!`, "success");
     } catch (err) {
       console.error("AI processing error:", err);
-      addNotification("Não conseguimos ler este arquivo. Tente outro formato.", "error");
+      addNotification("Não conseguimos ler este arquivo. Tente outro formato ou imagem mais clara.", "error", 5000, false);
     } finally {
       setIsProcessing(false);
     }
@@ -148,12 +148,15 @@ export const StatementImportPage: React.FC = () => {
 
   const saveTransactions = async () => {
     if (!selectedAccountId) {
-      addNotification("Selecione uma conta para destino.", "warning");
+      addNotification("Selecione uma conta para destino dos lançamentos.", "warning", 3000, false);
       return;
     }
 
     const toSave = detectedTransactions.filter(t => t.selected);
-    if (toSave.length === 0) return;
+    if (toSave.length === 0) {
+        addNotification("Selecione ao menos uma transação.", "warning", 3000, false);
+        return;
+    }
 
     setIsSaving(true);
     try {
@@ -190,7 +193,8 @@ export const StatementImportPage: React.FC = () => {
       setPreviewUrl(null);
       setStep(1);
     } catch (err) {
-      addNotification("Erro ao salvar dados no banco.", "error");
+      console.error("Save error:", err);
+      addNotification("Erro ao salvar dados no banco.", "error", 5000, false);
     } finally {
       setIsSaving(false);
     }

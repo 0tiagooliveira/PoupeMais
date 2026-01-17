@@ -18,23 +18,23 @@ export const StatCard: React.FC<StatCardProps> = ({ type, value, onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className="group cursor-pointer rounded-[32px] border border-slate-50 bg-white p-5 shadow-sm transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+      className="group cursor-pointer rounded-[32px] border border-slate-50 bg-white p-5 shadow-sm transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] overflow-hidden"
     >
       {/* Top row with label and small arrow */}
       <div className="mb-4 flex items-center justify-between">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+        <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">{label}</span>
         <span className="material-symbols-outlined text-slate-200 text-sm transition-colors group-hover:text-slate-400">arrow_forward</span>
       </div>
       
       {/* Content row with icon and value */}
-      <div className="flex items-center gap-4">
-         {/* Squircle Icon Container */}
-         <div className={`flex h-14 w-12 items-center justify-center rounded-[20px] text-white shadow-sm shadow-black/5 transition-transform group-hover:scale-105 ${iconBg}`}>
+      <div className="flex items-center gap-3">
+         {/* Circle Icon Container - Fixed size and flex-shrink-0 to prevent distortion */}
+         <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white shadow-sm shadow-black/5 transition-transform group-hover:scale-105 ${iconBg}`}>
             <span className="material-symbols-outlined text-2xl font-bold">{icon}</span>
          </div>
          
-         <div className="flex flex-col">
-            <span className={`text-2xl font-bold tracking-tighter ${colorClass}`}>
+         <div className="flex flex-1 flex-col overflow-hidden">
+            <span className={`text-xl sm:text-2xl font-black tracking-tighter truncate ${colorClass}`}>
               {formatCurrency(value)}
             </span>
          </div>
