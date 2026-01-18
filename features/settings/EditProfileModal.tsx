@@ -46,22 +46,24 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
+    // Validação de tipo mais flexível
+    if (!file.type.startsWith('image/') && file.type !== '') {
       addNotification('Selecione um arquivo de imagem válido.', 'error');
       return;
     }
 
     setUploading(true);
-    setUploadProgress(1); // Força 1% para mostrar que começou
+    setUploadProgress(1);
 
     try {
       const fileExtension = file.name.split('.').pop() || 'png';
+      // Nome único para evitar cache agressivo do navegador na mesma URL
       const fileName = `profile_${firebaseUser.uid}_${Date.now()}.${fileExtension}`;
       const fileRef = storage.ref().child(`avatars/${firebaseUser.uid}/${fileName}`);
       
-      const metadata = { contentType: file.type };
+      // Garante content type mesmo se o navegador não identificar
+      const metadata = { contentType: file.type || 'image/png' };
       
-      // O uso do objeto File diretamente é geralmente mais estável para o SDK gerenciar o stream
       const uploadTask = fileRef.put(file, metadata);
 
       uploadTask.on(
@@ -77,9 +79,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           
           let errorMsg = 'Erro no envio da imagem.';
           if (error.code === 'storage/unauthorized') {
-            errorMsg = 'Permissão negada no servidor. Verifique as regras de segurança.';
+            errorMsg = 'Permissão negada. Verifique se você está logado.';
           } else if (error.code === 'storage/retry-limit-exceeded') {
             errorMsg = 'Falha na conexão. Verifique sua internet.';
+          } else if (error.code === 'storage/canceled') {
+            errorMsg = 'Envio cancelado.';
           }
           
           addNotification(errorMsg, 'error');
@@ -89,9 +93,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           try {
             const url = await uploadTask.snapshot.ref.getDownloadURL();
             setPhotoURL(url);
-            addNotification('Foto enviada!', 'success', 2000);
+            addNotification('Foto enviada! Clique em Salvar para confirmar.', 'success', 3000);
           } catch (err) {
-            addNotification('Erro ao processar imagem final.', 'error');
+            addNotification('Erro ao obter link da imagem.', 'error');
           } finally {
             setUploading(false);
             setUploadProgress(0);
@@ -130,6 +134,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       
       addNotification('Perfil atualizado com sucesso!', 'success', 2000);
       
+      // Pequeno delay para garantir que o usuário veja a notificação antes do reload
       setTimeout(() => {
         window.location.reload(); 
       }, 1000);

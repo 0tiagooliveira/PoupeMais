@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -44,7 +45,6 @@ interface AIInsight {
   title: string;
   description: string;
   impact: 'high' | 'medium' | 'low';
-  type: 'saving' | 'warning' | 'opportunity';
 }
 
 interface StructuredAnalysis {
@@ -52,14 +52,8 @@ interface StructuredAnalysis {
   scoreReasons: string[];
   headline: string;
   summary: string;
-  savingsPotential: number;
   financialTip: string;
-  topInsights: AIInsight[];
-  recommendedActionPlan: string[];
-  emergencyFundStatus: { monthsCovered: number; status: string; advice: string };
-  vulnerabilities: { category: string; riskLevel: string; observation: string }[];
-  investmentPotential: { description: string; expectedReturn: string };
-  updatedAt: string;
+  vulnerabilities: { category: string; observation: string }[];
   periodLabel: string;
 }
 
@@ -78,22 +72,17 @@ const THINKING_STEPS = [
 ];
 
 const PRESET_QUESTIONS = [
-  { id: 'save', text: 'Como posso reduzir meus gastos?', icon: 'savings', color: 'bg-emerald-50 text-emerald-600' },
-  { id: 'emergency', text: 'Meu fundo de reserva está seguro?', icon: 'shield_person', color: 'bg-blue-50 text-blue-600' },
-  { id: 'invest', text: 'Onde investir o saldo atual?', icon: 'trending_up', color: 'bg-purple-50 text-purple-600' },
-  { id: 'fixed', text: 'Gastos fixos estão altos?', icon: 'home_repair_service', color: 'bg-slate-50 text-slate-600' },
-  { id: 'risks', text: 'Quais os maiores riscos?', icon: 'warning', color: 'bg-rose-50 text-rose-600' },
+  { id: 'save', text: 'Como posso reduzir meus gastos?', icon: 'savings' },
+  { id: 'emergency', text: 'Meu fundo de reserva está seguro?', icon: 'shield_person' },
+  { id: 'invest', text: 'Onde investir o saldo atual?', icon: 'trending_up' },
+  { id: 'fixed', text: 'Gastos fixos estão altos?', icon: 'home_repair_service' },
 ];
-
-const IMPACT_MAP: Record<string, { label: string, color: string, bg: string }> = {
-  high: { label: 'Crítico', color: 'text-rose-600', bg: 'bg-rose-100' },
-  medium: { label: 'Atenção', color: 'text-amber-600', bg: 'bg-amber-100' },
-  low: { label: 'Sugestão', color: 'text-slate-500', bg: 'bg-slate-100' }
-};
 
 export const AIAnalysisPage: React.FC = () => {
   const { currentUser } = useAuth();
   const { addNotification } = useNotification();
+  const location = useLocation();
+  const navigate = useNavigate(); // Hook de navegação adicionado
   const chatEndRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   
@@ -116,6 +105,7 @@ export const AIAnalysisPage: React.FC = () => {
 
   const isPro = currentUser?.isPro || false;
 
+  // Carregar dados e checar contexto de foco
   useEffect(() => {
     if (!currentUser) return;
     
@@ -130,6 +120,18 @@ export const AIAnalysisPage: React.FC = () => {
         if (analysisDoc.exists) {
           setAnalysis(analysisDoc.data() as StructuredAnalysis);
         }
+
+        // Se o usuário veio de um clique específico (ex: categoria ou transação), iniciamos a análise focada
+        if (location.state?.focusItem) {
+          const item = location.state.focusItem;
+          const type = location.state.focusType;
+          const label = type === 'transaction' ? (item as Transaction).description : (item as CategoryData).name;
+          
+          // Pequeno delay para garantir que os stats do período base foram carregados (mesmo que parciais)
+          setTimeout(() => {
+             handleAskQuestion(`Analise este item específico: ${label}. Contexto: valor ${formatCurrency(item.amount || (item as Transaction).amount)}, tipo ${type}. Dê um conselho de CFO sobre isso.`);
+          }, 500);
+        }
       } catch (e) {
         console.error("Erro ao carregar dados:", e);
       } finally {
@@ -143,7 +145,7 @@ export const AIAnalysisPage: React.FC = () => {
   useEffect(() => {
     let interval: any;
     if (isGenerating || isAsking) {
-      interval = setInterval(() => setThinkingStep(p => (p + 1) % THINKING_STEPS.length), 2000);
+      interval = setInterval(() => setThinkingStep(p => (p + 1) % THINKING_STEPS.length), 1500);
     }
     return () => clearInterval(interval);
   }, [isGenerating, isAsking]);
@@ -152,26 +154,20 @@ export const AIAnalysisPage: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAsking]);
 
-  const handleSpeech = async () => {
-    if (!analysis || isSpeaking) return;
+  const generateAndPlayAudio = async (textToRead: string) => {
+    if (isSpeaking || !textToRead) return;
     setIsSpeaking(true);
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const promptText = `Leia este relatório financeiro de forma executiva e clara: 
-      Título: ${analysis.headline}. 
-      Resumo: ${analysis.summary}. 
-      Dica do especialista: ${analysis.financialTip}. 
-      Saúde financeira nota ${analysis.healthScore}.`;
-
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: promptText }] }],
+        contents: [{ parts: [{ text: textToRead }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
+              prebuiltVoiceConfig: { voiceName: 'Kore' }, // Tom calmo e profissional
             },
           },
         },
@@ -183,6 +179,8 @@ export const AIAnalysisPage: React.FC = () => {
           audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
         }
         const ctx = audioContextRef.current;
+        if (ctx.state === 'suspended') await ctx.resume();
+
         const audioBuffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
         const source = ctx.createBufferSource();
         source.buffer = audioBuffer;
@@ -193,54 +191,10 @@ export const AIAnalysisPage: React.FC = () => {
         setIsSpeaking(false);
       }
     } catch (e) {
+      console.error("Erro ao gerar áudio", e);
       setIsSpeaking(false);
     }
   };
-
-  const isExcludedFromRevenue = (t: Transaction) => {
-    const desc = (t.description || '').toLowerCase();
-    const cat = (t.category || '').toLowerCase();
-    // Rigor máximo: Pagamento de cartão NUNCA é receita
-    const keywords = ['pagamento de cartão', 'fatura', 'cartão de crédito', 'nubank', 'itau', 'bradesco', 'santander', 'card payment', 'estorno', 'reembolso fatura', 'credito fatura'];
-    return keywords.some(key => desc.includes(key) || cat.includes(key)) || cat.includes('transferência');
-  };
-
-  const periodStats = useMemo(() => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-
-    const filtered = allTransactions.filter(t => {
-      const d = new Date(t.date);
-      return d >= start && d <= end && !t.isIgnored;
-    });
-
-    let income = 0;
-    let expense = 0;
-    const incMap = new Map<string, number>();
-    const expMap = new Map<string, number>();
-
-    filtered.forEach(t => {
-      if (t.type === 'income') {
-        if (!isExcludedFromRevenue(t)) {
-            income += t.amount;
-            incMap.set(t.category, (incMap.get(t.category) || 0) + t.amount);
-        }
-      } else {
-        expense += t.amount;
-        expMap.set(t.category, (expMap.get(t.category) || 0) + t.amount);
-      }
-    });
-
-    const toCategoryData = (map: Map<string, number>, type: 'income' | 'expense'): CategoryData[] => {
-      const palette = type === 'income' ? ['#21C25E', '#10B981', '#059669'] : ['#EF4444', '#F43F5E', '#E11D48'];
-      return Array.from(map.entries()).map(([name, amount], i) => ({
-          id: name, name, amount, color: palette[i % palette.length], icon: getIconByCategoryName(name)
-      })).sort((a, b) => b.amount - a.amount);
-    };
-
-    return { income, expense, incomeCats: toCategoryData(incMap, 'income'), expenseCats: toCategoryData(expMap, 'expense'), label: `${new Intl.DateTimeFormat('pt-BR').format(start)} a ${new Intl.DateTimeFormat('pt-BR').format(end)}` };
-  }, [allTransactions, startDate, endDate]);
 
   const handleAskQuestion = async (text: string) => {
     const question = text || inputMessage;
@@ -252,24 +206,29 @@ export const AIAnalysisPage: React.FC = () => {
 
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        // Usamos os stats calculados do período atual como contexto
         const context = {
             periodo: periodStats.label,
             totalGanhos: formatCurrency(periodStats.income),
             totalGastos: formatCurrency(periodStats.expense),
             balanço: formatCurrency(periodStats.income - periodStats.expense),
-            maioresGastos: periodStats.expenseCats.slice(0, 5).map(c => `${c.name}: ${formatCurrency(c.amount)}`),
-            saudeNota: analysis?.healthScore || 'Não calculada'
+            maioresGastos: periodStats.expenseCats.slice(0, 3).map(c => `${c.name}: ${formatCurrency(c.amount)}`)
         };
 
         const response = await ai.models.generateContent({
             model: 'gemini-3-pro-preview',
-            contents: [{ parts: [{ text: `CONTEXTO FINANCEIRO: ${JSON.stringify(context)}. PERGUNTA DO USUÁRIO: "${question}". Responda de forma curta, prática e direta em português.` }] }],
+            contents: [{ parts: [{ text: `CONTEXTO FINANCEIRO DO USUÁRIO: ${JSON.stringify(context)}. PERGUNTA: "${question}". Responda como o Mentor CFO do Poup+, de forma prática, curta e incentivadora em português.` }] }],
             config: {
-                systemInstruction: "Você é o Mentor Financeiro do Poup+. Use o contexto para dar respostas personalizadas. Nunca trate pagamentos de fatura como ganho financeiro.",
+                systemInstruction: "Você é o Mentor CFO do Poup+. Sua linguagem é sofisticada mas acessível. Nunca ignore o contexto dos gastos reais do usuário fornecidos.",
             }
         });
 
-        setMessages(prev => [...prev, { role: 'assistant', content: response.text || "Não consegui analisar isso agora.", timestamp: new Date() }]);
+        const reply = response.text || "Não consegui processar sua dúvida agora.";
+        setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
+        
+        // Auto-play the answer
+        generateAndPlayAudio(reply);
+
     } catch (e) {
         addNotification("Erro na consultoria.", "error");
     } finally {
@@ -297,10 +256,10 @@ export const AIAnalysisPage: React.FC = () => {
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
-        contents: [{ parts: [{ text: `Gere diagnóstico executivo: ${JSON.stringify(promptData)}` }] }],
+        contents: [{ parts: [{ text: `Gere um diagnóstico CFO rigoroso baseado neste cenário: ${JSON.stringify(promptData)}` }] }],
         config: {
           responseMimeType: "application/json",
-          systemInstruction: "CFO Poup+. JSON rigoroso. Regra de ouro: Pagamentos de fatura são despesas, nunca ganhos.",
+          systemInstruction: "CFO do Poup+. Retorne JSON estrito. Regra de ouro: Pagamentos de fatura são despesas reais de caixa, não ignore o impacto. headline deve ser curta e forte.",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -309,7 +268,6 @@ export const AIAnalysisPage: React.FC = () => {
               headline: { type: Type.STRING },
               summary: { type: Type.STRING },
               financialTip: { type: Type.STRING },
-              topInsights: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING }, impact: { type: Type.STRING } } } },
               vulnerabilities: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { category: { type: Type.STRING }, observation: { type: Type.STRING } } } },
             }
           }
@@ -321,218 +279,328 @@ export const AIAnalysisPage: React.FC = () => {
       await db.collection('users').doc(currentUser!.uid).collection('ai_analysis').doc('latest').set(parsed);
       setAnalysis(parsed);
       addNotification('Auditoria concluída!', 'success');
+      
+      // Auto-play diagnostic com estrutura rica e detalhada
+      const topCategoriesText = periodStats.expenseCats.slice(0, 3)
+        .map(c => `${c.name}: ${formatCurrency(c.amount)}`)
+        .join('. ');
+
+      const vulnerabilitiesText = parsed.vulnerabilities
+        .map((v: any) => `${v.category}. ${v.observation}`)
+        .join('. ');
+
+      const diagnosticText = `
+        Relatório Poup+ Intelligence Gerado. ${parsed.headline}.
+        
+        Fluxo Auditoria Reais: Entradas Brutas de ${formatCurrency(periodStats.income)}. Saídas Totais de ${formatCurrency(periodStats.expense)}.
+        
+        Mapeamento de Gastos. As maiores categorias foram: ${topCategoriesText}.
+        
+        Pulo do Gato: "${parsed.financialTip}".
+        
+        Vulnerabilidades de Caixa detectadas: ${vulnerabilitiesText}.
+        
+        Sua nota de saúde financeira é ${parsed.healthScore}.
+      `.replace(/\s+/g, ' ').trim();
+
+      generateAndPlayAudio(diagnosticText);
+
     } catch (e) { 
-      addNotification('Falha ao processar dados.', 'error');
+      addNotification('Falha ao processar auditoria.', 'error');
     } finally { 
       setIsGenerating(false); 
     }
   };
 
+  const periodStats = useMemo(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const filtered = allTransactions.filter(t => {
+      const d = new Date(t.date);
+      return d >= start && d <= end && !t.isIgnored;
+    });
+
+    let income = 0;
+    let expense = 0;
+    const expMap = new Map<string, number>();
+
+    filtered.forEach(t => {
+      if (t.type === 'income') income += t.amount;
+      else {
+        expense += t.amount;
+        expMap.set(t.category, (expMap.get(t.category) || 0) + t.amount);
+      }
+    });
+
+    const expenseCats = Array.from(expMap.entries()).map(([name, amount], i) => ({
+      id: name, name, amount, color: ['#EF4444', '#F43F5E', '#E11D48'][i % 3], icon: getIconByCategoryName(name)
+    })).sort((a, b) => b.amount - a.amount);
+
+    return { income, expense, expenseCats, label: `${start.toLocaleDateString('pt-BR')} a ${end.toLocaleDateString('pt-BR')}` };
+  }, [allTransactions, startDate, endDate]);
+
+  // Função para navegar para as transações filtradas ao clicar no gráfico da IA
+  const handleCategoryClick = (category: CategoryData) => {
+    navigate('/expenses', { 
+      state: { 
+        category: category.name, 
+        type: 'expense'
+      } 
+    });
+  };
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center p-32 space-y-6">
       <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-100 border-t-primary"></div>
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizando Auditoria...</p>
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizando IA...</p>
     </div>
   );
 
   return (
-    <div className="space-y-8 pb-32 max-w-7xl mx-auto px-2 lg:px-6">
+    <div className="space-y-10 pb-32 max-w-7xl mx-auto px-2 lg:px-6 animate-in fade-in duration-700">
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tighter flex items-center gap-2">
+        <div className="space-y-1">
+          <h2 className="text-4xl font-black text-slate-800 tracking-tighter flex items-center gap-3">
             Poup+ <span className="text-primary italic">Intelligence</span>
           </h2>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Inteligência Estratégica</p>
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.25em]">Consultoria Estratégica Premium</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[24px] shadow-sm border border-slate-100">
-           <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase ml-2">Início</span>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-50 border-none rounded-xl text-xs font-bold p-2 outline-none focus:ring-1 focus:ring-primary/20" />
+        <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-[32px] shadow-sm border border-slate-100">
+           <div className="flex items-center gap-3 px-2">
+              <span className="text-[10px] font-black text-slate-300 uppercase">Período</span>
+              <div className="flex items-center gap-1 bg-slate-50 rounded-2xl px-3 py-2 border border-slate-100/50 focus-within:border-primary/30 transition-all">
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent border-none text-xs font-bold text-slate-600 outline-none w-28" />
+                <span className="text-slate-300 mx-1">—</span>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent border-none text-xs font-bold text-slate-600 outline-none w-28" />
+              </div>
            </div>
-           <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase">Fim</span>
-              {/* FIXED: added arrow function parameter 'e' to the onChange handler */}
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-50 border-none rounded-xl text-xs font-bold p-2 outline-none focus:ring-1 focus:ring-primary/20" />
-           </div>
-           <Button onClick={handleGenerate} disabled={isGenerating || !isPro} className="rounded-xl font-bold bg-slate-900 text-white px-6 h-10 shadow-xl hover:scale-105 transition-all">
+           <Button 
+                onClick={handleGenerate} 
+                disabled={isGenerating || !isPro} 
+                className="rounded-2xl font-black uppercase tracking-widest text-[10px] bg-primary hover:bg-emerald-600 text-white px-8 h-12 shadow-xl shadow-primary/20 hover:scale-[1.03] active:scale-[0.97] transition-all"
+           >
                 {isGenerating ? 'Analisando...' : 'Gerar Diagnóstico'}
             </Button>
         </div>
       </header>
 
-      <section className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
-        <div className="flex items-center gap-3 mb-6 px-2">
-            <div className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white">
-                <span className="material-symbols-outlined text-xl">psychology</span>
+      {/* CFO CONSULTANCY SECTION */}
+      <section className="bg-white rounded-[40px] p-8 border border-emerald-100 shadow-2xl shadow-primary/5 overflow-hidden flex flex-col min-h-[500px]">
+        <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-[22px] bg-primary flex items-center justify-center text-white shadow-xl shadow-primary/30">
+                    <span className="material-symbols-outlined text-3xl font-light">savings</span>
+                </div>
+                <div>
+                    <h4 className="text-xl font-black text-slate-800 tracking-tight">Consultoria CFO</h4>
+                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">Mentor Digital Ativo</p>
+                </div>
             </div>
-            <div>
-                <h4 className="text-sm font-black text-slate-800 tracking-tight">Consultoria CFO Poup+</h4>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Atendimento Premium</p>
-            </div>
+            {isSpeaking && (
+                <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full animate-pulse">
+                   <span className="material-symbols-outlined text-primary text-sm">volume_up</span>
+                   <span className="text-[10px] font-black text-primary uppercase">IA falando...</span>
+                </div>
+            )}
         </div>
         
-        <div className="flex-1 overflow-y-auto max-h-[400px] mb-6 space-y-6 px-2 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto max-h-[400px] mb-8 space-y-6 px-4 custom-scrollbar">
             {messages.length === 0 && !isAsking && (
-                <div className="text-center py-12">
-                    <p className="text-xs text-slate-400 font-medium">Use os botões rápidos ou pergunte algo específico abaixo.</p>
+                <div className="text-center py-20">
+                    <div className="inline-flex h-20 w-20 items-center justify-center rounded-[32px] bg-slate-50 text-slate-300 mb-6">
+                       <span className="material-symbols-outlined text-4xl">chat_bubble</span>
+                    </div>
+                    <p className="text-sm text-slate-400 font-bold max-w-xs mx-auto">Tire dúvidas sobre seus gastos específicos ou peça estratégias de economia.</p>
                 </div>
             )}
             
             {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2`}>
-                    <div className={`max-w-[85%] p-4 rounded-3xl ${m.role === 'user' ? 'bg-slate-100 text-slate-800 rounded-tr-none' : 'bg-slate-900 text-white rounded-tl-none shadow-xl'}`}>
-                        <p className="text-xs leading-relaxed whitespace-pre-wrap">{m.content}</p>
-                        <span className={`text-[8px] mt-2 block opacity-40 uppercase font-bold`}>{m.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <div className={`max-w-[85%] p-5 rounded-[30px] ${m.role === 'user' ? 'bg-slate-100 text-slate-800 rounded-tr-none' : 'bg-primary text-white rounded-tl-none shadow-2xl shadow-primary/10'}`}>
+                        <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                        <span className={`text-[9px] mt-3 block opacity-40 uppercase font-black`}>{m.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                     </div>
                 </div>
             ))}
             
             {isAsking && (
                 <div className="flex justify-start">
-                    <div className="bg-slate-900 text-white p-4 rounded-3xl rounded-tl-none flex flex-col gap-2">
-                         <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce delay-100"></div>
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce delay-200"></div>
+                    <div className="bg-primary text-white p-5 rounded-[30px] rounded-tl-none flex flex-col gap-3 shadow-2xl shadow-primary/10">
+                         <div className="flex gap-1.5">
+                            <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-150"></div>
+                            <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-300"></div>
                          </div>
-                         <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">{THINKING_STEPS[thinkingStep]}</p>
+                         <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100/80">{THINKING_STEPS[thinkingStep]}</p>
                     </div>
                 </div>
             )}
             <div ref={chatEndRef} />
         </div>
 
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-6">
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-8">
             {PRESET_QUESTIONS.map((q) => (
-                <button key={q.id} onClick={() => handleAskQuestion(q.text)} disabled={isAsking || !isPro} className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary/30 transition-all text-xs font-bold text-slate-700 active:scale-95 disabled:opacity-50">
-                    <span className={`material-symbols-outlined text-lg ${q.color.split(' ')[1]}`}>{q.icon}</span>
+                <button key={q.id} onClick={() => handleAskQuestion(q.text)} disabled={isAsking || !isPro} className="flex-shrink-0 flex items-center gap-3 px-6 py-3 rounded-2xl bg-emerald-50 border border-emerald-100 hover:border-primary hover:bg-white hover:shadow-xl transition-all text-xs font-black text-primary active:scale-95 disabled:opacity-50">
+                    <span className="material-symbols-outlined text-xl">{q.icon}</span>
                     {q.text}
                 </button>
             ))}
         </div>
 
-        <div className="relative">
+        <div className="relative group">
             <input 
                 type="text" 
                 value={inputMessage} 
                 onChange={e => setInputMessage(e.target.value)} 
                 onKeyDown={e => e.key === 'Enter' && handleAskQuestion(inputMessage)}
-                placeholder="Ex: Como economizar R$ 500 no próximo mês?" 
-                className="w-full bg-slate-100 rounded-2xl py-4 pl-6 pr-14 text-xs font-bold text-slate-800 outline-none border border-transparent focus:bg-white focus:border-slate-200 focus:shadow-sm transition-all"
+                placeholder="Pergunte qualquer coisa ao CFO..." 
+                className="w-full bg-slate-50 rounded-[28px] py-5 pl-8 pr-16 text-sm font-bold text-slate-800 outline-none border-2 border-transparent focus:bg-white focus:border-primary/20 focus:shadow-2xl transition-all selection:bg-primary/20"
             />
             <button 
                 onClick={() => handleAskQuestion(inputMessage)}
                 disabled={isAsking || !inputMessage.trim() || !isPro}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg active:scale-90 disabled:opacity-50 transition-all"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 h-12 w-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-xl active:scale-90 disabled:opacity-50 transition-all hover:bg-emerald-600"
             >
-                <span className="material-symbols-outlined">send</span>
+                <span className="material-symbols-outlined text-2xl">send</span>
             </button>
         </div>
       </section>
 
       {isGenerating ? (
-        <div className="bg-white rounded-[40px] p-20 text-center border border-slate-100 shadow-xl animate-in zoom-in-95">
-          <div className="relative h-24 w-24 mx-auto mb-8">
-             <div className="absolute inset-0 rounded-full border-4 border-slate-200 border-t-primary animate-spin"></div>
+        <div className="bg-white rounded-[40px] p-24 text-center border border-emerald-100 shadow-2xl animate-in zoom-in-95">
+          <div className="relative h-32 w-32 mx-auto mb-10">
+             <div className="absolute inset-0 rounded-full border-[6px] border-slate-100 border-t-primary animate-spin"></div>
              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="material-symbols-outlined text-4xl text-primary animate-pulse">analytics</span>
+                <span className="material-symbols-outlined text-5xl text-primary animate-pulse font-light">analytics</span>
              </div>
           </div>
-          <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2">Processando Auditoria</h3>
-          <p className="text-slate-400 font-medium">{THINKING_STEPS[thinkingStep]}</p>
+          <h3 className="text-3xl font-black text-slate-800 tracking-tighter mb-4">Gerando Auditoria</h3>
+          <p className="text-primary font-black uppercase text-[11px] tracking-[0.3em]">{THINKING_STEPS[thinkingStep]}</p>
         </div>
       ) : analysis ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-12 duration-1000">
           
           <div className="lg:col-span-8 space-y-8">
-            <div className="bg-slate-900 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden">
-                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-                    <div className="relative h-32 w-32 flex-shrink-0">
-                        <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-                            <circle cx="18" cy="18" r="16" fill="none" stroke="#ffffff10" strokeWidth="3" />
-                            <circle cx="18" cy="18" r="16" fill="none" stroke={(analysis?.healthScore ?? 0) > 60 ? '#21C25E' : '#FF4444'} strokeWidth="3" strokeDasharray={`${analysis?.healthScore ?? 0}, 100`} strokeLinecap="round" className="transition-all duration-1000" />
+            {/* PREMIUM DIAGNOSTIC CARD */}
+            <div className="bg-gradient-to-br from-emerald-900 via-emerald-950 to-slate-900 rounded-[50px] p-10 text-white shadow-[0_35px_60px_-15px_rgba(33,194,94,0.15)] relative overflow-hidden group border border-white/5">
+                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] pointer-events-none transition-transform group-hover:scale-125 duration-[2000ms]"></div>
+                <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-white/5 rounded-full blur-[60px] pointer-events-none"></div>
+                
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
+                    <div className="relative h-44 w-44 flex-shrink-0">
+                        <svg className="h-full w-full -rotate-90 filter drop-shadow-[0_0_15px_rgba(33,194,94,0.3)]" viewBox="0 0 36 36">
+                            <circle cx="18" cy="18" r="16" fill="none" stroke="#ffffff08" strokeWidth="3" />
+                            <circle cx="18" cy="18" r="16" fill="none" stroke="#21C25E" strokeWidth="3" strokeDasharray={`${analysis?.healthScore ?? 0}, 100`} strokeLinecap="round" className="transition-all duration-[2000ms] ease-out" />
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-black">{analysis?.healthScore ?? '--'}</span>
-                            <span className="text-[8px] font-bold opacity-40 uppercase">Nota</span>
+                            <span className="text-5xl font-black tracking-tighter text-white drop-shadow-2xl">{analysis?.healthScore ?? '--'}</span>
+                            <span className="text-[10px] font-black opacity-40 uppercase tracking-[0.2em] mt-1">Health Score</span>
                         </div>
                     </div>
-                    <div className="flex-1 text-center md:text-left">
-                        <div className="flex items-center justify-center md:justify-start gap-4 mb-2">
-                           <span className="text-[10px] font-black bg-white/10 px-3 py-1 rounded-full uppercase tracking-widest">{analysis?.periodLabel || periodStats.label}</span>
+                    <div className="flex-1 text-center md:text-left space-y-4">
+                        <div className="flex items-center justify-center md:justify-start gap-4">
+                           <span className="text-[10px] font-black bg-white/5 border border-white/10 px-5 py-2 rounded-full uppercase tracking-widest text-emerald-100/60 shadow-inner">Período: {analysis?.periodLabel}</span>
                            <button 
-                            onClick={handleSpeech}
-                            className={`flex items-center gap-2 px-3 py-1 rounded-full border border-white/20 transition-all ${isSpeaking ? 'bg-success text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                             onClick={() => generateAndPlayAudio(
+                               `Relatório Poup+ Intelligence. ${analysis.headline}. Fluxo Auditoria Reais: Entradas Brutas de ${formatCurrency(periodStats.income)}. Saídas Totais de ${formatCurrency(periodStats.expense)}. Mapeamento de Gastos: As maiores categorias foram: ${periodStats.expenseCats.slice(0, 3).map(c => `${c.name}: ${formatCurrency(c.amount)}`).join('. ')}. Pulo do Gato: ${analysis.financialTip}. Vulnerabilidades de Caixa: ${analysis.vulnerabilities.map(v => `${v.category}. ${v.observation}`).join('. ')}. Nota de saúde: ${analysis.healthScore}.`
+                             )}
+                             className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white hover:bg-emerald-400 transition-all shadow-xl shadow-primary/20 ${isSpeaking ? 'animate-pulse scale-110' : ''}`}
                            >
-                             <span className={`material-symbols-outlined text-sm ${isSpeaking ? 'animate-pulse' : ''}`}>{isSpeaking ? 'volume_up' : 'play_circle'}</span>
-                             <span className="text-[10px] font-black uppercase tracking-widest">{isSpeaking ? 'Ouvindo...' : 'Ouvir Relatório'}</span>
+                             <span className="material-symbols-outlined text-xl">{isSpeaking ? 'volume_up' : 'play_arrow'}</span>
                            </button>
                         </div>
-                        <h3 className="text-2xl font-black leading-tight mb-3">{analysis?.headline}</h3>
-                        <p className="text-sm text-slate-400 leading-relaxed mb-4">{analysis?.summary}</p>
-                        <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                        <h3 className="text-4xl font-black leading-[1.1] tracking-tighter text-white drop-shadow-2xl">{analysis?.headline}</h3>
+                        <p className="text-base text-emerald-100/70 leading-relaxed font-bold max-w-xl">{analysis?.summary}</p>
+                        <div className="flex flex-wrap justify-center md:justify-start gap-3 pt-4">
                             {(analysis?.scoreReasons ?? []).map((r, i) => (
-                                <span key={i} className="text-[9px] font-black uppercase tracking-widest bg-white/10 px-3 py-1 rounded-lg border border-white/5">{r}</span>
+                                <span key={i} className="text-[10px] font-black uppercase tracking-widest bg-emerald-700/30 text-emerald-200 px-4 py-2.5 rounded-2xl border border-emerald-600/20 backdrop-blur-sm shadow-sm">{r}</span>
                             ))}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <CategoryChartCard title="Origens de Receita (Real)" type="income" categories={periodStats.incomeCats} total={periodStats.income} />
-                <CategoryChartCard title="Centros de Despesa" type="expense" categories={periodStats.expenseCats} total={periodStats.expense} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-xl shadow-slate-200/40">
+                   <h4 className="text-[11px] font-black text-slate-300 uppercase tracking-[0.2em] mb-8 px-1">Fluxo Auditoria Reais</h4>
+                   <div className="space-y-6">
+                      <div className="group flex justify-between items-center p-6 bg-emerald-50/40 rounded-[30px] border border-emerald-100/50 hover:bg-emerald-50 transition-all">
+                         <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><span className="material-symbols-outlined">trending_up</span></div>
+                            <span className="text-xs font-black text-emerald-800 uppercase tracking-tight">Entradas Brutas</span>
+                         </div>
+                         <span className="text-xl font-black text-primary tracking-tighter">{formatCurrency(periodStats.income)}</span>
+                      </div>
+                      <div className="group flex justify-between items-center p-6 bg-rose-50/40 rounded-[30px] border border-rose-100/50 hover:bg-rose-50 transition-all">
+                         <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 rounded-xl bg-danger/10 text-danger flex items-center justify-center"><span className="material-symbols-outlined">trending_down</span></div>
+                            <span className="text-xs font-black text-rose-800 uppercase tracking-tight">Saídas Totais</span>
+                         </div>
+                         <span className="text-xl font-black text-danger tracking-tighter">{formatCurrency(periodStats.expense)}</span>
+                      </div>
+                   </div>
+                </div>
+                {/* Gráfico Interativo com navegação */}
+                <CategoryChartCard 
+                    title="Mapeamento de Gastos" 
+                    type="expense" 
+                    categories={periodStats.expenseCats} 
+                    total={periodStats.expense}
+                    onCategoryClick={handleCategoryClick} 
+                />
             </div>
           </div>
 
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-emerald-50 rounded-[32px] p-6 border border-emerald-100 shadow-sm">
-                <div className="flex items-start gap-4">
-                   <div className="h-10 w-10 rounded-2xl bg-success flex items-center justify-center text-white shrink-0">
-                      <span className="material-symbols-outlined text-lg">lightbulb</span>
+          <div className="lg:col-span-4 space-y-8">
+            <div className="bg-primary rounded-[40px] p-8 text-white shadow-2xl shadow-primary/30 relative overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span className="material-symbols-outlined text-[150px] rotate-12">lightbulb</span>
+                </div>
+                <div className="flex flex-col gap-6 relative z-10">
+                   <div className="h-14 w-14 rounded-[20px] bg-white flex items-center justify-center text-primary shrink-0 shadow-2xl">
+                      <span className="material-symbols-outlined text-3xl font-light">tips_and_updates</span>
                    </div>
-                   <div className="flex-1">
-                      <h4 className="text-sm font-black text-emerald-900 mb-1">Dica de Ouro</h4>
-                      <p className="text-xs text-emerald-800 font-medium leading-relaxed italic">"{analysis?.financialTip}"</p>
+                   <div>
+                      <h4 className="text-[11px] font-black text-emerald-900/60 uppercase tracking-[0.2em] mb-2">Pulo do Gato</h4>
+                      <p className="text-lg text-white font-black leading-tight italic tracking-tight">"{analysis?.financialTip}"</p>
                    </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Raio-X Real</h4>
+            <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-xl shadow-slate-200/40">
+                <h4 className="text-[11px] font-black text-slate-300 uppercase tracking-[0.2em] mb-8">Vulnerabilidades de Caixa</h4>
                 <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/30">
-                       <span className="text-xs font-bold text-slate-600">Receitas Reais</span>
-                       <span className="text-sm font-black text-success">{formatCurrency(periodStats.income)}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-rose-50/50 rounded-2xl border border-rose-100/30">
-                       <span className="text-xs font-bold text-slate-600">Despesas Totais</span>
-                       <span className="text-sm font-black text-danger">{formatCurrency(periodStats.expense)}</span>
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-50">
-                        <p className="text-[10px] font-black text-slate-400 uppercase mb-4">Vulnerabilidades</p>
-                        <div className="space-y-3">
-                            {(analysis?.vulnerabilities ?? []).map((v, i) => (
-                                <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                      <p className="text-[11px] font-bold text-slate-700 leading-tight mb-0.5">{v?.category}</p>
-                                      <p className="text-[9px] text-slate-400 leading-snug">{v?.observation}</p>
-                                </div>
-                            ))}
+                    {(analysis?.vulnerabilities ?? []).map((v, i) => (
+                        <div key={i} className="p-6 bg-slate-50 rounded-[30px] border border-slate-100 hover:bg-white hover:border-primary/20 hover:shadow-2xl transition-all group">
+                              <p className="text-sm font-black text-slate-800 leading-tight mb-2 flex items-center gap-3">
+                                <span className="w-2.5 h-2.5 rounded-full bg-danger animate-pulse"></span>
+                                {v?.category}
+                              </p>
+                              <p className="text-[11px] text-slate-500 font-bold leading-relaxed">{v?.observation}</p>
                         </div>
-                    </div>
+                    ))}
+                    {analysis?.vulnerabilities.length === 0 && (
+                        <div className="text-center py-6">
+                            <span className="material-symbols-outlined text-primary text-4xl mb-2">verified</span>
+                            <p className="text-xs font-black text-slate-400 uppercase">Fluxo Saudável</p>
+                        </div>
+                    )}
                 </div>
             </div>
           </div>
         </div>
       ) : (
-        <div className="text-center py-24 bg-white rounded-[40px] border border-slate-100">
-           <span className="material-symbols-outlined text-6xl text-slate-200 mb-6">insights</span>
-           <h3 className="text-xl font-bold text-slate-800 mb-2">Diagnóstico Estratégico</h3>
-           <p className="text-sm text-slate-400 max-w-sm mx-auto mb-8 font-medium">Selecione as datas acima e clique em "Gerar Diagnóstico" para iniciar a auditoria PRO.</p>
-           <Button onClick={handleGenerate} className="rounded-2xl font-bold bg-primary text-white px-12 py-4 shadow-xl shadow-success/20">
-              Iniciar Auditoria com IA
+        <div className="text-center py-32 bg-white rounded-[50px] border border-emerald-50 shadow-2xl shadow-primary/5">
+           <div className="inline-flex h-24 w-24 items-center justify-center rounded-[36px] bg-emerald-50 text-primary mb-8 shadow-inner">
+              <span className="material-symbols-outlined text-5xl font-light">analytics</span>
+           </div>
+           <h3 className="text-3xl font-black text-slate-800 mb-4 tracking-tighter">Pronto para a Auditoria?</h3>
+           <p className="text-base text-slate-400 max-w-sm mx-auto mb-12 font-bold leading-relaxed">Clique no botão abaixo para que o Poup+ Intelligence analise suas movimentações reais.</p>
+           <Button onClick={handleGenerate} className="rounded-[24px] font-black uppercase tracking-[0.2em] text-[11px] bg-primary hover:bg-emerald-600 text-white px-16 py-6 shadow-[0_20px_40px_-10px_rgba(33,194,94,0.3)] transition-all hover:scale-[1.05] active:scale-[0.95]">
+              Iniciar Auditoria Pro
            </Button>
         </div>
       )}

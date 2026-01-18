@@ -40,12 +40,12 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
   [categories, hoveredId]);
 
   return (
-    <Card className="!p-6 border-none shadow-sm relative group">
-      <h3 className={`mb-6 text-lg font-black tracking-tight ${type === 'expense' ? 'text-rose-500' : 'text-slate-700'}`}>
+    <Card className="!p-6 border-none shadow-sm relative group overflow-hidden">
+      <h3 className={`mb-6 text-lg font-black tracking-tight truncate ${type === 'expense' ? 'text-rose-500' : 'text-slate-700'}`}>
         {title}
       </h3>
       
-      <div className="flex flex-col items-center gap-8 md:flex-row">
+      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
         <div className="relative flex-shrink-0">
           <svg 
             width={size} height={size} 
@@ -89,14 +89,14 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
           </svg>
           
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-            <span className={`text-xl font-black leading-none tracking-tighter ${textColor}`}>
+            <span className={`text-lg sm:text-xl font-black leading-none tracking-tighter ${textColor}`}>
               {formatCurrency(total).replace(',00', '')}
             </span>
             <span className="mt-1 text-[9px] font-black text-slate-300 uppercase tracking-widest">Total</span>
           </div>
         </div>
 
-        <div className="flex-1 space-y-4 w-full">
+        <div className="flex-1 w-full min-w-0 space-y-3">
           {categories.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 text-slate-300">
                <span className="material-symbols-outlined text-4xl opacity-20 mb-2">pie_chart</span>
@@ -116,18 +116,18 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
                   onMouseLeave={() => setHoveredId(null)}
                 >
                   <div 
-                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:rotate-6"
+                    className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:rotate-6"
                     style={{ backgroundColor: `${cat.color}15`, color: cat.color }}
                   >
-                    <span className="material-symbols-outlined text-lg">{cat.icon}</span>
+                    <span className="material-symbols-outlined text-base sm:text-lg">{cat.icon}</span>
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-end mb-1">
-                      <span className="text-xs font-bold text-slate-700 truncate">{cat.name}</span>
-                      <div className="text-right">
-                        <span className="text-[11px] font-black text-slate-800 block leading-tight">{formatCurrency(cat.amount)}</span>
-                        <span className="text-[9px] font-black text-slate-300">{percentage.toFixed(1)}%</span>
+                      <span className="text-xs font-bold text-slate-700 truncate mr-2">{cat.name}</span>
+                      <div className="text-right flex-shrink-0">
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-800 block leading-tight">{formatCurrency(cat.amount)}</span>
+                        <span className="text-[8px] sm:text-[9px] font-black text-slate-300">{percentage.toFixed(1)}%</span>
                       </div>
                     </div>
                     <div className="h-1.5 w-full rounded-full bg-slate-50 overflow-hidden border border-slate-100/50">
@@ -148,7 +148,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
                <span className="material-symbols-outlined text-xl">{hoveredCat.icon}</span>
              </div>
              <div>
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none mb-1">{hoveredCat.name}</p>
+                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none mb-1 max-w-[100px] truncate">{hoveredCat.name}</p>
                 <div className="flex items-baseline gap-2">
                    <span className="text-sm font-black text-white">{formatCurrency(hoveredCat.amount)}</span>
                    <span className="text-[10px] font-black text-white/60">{((hoveredCat.amount / total) * 100).toFixed(1)}%</span>

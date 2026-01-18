@@ -15,18 +15,19 @@ export const MobileNav: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
+  // Links da esquerda (antes do botão +)
   const mainLinks = [
     { to: '/', icon: 'home', label: 'Início' },
-    { to: '/ai-analysis', icon: 'psychology', label: 'Poup IA' },
+    { to: '/transactions', icon: 'receipt_long', label: 'Extrato' },
   ];
 
+  // Links do menu secundário (modal)
   const menuLinks = [
-    { to: '/transactions', icon: 'receipt_long', label: 'Transações', desc: 'Histórico completo de lançamentos' },
-    { to: '/credit-cards', icon: 'credit_card', label: 'Cartões', desc: 'Faturas e limites de crédito' },
-    { to: '/charts', icon: 'bar_chart', label: 'Análise', desc: 'Gráficos e visão anual' },
-    { to: '/categories', icon: 'category', label: 'Categorias', desc: 'Gerencie suas categorias' },
+    { to: '/ai-analysis', icon: 'savings', label: 'Poup IA', desc: 'Inteligência Artificial', pro: true },
+    { to: '/charts', icon: 'bar_chart', label: 'Análise', desc: 'Gráficos e relatórios' },
+    { to: '/credit-cards', icon: 'credit_card', label: 'Cartões', desc: 'Faturas e limites' },
     { to: '/pricing', icon: 'verified', label: 'Plano PRO', desc: 'Benefícios exclusivos', pro: true },
-    { to: '/settings', icon: 'settings', label: 'Ajustes', desc: 'Perfil e importação de dados' },
+    { to: '/settings', icon: 'settings', label: 'Ajustes', desc: 'Perfil e configurações' },
   ];
 
   return (
@@ -62,13 +63,22 @@ export const MobileNav: React.FC = () => {
             </button>
           </div>
 
-          <button
-            onClick={() => navigate('/charts')}
-            className={`flex flex-1 flex-col items-center justify-center gap-1 nav-transition text-slate-400`}
+          {/* Link direto para Categorias na direita */}
+          <NavLink
+            to="/categories"
+            className={({ isActive }) =>
+              `flex flex-1 flex-col items-center justify-center gap-1 nav-transition ${
+                isActive ? 'text-success' : 'text-slate-400'
+              }`
+            }
           >
-            <span className="material-symbols-outlined text-[22px] icon-outline">bar_chart</span>
-            <span className="text-[9px] font-bold tracking-tight uppercase">Análise</span>
-          </button>
+            {({ isActive }) => (
+              <>
+                <span className={`material-symbols-outlined text-[22px] ${isActive ? 'icon-fill' : 'icon-outline'}`}>category</span>
+                <span className="text-[9px] font-bold tracking-tight uppercase">Categorias</span>
+              </>
+            )}
+          </NavLink>
 
           <button
             onClick={() => setIsMenuOpen(true)}

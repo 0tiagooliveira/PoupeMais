@@ -63,17 +63,17 @@ export const PricingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl">
+      {/* Hero Section - UPDATED TO VIBRANT PRIMARY GREEN */}
+      <div className="bg-gradient-to-br from-primary via-[#2ed46f] to-emerald-700 rounded-[50px] p-10 md:p-16 text-white relative overflow-hidden shadow-[0_30px_60px_-12px_rgba(33,194,94,0.25)] border border-white/10">
           <div className="relative z-10 max-w-2xl">
-            <h3 className="text-3xl md:text-4xl font-black tracking-tighter mb-4">
-              Desbloqueie o poder da <span className="text-success">Inteligência Artificial</span>.
+            <h3 className="text-4xl md:text-5xl font-black tracking-tighter mb-6 leading-[1.1]">
+              Desbloqueie o poder da <span className="text-emerald-950/60 italic">Inteligência Artificial</span>.
             </h3>
-            <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-0">
+            <p className="text-emerald-950 font-bold text-base md:text-lg leading-relaxed mb-0 opacity-70">
               O Poup+ PRO não apenas rastreia seus gastos, ele ensina você a economizar usando modelos de linguagem avançados treinados para o mercado brasileiro.
             </p>
           </div>
-          <span className="material-symbols-outlined absolute -right-12 -bottom-12 text-white/5 text-[260px] rotate-12 pointer-events-none">auto_awesome</span>
+          <span className="material-symbols-outlined absolute -right-16 -bottom-16 text-white/10 text-[320px] rotate-12 pointer-events-none">auto_awesome</span>
       </div>
 
       {/* Pricing Cards */}

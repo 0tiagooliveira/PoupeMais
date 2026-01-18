@@ -90,8 +90,8 @@ export const SettingsPage: React.FC = () => {
         <div className="divide-y divide-slate-50">
           <SettingItem 
             icon="document_scanner" 
-            label="Escanear Extrato (Bradesco)" 
-            description="Use a IA para importar fotos ou PDFs" 
+            label="Importação Universal (IA)" 
+            description="Envie fotos de recibos, extratos em PDF/CSV ou cole mensagens" 
             onClick={() => navigate('/import-statement')} 
             pro
           />

@@ -1,6 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTransactions } from '../../hooks/useTransactions';
 import { Transaction, TransactionType, TransactionStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
@@ -8,6 +8,7 @@ import { MonthSelector } from '../dashboard/components/MonthSelector';
 import { useAccounts } from '../../hooks/useAccounts';
 import { BackButton } from '../../components/ui/BackButton';
 import { NewTransactionModal, incomeCategories, expenseCategories } from '../dashboard/components/NewTransactionModal';
+import { AutomationRulesModal } from '../automation/AutomationRulesModal';
 import { Button } from '../../components/ui/Button';
 
 interface TransactionsPageProps {
@@ -18,29 +19,52 @@ interface TransactionsPageProps {
 type SortOrder = 'desc' | 'asc';
 
 export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseTitle, filterType: initialFilterType }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { accountId } = useParams<{ accountId: string }>();
   const [currentDate, setCurrentDate] = useState(new Date());
   const { transactions, loading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(currentDate);
   const { accounts } = useAccounts();
   
-  // Estados de Filtro
+  // Estados de Filtro e Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [transactionForRule, setTransactionForRule] = useState<Transaction | null>(null);
+  
+  // Inicialização inteligente dos filtros baseada na navegação (location.state)
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(() => {
+    return location.state?.category || null;
+  });
+
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | 'all'>('all');
-  const [typeFilter, setTypeFilter] = useState<TransactionType | 'all'>(initialFilterType && initialFilterType !== 'credit_card' ? initialFilterType : 'all');
+  
+  const [typeFilter, setTypeFilter] = useState<TransactionType | 'all'>(() => {
+    if (location.state?.type) return location.state.type;
+    return initialFilterType && initialFilterType !== 'credit_card' ? initialFilterType : 'all';
+  });
+
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Limpa o state do location após o uso inicial para não interferir em navegações futuras na mesma sessão
+  useEffect(() => {
+    if (location.state) {
+      window.history.replaceState({}, document.title);
+    }
+  }, []);
 
   const selectedAccount = useMemo(() => {
     return accounts.find(a => a.id === accountId);
   }, [accounts, accountId]);
 
   const displayTitle = useMemo(() => {
+    if (selectedCategory) return `${selectedCategory}`;
     if (selectedAccount) return `Extrato: ${selectedAccount.name}`;
     return baseTitle;
-  }, [selectedAccount, baseTitle]);
+  }, [selectedCategory, selectedAccount, baseTitle]);
 
   const accountsMap = useMemo(() => {
     return accounts.reduce((acc, curr) => {
@@ -112,6 +136,15 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
       setIsModalOpen(true);
   };
 
+  const handleCreateRule = (e: React.MouseEvent | Transaction, transaction?: Transaction) => {
+    if ((e as React.MouseEvent).stopPropagation) {
+        (e as React.MouseEvent).stopPropagation();
+    }
+    const targetTransaction = transaction || (e as Transaction);
+    setTransactionForRule(targetTransaction);
+    setIsRuleModalOpen(true);
+  };
+
   const handleAddNew = () => {
     setEditingTransaction(null);
     setIsModalOpen(true);
@@ -133,7 +166,6 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
     return 'bg-gradient-to-br from-slate-700 to-slate-900';
   }, [typeFilter]);
 
-  // CORREÇÃO: Cor dinâmica para o chip ativo baseado no tipo de filtro
   const activeChipClass = useMemo(() => {
     if (typeFilter === 'expense') return 'bg-danger border-danger text-white shadow-md shadow-red-200';
     return 'bg-success border-success text-white shadow-md shadow-emerald-200';
@@ -147,15 +179,23 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
             <BackButton className="bg-white border border-slate-100 shadow-sm" />
             <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold tracking-tight text-slate-800">{displayTitle}</h2>
+                    <h2 className="text-xl font-bold tracking-tight text-slate-800 truncate max-w-[200px] sm:max-w-md">{displayTitle}</h2>
                 </div>
                 <p className="text-[10px] text-slate-400 font-bold tracking-tight uppercase">
-                  {selectedAccount ? `Instituição: ${selectedAccount.name}` : 'Histórico Consolidado'}
+                  {selectedCategory ? `Filtro por Categoria` : selectedAccount ? `Instituição: ${selectedAccount.name}` : 'Histórico Consolidado'}
                 </p>
             </div>
         </div>
         <div className="flex items-center gap-3">
             <MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} />
+            <button 
+                onClick={() => navigate('/import-statement')}
+                className="flex items-center gap-2 px-4 h-10 rounded-2xl bg-white text-slate-600 font-bold text-xs border border-slate-100 shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+                title="Importação Inteligente"
+            >
+                <span className="material-symbols-outlined text-lg">cloud_upload</span>
+                <span className="hidden sm:inline">Importar</span>
+            </button>
             <button 
                 onClick={handleAddNew}
                 className="flex h-10 w-10 items-center justify-center rounded-2xl bg-success text-white shadow-lg shadow-success/20 active:scale-90 transition-all"
@@ -289,32 +329,39 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
               
               return (
                 <div key={transaction.id} onClick={() => handleTransactionClick(transaction)} className={`group flex cursor-pointer items-center justify-between px-6 py-5 transition-all hover:bg-slate-50/80 ${isPending ? 'opacity-60 grayscale-[0.3]' : ''} ${transaction.isIgnored ? 'opacity-50' : ''}`}>
-                  <div className="flex items-center gap-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-[18px] shadow-sm transition-transform group-hover:scale-110 ${itemBg} ${itemColor}`}>
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[18px] shadow-sm transition-transform group-hover:scale-110 ${itemBg} ${itemColor}`}>
                       <span className="material-symbols-outlined text-2xl">{transaction.isIgnored ? 'visibility_off' : (isNeutral ? 'sync_alt' : cat.icon)}</span>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`font-bold text-sm leading-snug ${transaction.isIgnored ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{transaction.description}</p>
-                        {isPending && <span className="text-[8px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-widest">Pendente</span>}
-                        {isParcelado && <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border ${itemIsExpense ? 'bg-red-50 text-danger border-red-100' : 'bg-emerald-50 text-success border-emerald-100'}`}>{transaction.installmentNumber}/{transaction.totalInstallments}</span>}
+                        <p className={`font-bold text-sm leading-snug truncate ${transaction.isIgnored ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{transaction.description}</p>
+                        {isPending && <span className="text-[8px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-widest flex-shrink-0">Pendente</span>}
+                        {isParcelado && <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border flex-shrink-0 ${itemIsExpense ? 'bg-red-50 text-danger border-red-100' : 'bg-emerald-50 text-success border-emerald-100'}`}>{transaction.installmentNumber}/{transaction.totalInstallments}</span>}
                       </div>
                       <div className="mt-1 flex items-center gap-2 text-[10px] font-bold text-slate-400 tracking-tight">
-                        <span className="text-slate-500 uppercase">{new Date(transaction.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
-                        <span className="h-1 w-1 rounded-full bg-slate-200"></span>
-                        <span className="uppercase">{isNeutral ? 'Neutro' : transaction.category}</span>
-                        {!accountId && <><span className="h-1 w-1 rounded-full bg-slate-200"></span><div className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px] opacity-40">account_balance_wallet</span><span className="truncate max-w-[80px]">{accountsMap[transaction.accountId]}</span></div></>}
+                        <span className="text-slate-500 uppercase flex-shrink-0">{new Date(transaction.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-200 flex-shrink-0"></span>
+                        <span className="uppercase truncate">{isNeutral ? 'Neutro' : transaction.category}</span>
+                        {!accountId && <><span className="h-1 w-1 rounded-full bg-slate-200 flex-shrink-0"></span><div className="flex items-center gap-1 min-w-0"><span className="material-symbols-outlined text-[12px] opacity-40">account_balance_wallet</span><span className="truncate max-w-[80px]">{accountsMap[transaction.accountId]}</span></div></>}
                       </div>
                     </div>
                   </div>
-                  <div className="text-right"><span className={`text-base font-black tracking-tighter ${itemColor}`}>{isNeutral ? '' : (itemIsExpense ? '-' : '+')}{formatCurrency(transaction.amount)}</span></div>
+                  <div className="flex items-center gap-4 pl-2 flex-shrink-0">
+                     <div className="text-right"><span className={`text-base font-black tracking-tighter ${itemColor}`}>{isNeutral ? '' : (itemIsExpense ? '-' : '+')}{formatCurrency(transaction.amount)}</span></div>
+                     <button onClick={(e) => handleCreateRule(e, transaction)} className="h-8 w-8 rounded-xl bg-indigo-50 text-indigo-400 flex items-center justify-center hover:bg-indigo-100 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100" title="Criar regra inteligente">
+                        <span className="material-symbols-outlined text-base">auto_fix_high</span>
+                     </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
       </div>
-      <NewTransactionModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingTransaction(null); }} onSave={async (data) => { if (editingTransaction) await updateTransaction(editingTransaction.id, data); else await addTransaction(data); }} onDelete={deleteTransaction} accounts={accounts} transactionToEdit={editingTransaction} initialType={typeFilter !== 'all' ? typeFilter : 'expense'} />
+      
+      <NewTransactionModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingTransaction(null); }} onSave={async (data) => { if (editingTransaction) await updateTransaction(editingTransaction.id, data); else await addTransaction(data); }} onDelete={deleteTransaction} accounts={accounts} transactionToEdit={editingTransaction} initialType={typeFilter !== 'all' ? typeFilter : 'expense'} onCreateRule={(t) => { setIsModalOpen(false); handleCreateRule(t); }} />
+      <AutomationRulesModal isOpen={isRuleModalOpen} onClose={() => { setIsRuleModalOpen(false); setTransactionForRule(null); }} baseTransaction={transactionForRule} />
     </div>
   );
 };

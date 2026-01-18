@@ -118,6 +118,21 @@ export const RegisterPage: React.FC = () => {
           </div>
         )}
 
+        <Button 
+          type="button" 
+          variant="secondary" 
+          onClick={handleGoogleLogin} 
+          disabled={loading}
+          className="w-full mb-6 py-4 rounded-2xl border-gray-100 font-bold text-sm"
+        >
+          <img 
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+            alt="Google" 
+            className="mr-3 h-5 w-5" 
+          />
+          Cadastrar com Google
+        </Button>
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input label="Seu nome" type="text" placeholder="João da Silva" value={name} onChange={e => setName(e.target.value)} required icon="person" className="rounded-2xl" />
           <Input label="E-mail" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required icon="mail" className="rounded-2xl" />

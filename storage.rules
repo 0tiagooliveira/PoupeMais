@@ -7,11 +7,14 @@ service firebase.storage {
       // Qualquer usuário autenticado pode visualizar as fotos de perfil
       allow read: if request.auth != null;
       
-      // Regras de escrita (Upload/Delete/Update)
-      allow write: if request.auth != null              // Usuário deve estar logado
-                   && request.auth.uid == userId        // O UID do logado deve ser o mesmo da pasta
-                   && request.resource.size < 5 * 1024 * 1024 // Limite de 5MB
-                   && request.resource.contentType.matches('image/.*'); // Deve ser uma imagem
+      // Regras de escrita (Upload/Update)
+      allow create, update: if request.auth != null 
+                           && request.auth.uid == userId
+                           && request.resource.size < 10 * 1024 * 1024; // Limite de segurança no servidor
+                           
+      // Regra de exclusão separada (não verifica request.resource)
+      allow delete: if request.auth != null 
+                    && request.auth.uid == userId;
     }
     
     // Bloqueio padrão para qualquer outro caminho não especificado

@@ -7,10 +7,8 @@ import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { TransactionType, Account, Transaction, TransactionStatus, TransactionFrequency, Category } from '../../../types';
 import { useNotification } from '../../../contexts/NotificationContext';
 import { useCategories } from '../../../hooks/useCategories';
-import { useAccounts } from '../../../hooks/useAccounts';
 import { getIconByCategoryName } from '../../../utils/categoryIcons';
 import { BankLogo } from './AccountsList';
-import { NewAccountModal } from './NewAccountModal';
 
 interface NewTransactionModalProps {
   isOpen: boolean;
@@ -21,6 +19,7 @@ interface NewTransactionModalProps {
   transactionToEdit?: Transaction | null;
   initialType?: TransactionType;
   initialCategory?: string;
+  onCreateRule?: (transaction: Transaction) => void;
 }
 
 export const incomeCategories = [
@@ -76,7 +75,7 @@ export const expenseCategories = [
   { name: 'Vestiário', icon: 'checkroom', color: '#DB2777' },
   { name: 'Beleza', icon: 'face', color: '#F472B6' },
   { name: 'Carro', icon: 'local_gas_station', color: '#1E40AF' },
-  { name: 'Serviços', icon: 'miscellaneous_services', color: '#94A3B8' },
+  { name: 'Serviços', icon: 'home_repair_service', color: '#94A3B8' },
   { name: 'Outros', icon: 'more_horiz', color: '#94A3B8' }
 ];
 
@@ -88,12 +87,10 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   accounts,
   transactionToEdit,
   initialType = 'expense',
-  initialCategory = ''
+  initialCategory = '',
+  onCreateRule
 }) => {
   const { allCategories } = useCategories();
-  const { addAccount } = useAccounts();
-  const { addNotification } = useNotification();
-  
   const [type, setType] = useState<TransactionType>(initialType);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -110,25 +107,8 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const [isCategorySelectorOpen, setIsCategorySelectorOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isNewAccountModalOpen, setIsNewAccountModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // Garante que o accountId seja setado quando as contas carregarem pela primeira vez
-  useEffect(() => {
-    if (isOpen && accounts.length > 0 && !accountId && !transactionToEdit) {
-      setAccountId(accounts[0].id);
-    }
-  }, [isOpen, accounts, accountId, transactionToEdit]);
-
-  // Se uma nova conta for criada e for a única ou a última da lista, selecionamos ela
-  const prevAccountsLength = React.useRef(accounts.length);
-  useEffect(() => {
-    if (accounts.length > prevAccountsLength.current && !transactionToEdit) {
-       // Seleciona a conta mais recente (provavelmente a que acabou de ser criada)
-       setAccountId(accounts[accounts.length - 1].id);
-    }
-    prevAccountsLength.current = accounts.length;
-  }, [accounts, transactionToEdit]);
+  const { addNotification } = useNotification();
 
   useEffect(() => {
     if (isOpen) {
@@ -149,7 +129,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
         setAmount('');
         setDescription('');
         setCategory(initialCategory);
-        if (accounts.length > 0) setAccountId(accountId || accounts[0].id);
+        setAccountId(accounts.length > 0 ? accounts[0].id : '');
         setDate(new Date().toISOString().split('T')[0]);
         setStatus('completed');
         setIsFixed(false);
@@ -165,27 +145,8 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const cleanAmount = amount.replace(',', '.');
-    const numAmount = parseFloat(cleanAmount);
-    
-    if (isNaN(numAmount) || numAmount <= 0) {
-      addNotification('Informe um valor válido maior que zero.', 'warning', 3000, false);
-      return;
-    }
-    
-    if (!description.trim()) {
-      addNotification('Informe uma descrição para o lançamento.', 'warning', 3000, false);
-      return;
-    }
-
-    if (!accountId) {
-      addNotification('Selecione uma conta ou cartão.', 'warning', 3000, false);
-      return;
-    }
-
-    if (!category) {
-      addNotification('Selecione uma categoria.', 'warning', 3000, false);
+    if (!amount || !description || !accountId || !category) {
+      addNotification('Preencha valor, descrição, conta e categoria.', 'warning');
       return;
     }
 
@@ -193,8 +154,8 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
     try {
       await onSave({
         type,
-        amount: numAmount,
-        description: description.trim(),
+        amount: parseFloat(amount),
+        description,
         category,
         accountId,
         date: new Date(date).toISOString(),
@@ -205,11 +166,10 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
         repeatCount: isRecurring ? parseInt(repeatCount) : undefined,
         isIgnored
       });
-      addNotification(transactionToEdit ? 'Lançamento atualizado!' : 'Lançamento salvo com sucesso!', 'success');
+      addNotification(transactionToEdit ? 'Lançamento atualizado!' : 'Lançamento adicionado!', 'success');
       onClose();
     } catch (error) {
-      console.error("Save error:", error);
-      addNotification('Erro ao salvar. Verifique sua conexão com a internet.', 'error', 5000, false);
+      addNotification('Erro ao salvar.', 'error');
     } finally {
       setLoading(false);
     }
@@ -220,11 +180,11 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
     setLoading(true);
     try {
       await onDelete(transactionToEdit.id);
-      addNotification('Lançamento removido permanentemente.', 'info');
+      addNotification('Lançamento removido.', 'info');
       setIsDeleteModalOpen(false);
       onClose();
     } catch (error) {
-      addNotification('Erro ao excluir registro.', 'error', 5000, false);
+      addNotification('Erro ao excluir.', 'error');
     } finally {
       setLoading(false);
     }
@@ -244,176 +204,161 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const themeBorder = type === 'expense' ? 'border-red-200' : 'border-emerald-200';
 
   return (
-    <>
-      <Modal isOpen={isOpen} onClose={onClose} title={transactionToEdit ? 'Editar Lançamento' : 'Novo Lançamento'}>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6 pt-2 relative">
-          {isCategorySelectorOpen && (
-            <div className="absolute inset-0 z-20 bg-surface flex flex-col animate-in slide-in-from-right duration-300">
-               <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-50">
-                  <button type="button" onClick={() => setIsCategorySelectorOpen(false)} className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600">
-                     <span className="material-symbols-outlined">arrow_back</span>
-                  </button>
-                  <h3 className="text-sm font-bold text-slate-800">Selecione uma Categoria</h3>
-               </div>
-               <div className="mb-4 relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-                  <input type="text" placeholder="Buscar categoria..." value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="w-full bg-slate-50 rounded-xl py-3 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-slate-100 transition-all" autoFocus />
-               </div>
-               <div className="flex-1 overflow-y-auto custom-scrollbar pb-4 pr-1">
-                  <div className="grid grid-cols-3 gap-3">
-                     {filteredCategories.map(cat => (
-                        <button key={cat.id || cat.name} type="button" onClick={() => { setCategory(cat.name); setIsCategorySelectorOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all active:scale-95">
-                           <div className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm text-white text-xl" style={{ backgroundColor: cat.color }}>
-                              <span className="material-symbols-outlined">{cat.icon || getIconByCategoryName(cat.name)}</span>
-                           </div>
-                           <span className="text-[10px] font-bold text-slate-600 text-center leading-tight line-clamp-2">{cat.name}</span>
-                        </button>
-                     ))}
-                  </div>
-               </div>
-            </div>
-          )}
-
-          <div className="flex p-1 bg-slate-100 rounded-2xl relative">
-            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm transition-all duration-300 ease-out ${type === 'income' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
-            <button type="button" onClick={() => { setType('expense'); setCategory(''); }} className={`flex-1 relative z-10 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'expense' ? 'text-danger' : 'text-slate-400'}`}>Despesa</button>
-            <button type="button" onClick={() => { setType('income'); setCategory(''); }} className={`flex-1 relative z-10 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'income' ? 'text-success' : 'text-slate-400'}`}>Receita</button>
-          </div>
-
-          <div className="text-center">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Valor da transação</label>
-              <div className="relative inline-flex items-center justify-center">
-                  <span className={`text-3xl font-bold mr-2 ${themeColor} opacity-60`}>R$</span>
-                  <input type="text" placeholder="0,00" value={amount} onChange={e => setAmount(e.target.value)} required autoFocus={!transactionToEdit} className={`w-full max-w-[240px] bg-transparent text-5xl font-black tracking-tighter outline-none text-center placeholder:text-slate-200 ${themeColor}`} />
-              </div>
-          </div>
-
-          <div className="relative">
-               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none"><span className="material-symbols-outlined text-slate-400">edit</span></div>
-               <input type="text" placeholder="Descrição (ex: Mercado, Salário)" value={description} onChange={e => setDescription(e.target.value)} required className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl font-bold text-slate-700 outline-none border border-transparent focus:bg-white focus:border-slate-200 focus:shadow-sm transition-all placeholder:text-slate-400" />
-          </div>
-
-          <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block px-1">Categoria</label>
-              <button type="button" onClick={() => setIsCategorySelectorOpen(true)} className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all active:scale-[0.98] ${category ? `bg-white ${themeBorder} shadow-sm` : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200'}`}>
-                 <div className="flex items-center gap-3">
-                    {category && selectedCategoryData ? (
-                       <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: selectedCategoryData.color }}><span className="material-symbols-outlined">{selectedCategoryData.icon || getIconByCategoryName(category)}</span></div>
-                    ) : (
-                       <div className="h-10 w-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400"><span className="material-symbols-outlined">category</span></div>
-                    )}
-                    <div className="text-left">
-                       <span className={`block text-sm font-bold ${category ? 'text-slate-800' : 'text-slate-400'}`}>{category || "Selecionar categoria"}</span>
-                       {category && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Toque para alterar</span>}
-                    </div>
-                 </div>
-                 <span className="material-symbols-outlined text-slate-300">chevron_right</span>
-              </button>
-          </div>
-
-          <div className="space-y-4">
-               <div>
-                  <div className="flex items-center justify-between mb-3 px-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Conta / Cartão</label>
-                    <button type="button" onClick={() => setIsNewAccountModalOpen(true)} className="text-[9px] font-black text-primary uppercase hover:underline">+ Nova Conta</button>
-                  </div>
-                  <div className="flex gap-3 overflow-x-auto pb-2 px-1 no-scrollbar">
-                      {/* Atalho Novo Cartão / Conta */}
-                      <button 
-                        type="button" 
-                        onClick={() => setIsNewAccountModalOpen(true)}
-                        className="flex flex-col items-center justify-center min-w-[50px] h-[54px] rounded-xl border-2 border-dashed border-slate-200 text-slate-300 hover:border-primary hover:text-primary transition-all active:scale-90"
-                      >
-                        <span className="material-symbols-outlined text-xl">add</span>
+    <Modal isOpen={isOpen} onClose={onClose} title={transactionToEdit ? 'Editar Lançamento' : 'Novo Lançamento'}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 pt-2 relative">
+        {isCategorySelectorOpen && (
+          <div className="absolute inset-0 z-20 bg-surface flex flex-col animate-in slide-in-from-right duration-300">
+             <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-50">
+                <button type="button" onClick={() => setIsCategorySelectorOpen(false)} className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600">
+                   <span className="material-symbols-outlined">arrow_back</span>
+                </button>
+                <h3 className="text-sm font-bold text-slate-800">Selecione uma Categoria</h3>
+             </div>
+             <div className="mb-4 relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <input type="text" placeholder="Buscar categoria..." value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="w-full bg-slate-50 rounded-xl py-3 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-slate-100 transition-all" autoFocus />
+             </div>
+             <div className="flex-1 overflow-y-auto custom-scrollbar pb-4 pr-1">
+                <div className="grid grid-cols-3 gap-3">
+                   {filteredCategories.map(cat => (
+                      <button key={cat.id || cat.name} type="button" onClick={() => { setCategory(cat.name); setIsCategorySelectorOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all active:scale-95">
+                         <div className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm text-white text-xl" style={{ backgroundColor: cat.color }}>
+                            <span className="material-symbols-outlined">{cat.icon || getIconByCategoryName(cat.name)}</span>
+                         </div>
+                         <span className="text-[10px] font-bold text-slate-600 text-center leading-tight line-clamp-2">{cat.name}</span>
                       </button>
+                   ))}
+                </div>
+             </div>
+          </div>
+        )}
 
-                      {accounts.length === 0 ? (
-                        <div className="flex items-center px-4">
-                           <p className="text-[10px] text-slate-400 italic">Cadastre sua primeira conta ao lado.</p>
+        <div className="flex p-1 bg-slate-100 rounded-2xl relative">
+          <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm transition-all duration-300 ease-out ${type === 'income' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
+          <button type="button" onClick={() => { setType('expense'); setCategory(''); }} className={`flex-1 relative z-10 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'expense' ? 'text-danger' : 'text-slate-400'}`}>Despesa</button>
+          <button type="button" onClick={() => { setType('income'); setCategory(''); }} className={`flex-1 relative z-10 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'income' ? 'text-success' : 'text-slate-400'}`}>Receita</button>
+        </div>
+
+        <div className="text-center">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Valor da transação</label>
+            <div className="relative inline-flex items-center justify-center">
+                <span className={`text-3xl font-bold mr-2 ${themeColor} opacity-60`}>R$</span>
+                <input type="number" step="0.01" placeholder="0,00" value={amount} onChange={e => setAmount(e.target.value)} required autoFocus={!transactionToEdit} className={`w-full max-w-[240px] bg-transparent text-5xl font-black tracking-tighter outline-none text-center placeholder:text-slate-200 ${themeColor}`} />
+            </div>
+        </div>
+
+        <div className="relative">
+             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none"><span className="material-symbols-outlined text-slate-400">edit</span></div>
+             <input type="text" placeholder="Descrição (ex: Mercado, Salário)" value={description} onChange={e => setDescription(e.target.value)} required className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl font-bold text-slate-700 outline-none border border-transparent focus:bg-white focus:border-slate-200 focus:shadow-sm transition-all placeholder:text-slate-400" />
+        </div>
+
+        <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block px-1">Categoria</label>
+            <button type="button" onClick={() => setIsCategorySelectorOpen(true)} className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all active:scale-[0.98] ${category ? `bg-white ${themeBorder} shadow-sm` : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200'}`}>
+               <div className="flex items-center gap-3">
+                  {category && selectedCategoryData ? (
+                     <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: selectedCategoryData.color }}><span className="material-symbols-outlined">{selectedCategoryData.icon || getIconByCategoryName(category)}</span></div>
+                  ) : (
+                     <div className="h-10 w-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400"><span className="material-symbols-outlined">category</span></div>
+                  )}
+                  <div className="text-left">
+                     <span className={`block text-sm font-bold ${category ? 'text-slate-800' : 'text-slate-400'}`}>{category || "Selecionar categoria"}</span>
+                     {category && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Toque para alterar</span>}
+                  </div>
+               </div>
+               <span className="material-symbols-outlined text-slate-300">chevron_right</span>
+            </button>
+        </div>
+
+        <div className="space-y-4">
+             <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block px-1">Conta / Cartão</label>
+                <div className="flex gap-3 overflow-x-auto pb-2 px-1 no-scrollbar">
+                    {accounts.map(acc => {
+                        const isSelected = accountId === acc.id;
+                        return (
+                            <button key={acc.id} type="button" onClick={() => setAccountId(acc.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all whitespace-nowrap ${isSelected ? `bg-slate-800 border-slate-800 text-white shadow-md` : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                                <div className="bg-white rounded-full p-0.5"><BankLogo name={acc.name} color={acc.color} size="sm" /></div>
+                                <span className="text-xs font-bold">{acc.name}</span>
+                            </button>
+                        )
+                    })}
+                </div>
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 rounded-2xl p-2 border border-slate-100">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block ml-2">Data</label>
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full bg-transparent font-bold text-slate-700 outline-none px-2 text-sm" />
+                </div>
+                <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100">
+                    <button type="button" onClick={() => setStatus('completed')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'completed' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">check_circle</span></button>
+                    <button type="button" onClick={() => setStatus('pending')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'pending' ? 'bg-white shadow-sm text-amber-500' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">schedule</span></button>
+                </div>
+             </div>
+        </div>
+
+        <div className="space-y-3 pt-2">
+             <div className={`flex items-center justify-between p-3 rounded-2xl border ${isIgnored ? 'border-slate-200 bg-slate-50' : 'border-transparent hover:bg-slate-50'} transition-all`}>
+                <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isIgnored ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-400'}`}><span className="material-symbols-outlined text-lg">visibility_off</span></div>
+                    <div><span className="text-xs font-bold text-slate-700 block">Ignorar lançamento</span><span className="text-[10px] text-slate-400 block">Não contabilizar em saldos ou relatórios</span></div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={isIgnored} onChange={e => setIsIgnored(e.target.checked)} className="sr-only peer" />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-800"></div>
+                </label>
+             </div>
+             
+             {transactionToEdit && onCreateRule && (
+                <button 
+                    type="button" 
+                    onClick={() => onCreateRule(transactionToEdit)}
+                    className="flex items-center justify-between p-3 rounded-2xl border border-amber-100 bg-amber-50/50 hover:bg-amber-50 transition-all group w-full text-left"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-white text-amber-500 shadow-sm group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-lg">auto_fix_high</span></div>
+                        <div><span className="text-xs font-bold text-slate-700 block">Regra Inteligente</span><span className="text-[10px] text-slate-400 block">Automatizar lançamentos futuros</span></div>
+                    </div>
+                    <span className="material-symbols-outlined text-amber-300 group-hover:text-amber-500">chevron_right</span>
+                </button>
+             )}
+
+             <div className={`flex flex-col rounded-2xl border transition-all ${isRecurring ? 'border-indigo-100 bg-indigo-50/30' : 'border-transparent hover:bg-slate-50'}`}>
+                <div className="flex items-center justify-between p-3">
+                    <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isRecurring ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}><span className="material-symbols-outlined text-lg">update</span></div>
+                        <div><span className="text-xs font-bold text-slate-700 block">Repetir lançamento</span></div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)} className="sr-only peer" />
+                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
+                    </label>
+                </div>
+                {isRecurring && (
+                     <div className="px-3 pb-3 flex items-center gap-3 animate-in slide-in-from-top-2">
+                        <select value={frequency} onChange={e => setFrequency(e.target.value as any)} className="flex-1 bg-white border border-indigo-100 text-xs font-bold text-indigo-700 rounded-xl py-2 px-3 outline-none">
+                            <option value="daily">Diariamente</option>
+                            <option value="weekly">Semanalmente</option>
+                            <option value="monthly">Mensalmente</option>
+                            <option value="yearly">Anualmente</option>
+                        </select>
+                        <div className="flex items-center gap-2 bg-white border border-indigo-100 rounded-xl px-3 py-1">
+                            <span className="text-xs font-bold text-indigo-400">x</span>
+                            <input type="number" value={repeatCount} onChange={e => setRepeatCount(e.target.value)} className="w-8 text-center font-bold text-indigo-700 outline-none text-sm" min="2" max="360" />
                         </div>
-                      ) : (
-                        accounts.map(acc => {
-                          const isSelected = accountId === acc.id;
-                          return (
-                              <button key={acc.id} type="button" onClick={() => setAccountId(acc.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all whitespace-nowrap ${isSelected ? `bg-slate-800 border-slate-800 text-white shadow-md` : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                                  <div className="bg-white rounded-full p-0.5"><BankLogo name={acc.name} color={acc.color} size="sm" /></div>
-                                  <span className="text-xs font-bold">{acc.name}</span>
-                              </button>
-                          )
-                        })
-                      )}
-                  </div>
-               </div>
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 rounded-2xl p-2 border border-slate-100">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block ml-2">Data</label>
-                      <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full bg-transparent font-bold text-slate-700 outline-none px-2 text-sm" />
-                  </div>
-                  <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100">
-                      <button type="button" onClick={() => setStatus('completed')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'completed' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">check_circle</span></button>
-                      <button type="button" onClick={() => setStatus('pending')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'pending' ? 'bg-white shadow-sm text-amber-500' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">schedule</span></button>
-                  </div>
-               </div>
-          </div>
+                     </div>
+                 )}
+             </div>
+        </div>
 
-          <div className="space-y-3 pt-2">
-               <div className={`flex items-center justify-between p-3 rounded-2xl border ${isIgnored ? 'border-slate-200 bg-slate-50' : 'border-transparent hover:bg-slate-50'} transition-all`}>
-                  <div className="flex items-center gap-3">
-                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isIgnored ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-400'}`}><span className="material-symbols-outlined text-lg">visibility_off</span></div>
-                      <div><span className="text-xs font-bold text-slate-700 block">Ignorar lançamento</span><span className="text-[10px] text-slate-400 block">Não contabilizar em saldos ou relatórios</span></div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={isIgnored} onChange={e => setIsIgnored(e.target.checked)} className="sr-only peer" />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-800"></div>
-                  </label>
-               </div>
-               <div className={`flex flex-col rounded-2xl border transition-all ${isRecurring ? 'border-indigo-100 bg-indigo-50/30' : 'border-transparent hover:bg-slate-50'}`}>
-                  <div className="flex items-center justify-between p-3">
-                      <div className="flex items-center gap-3">
-                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isRecurring ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}><span className="material-symbols-outlined text-lg">update</span></div>
-                          <div><span className="text-xs font-bold text-slate-700 block">Repetir lançamento</span></div>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)} className="sr-only peer" />
-                          <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
-                      </label>
-                  </div>
-                  {isRecurring && (
-                       <div className="px-3 pb-3 flex items-center gap-3 animate-in slide-in-from-top-2">
-                          <select value={frequency} onChange={e => setFrequency(e.target.value as any)} className="flex-1 bg-white border border-indigo-100 text-xs font-bold text-indigo-700 rounded-xl py-2 px-3 outline-none">
-                              <option value="daily">Diariamente</option>
-                              <option value="weekly">Semanalmente</option>
-                              <option value="monthly">Mensalmente</option>
-                              <option value="yearly">Anualmente</option>
-                          </select>
-                          <div className="flex items-center gap-2 bg-white border border-indigo-100 rounded-xl px-3 py-1">
-                              <span className="text-xs font-bold text-indigo-400">x</span>
-                              <input type="number" value={repeatCount} onChange={e => setRepeatCount(e.target.value)} className="w-8 text-center font-bold text-indigo-700 outline-none text-sm" min="2" max="360" />
-                          </div>
-                       </div>
-                   )}
-               </div>
-          </div>
-
-          <div className="flex gap-3 pt-4 border-t border-slate-50 mt-2">
-            {transactionToEdit && (
-               <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-slate-100 text-slate-400 hover:text-danger hover:bg-red-50 transition-all"><span className="material-symbols-outlined">delete</span></button>
-            )}
-            <Button type="submit" isLoading={loading} className={`flex-1 rounded-2xl font-bold h-12 text-white shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all ${type === 'expense' ? 'bg-danger shadow-red-200' : 'bg-success shadow-emerald-200'}`}>{transactionToEdit ? 'Salvar Alterações' : 'Confirmar Lançamento'}</Button>
-          </div>
-        </form>
-        <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="Excluir Lançamento" message="Tem certeza que deseja remover este lançamento? O saldo da conta será atualizado." confirmText="Sim, excluir" variant="danger" isLoading={loading} />
-      </Modal>
-
-      <NewAccountModal 
-        isOpen={isNewAccountModalOpen} 
-        onClose={() => setIsNewAccountModalOpen(false)} 
-        onSave={async (accountData) => {
-          await addAccount(accountData);
-          setIsNewAccountModalOpen(false);
-          addNotification("Conta criada com sucesso!", "success", 2000, false);
-        }} 
-      />
-    </>
+        <div className="flex gap-3 pt-4 border-t border-slate-50 mt-2">
+          {transactionToEdit && (
+             <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-slate-100 text-slate-400 hover:text-danger hover:bg-red-50 transition-all"><span className="material-symbols-outlined">delete</span></button>
+          )}
+          <Button type="submit" isLoading={loading} className={`flex-1 rounded-2xl font-bold h-12 text-white shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all ${type === 'expense' ? 'bg-danger shadow-red-200' : 'bg-success shadow-emerald-200'}`}>{transactionToEdit ? 'Salvar Alterações' : 'Confirmar Lançamento'}</Button>
+        </div>
+      </form>
+      <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="Excluir Lançamento" message="Tem certeza que deseja remover este lançamento? O saldo da conta será atualizado." confirmText="Sim, excluir" variant="danger" isLoading={loading} />
+    </Modal>
   );
 };

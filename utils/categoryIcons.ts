@@ -147,7 +147,7 @@ const iconMap: Record<string, string> = {
   'lucca': 'child_friendly',
   'familia': 'diversity_3',
   'doacao': 'volunteer_activism',
-  'servicos': 'miscellaneous_services',
+  'servicos': 'home_repair_service',
   'servicos digitais': 'cloud',
 };
 

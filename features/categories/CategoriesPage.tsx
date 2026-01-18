@@ -17,7 +17,7 @@ const AVAILABLE_ICONS = [
   'real_estate_agent', 'show_chart', 'pie_chart', 'percent', 'currency_exchange',
   'storefront', 'design_services', 'undo', 'account_balance', 'emoji_events',
   'diversity_3', 'elderly', 'child_friendly', 'volunteer_activism', 'casino',
-  'sync_alt', 'calendar_month', 'move_to_inbox', 'query_stats', 'miscellaneous_services'
+  'sync_alt', 'calendar_month', 'move_to_inbox', 'query_stats', 'home_repair_service'
 ];
 
 export const CategoriesPage: React.FC = () => {

@@ -33,9 +33,9 @@ export const useCategories = () => {
   }, [currentUser]);
 
   const allCategories = useMemo(() => {
-    const system = [
-      ...systemIncome.map(c => ({ ...c, id: `sys-inc-${c.name}`, type: 'income' as TransactionType })),
-      ...systemExpense.map(c => ({ ...c, id: `sys-exp-${c.name}`, type: 'expense' as TransactionType }))
+    const system: Category[] = [
+      ...systemIncome.map(c => ({ ...c, id: `sys-inc-${c.name}`, type: 'income' as TransactionType, isCustom: false })),
+      ...systemExpense.map(c => ({ ...c, id: `sys-exp-${c.name}`, type: 'expense' as TransactionType, isCustom: false }))
     ];
     
     const combined = [...system, ...customCategories];

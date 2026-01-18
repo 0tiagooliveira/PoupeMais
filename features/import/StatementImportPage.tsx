@@ -1,40 +1,43 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { GoogleGenAI, Type } from "@google/genai";
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAccounts } from '../../hooks/useAccounts';
+import { useProcessing } from '../../contexts/ProcessingContext';
 import { formatCurrency } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { getIconByCategoryName } from '../../utils/categoryIcons';
 import { NewAccountModal } from '../dashboard/components/NewAccountModal';
 import { BankLogo } from '../dashboard/components/AccountsList';
-
-interface DetectedTransaction {
-  date: string;
-  description: string;
-  amount: number;
-  type: 'income' | 'expense';
-  category: string;
-  selected: boolean;
-}
+import { DetectedTransaction, InputMode } from '../../types';
 
 export const StatementImportPage: React.FC = () => {
   const { currentUser } = useAuth();
   const { addNotification } = useNotification();
   const { accounts, addAccount } = useAccounts();
   
+  // Utilizando o contexto global de processamento
+  const { 
+    isProcessing, 
+    progressText, 
+    results, 
+    hasResults, 
+    startProcessing, 
+    clearResults, 
+    setResults 
+  } = useProcessing();
+  
+  const [mode, setMode] = useState<InputMode>('file');
   const [file, setFile] = useState<File | null>(null);
+  const [textInput, setTextInput] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [detectedTransactions, setDetectedTransactions] = useState<DetectedTransaction[]>([]);
+  
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
-  const [step, setStep] = useState<1 | 2>(1);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,121 +45,32 @@ export const StatementImportPage: React.FC = () => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      // Preview apenas para imagens
       if (selectedFile.type.startsWith('image/')) {
         setPreviewUrl(URL.createObjectURL(selectedFile));
       } else {
         setPreviewUrl(null);
       }
-      setDetectedTransactions([]);
-      setStep(1);
     }
   };
 
-  const fileToData = (file: File): Promise<{ base64?: string, text?: string }> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
-        reader.readAsText(file);
-        reader.onload = () => resolve({ text: reader.result as string });
-      } else {
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve({ base64: (reader.result as string).split(',')[1] });
-      }
-      
-      reader.onerror = error => reject(error);
-    });
-  };
-
-  const processStatement = async () => {
-    if (!file || !currentUser) return;
-    if (!currentUser.isPro) {
-      addNotification("Funcionalidade exclusiva para usuários PRO.", "info", 5000, false);
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      const { base64, text } = await fileToData(file);
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
-      const prompt = `Analise estes dados financeiros (que podem vir de um CSV, PDF ou Imagem de extrato bancário).
-      Se for CSV, identifique as colunas de data, valor e descrição.
-      Retorne um array JSON de objetos com: 
-      - date (string no formato ISO YYYY-MM-DD)
-      - description (string curta e limpa)
-      - amount (number positivo, use o valor absoluto)
-      - type ('income' para créditos/depósitos, 'expense' para débitos/compras)
-      - category (sugestão inteligente baseada na descrição)
-      
-      Ignore transferências internas entre contas, pagamentos de fatura de cartão (se detectado como entrada duplicada) e taxas bancárias.
-      Se o valor for negativo, o tipo é 'expense'. Se for positivo, é 'income'.`;
-
-      const contents: any = [{ parts: [{ text: prompt }] }];
-
-      if (text) {
-        contents[0].parts.push({ text: `CONTEÚDO DO ARQUIVO:\n${text}` });
-      } else if (base64) {
-        contents[0].parts.push({
-          inlineData: {
-            mimeType: file.type || 'application/pdf',
-            data: base64
-          }
-        });
-      }
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                date: { type: Type.STRING },
-                description: { type: Type.STRING },
-                amount: { type: Type.NUMBER },
-                type: { type: Type.STRING },
-                category: { type: Type.STRING }
-              },
-              required: ['date', 'description', 'amount', 'type', 'category']
-            }
-          }
-        }
-      });
-
-      const results = JSON.parse(response.text || "[]") as DetectedTransaction[];
-      setDetectedTransactions(results.map(t => ({ ...t, selected: true })));
-      setStep(2);
-      addNotification(`${results.length} transações processadas com sucesso!`, "success");
-    } catch (err) {
-      console.error("AI processing error:", err);
-      addNotification("Não conseguimos ler este arquivo. Tente outro formato ou imagem mais clara.", "error", 5000, false);
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleStartProcessing = () => {
+    startProcessing(mode, file, textInput);
   };
 
   const toggleTransaction = (index: number) => {
-    const newTrans = [...detectedTransactions];
+    const newTrans = [...results];
     newTrans[index].selected = !newTrans[index].selected;
-    setDetectedTransactions(newTrans);
+    setResults(newTrans);
   };
 
   const saveTransactions = async () => {
     if (!selectedAccountId) {
-      addNotification("Selecione uma conta para destino dos lançamentos.", "warning", 3000, false);
+      addNotification("Selecione uma conta para destino.", "warning");
       return;
     }
 
-    const toSave = detectedTransactions.filter(t => t.selected);
-    if (toSave.length === 0) {
-        addNotification("Selecione ao menos uma transação.", "warning", 3000, false);
-        return;
-    }
+    const toSave = results.filter(t => t.selected);
+    if (toSave.length === 0) return;
 
     setIsSaving(true);
     try {
@@ -188,88 +102,83 @@ export const StatementImportPage: React.FC = () => {
 
       await batch.commit();
       addNotification("Lançamentos importados com sucesso!", "success");
-      setDetectedTransactions([]);
+      
+      // Limpa tudo após salvar
+      clearResults();
       setFile(null);
+      setTextInput('');
       setPreviewUrl(null);
-      setStep(1);
     } catch (err) {
-      console.error("Save error:", err);
-      addNotification("Erro ao salvar dados no banco.", "error", 5000, false);
+      addNotification("Erro ao salvar dados no banco.", "error");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const selectedCount = detectedTransactions.filter(t => t.selected).length;
-  const totalAmount = detectedTransactions.filter(t => t.selected).reduce((acc, curr) => acc + (curr.type === 'income' ? curr.amount : -curr.amount), 0);
+  const handleCancel = () => {
+    clearResults();
+    setFile(null);
+    setTextInput('');
+    setPreviewUrl(null);
+  };
 
-  return (
-    <div className="mx-auto max-w-3xl space-y-8 pb-32 animate-in fade-in duration-500">
-      <header className="flex items-center gap-4">
-        <BackButton className="bg-white border border-slate-100 shadow-sm" />
-        <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Importação Universal</h2>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">IA para CSV, PDF ou Fotos</p>
+  const selectedCount = results.filter(t => t.selected).length;
+  const totalAmount = results.filter(t => t.selected).reduce((acc, curr) => acc + (curr.type === 'income' ? curr.amount : -curr.amount), 0);
+
+  // VIEW: PROCESSING STATE
+  if (isProcessing) {
+    return (
+      <div className="mx-auto max-w-3xl min-h-[60vh] flex flex-col items-center justify-center p-8 animate-in fade-in duration-700">
+        <div className="relative mb-10">
+           <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping"></div>
+           <div className="absolute inset-0 rounded-full bg-primary/10 animate-[pulse_2s_infinite]"></div>
+           <div className="relative h-28 w-28 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-slate-50 z-10">
+              <span className="material-symbols-outlined text-6xl text-primary animate-pulse">savings</span>
+           </div>
+           <div className="absolute inset-[-10px] animate-[spin_3s_linear_infinite]">
+              <div className="h-4 w-4 bg-primary rounded-full shadow-lg border-2 border-white absolute top-0 left-1/2 -translate-x-1/2"></div>
+           </div>
         </div>
-      </header>
 
-      {step === 1 ? (
-        <div className="space-y-6">
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            className={`group relative flex flex-col items-center justify-center rounded-[40px] border-2 border-dashed transition-all p-12 text-center cursor-pointer
-              ${file ? 'border-primary bg-emerald-50/20' : 'border-slate-200 bg-white hover:border-primary hover:bg-slate-50'}`}
-          >
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              accept="image/*,application/pdf,.csv,text/csv" 
-              className="hidden" 
-            />
-            
-            {file ? (
-              <div className="flex flex-col items-center">
-                 {previewUrl ? (
-                   <img src={previewUrl} alt="Preview" className="h-32 w-32 object-cover rounded-2xl mb-4 shadow-md" />
-                 ) : (
-                   <div className="h-20 w-20 bg-slate-100 rounded-3xl flex items-center justify-center text-slate-400 mb-4">
-                      <span className="material-symbols-outlined text-4xl">
-                        {file.name.endsWith('.csv') ? 'csv' : 'description'}
-                      </span>
-                   </div>
-                 )}
-                 <h4 className="text-sm font-bold text-slate-800">{file.name}</h4>
-                 <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Clique para trocar o arquivo</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center">
-                <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-50 text-slate-300 group-hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined text-4xl">cloud_upload</span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-1">Escolha o seu extrato</h3>
-                <p className="text-sm text-slate-400 font-medium max-w-[240px]">Envie o CSV do Nubank, um PDF do Bradesco ou uma foto do extrato físico.</p>
-              </div>
-            )}
-          </div>
-
-          <Button 
-            onClick={processStatement} 
-            disabled={!file || isProcessing} 
-            isLoading={isProcessing}
-            className="w-full py-5 rounded-[24px] bg-slate-900 text-white font-black text-sm shadow-xl shadow-slate-200"
-          >
-            {isProcessing ? 'A IA está lendo seu extrato...' : 'Analisar Arquivo'}
-          </Button>
+        <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2 text-center">
+          Poup+ IA trabalhando
+        </h3>
+        
+        <div className="h-8 mb-4 overflow-hidden relative w-full text-center">
+           <p className="text-sm font-bold text-primary uppercase tracking-widest animate-[slideInUp_0.5s_ease-out]">
+             {progressText}
+           </p>
         </div>
-      ) : (
-        <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-700">
-          
+
+        <div className="w-full max-w-xs h-2 bg-slate-100 rounded-full overflow-hidden mb-8">
+           <div className="h-full bg-gradient-to-r from-primary to-emerald-400 animate-[loading_2s_ease-in-out_infinite] w-[30%] rounded-full"></div>
+        </div>
+        
+        <p className="mt-2 text-xs text-slate-400 font-medium max-w-xs text-center leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
+          <span className="block mb-1 font-bold text-slate-500">Dica:</span>
+          Você pode sair desta tela. O processamento continuará em segundo plano e avisaremos quando terminar.
+        </p>
+      </div>
+    );
+  }
+
+  // VIEW: REVIEW STATE (Step 2)
+  if (hasResults) {
+    return (
+        <div className="mx-auto max-w-3xl space-y-8 pb-32 animate-in fade-in duration-500">
+          <header className="flex items-center gap-4">
+            <Button variant="ghost" onClick={handleCancel} className="h-10 w-10 rounded-full p-0"><span className="material-symbols-outlined">close</span></Button>
+            <div>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Revisão</h2>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Confirme os dados extraídos</p>
+            </div>
+          </header>
+
           <section className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Conta para Destino</h3>
               {accounts.length > 0 && (
-                 <button onClick={() => setIsAccountModalOpen(true)} className="text-[10px] font-black text-primary uppercase">Nova Conta</button>
+                 <button onClick={() => setIsAccountModalOpen(true)} className="text-[10px] font-black text-primary uppercase hover:underline">Nova Conta</button>
               )}
             </div>
 
@@ -307,38 +216,41 @@ export const StatementImportPage: React.FC = () => {
 
           <section className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
             <div className="bg-slate-50 px-8 py-5 flex items-center justify-between border-b border-slate-100">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Revisar Lançamentos ({selectedCount})</span>
+                <div className="flex items-center gap-2">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identificado ({selectedCount})</span>
+                   <span className="text-[9px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">via Gemini AI</span>
+                </div>
                 <span className={`text-sm font-black tracking-tighter ${totalAmount >= 0 ? 'text-success' : 'text-danger'}`}>
                   {formatCurrency(totalAmount)}
                 </span>
             </div>
 
             <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto custom-scrollbar">
-              {detectedTransactions.map((t, i) => (
+              {results.map((t, i) => (
                 <div 
                   key={i} 
                   onClick={() => toggleTransaction(i)}
                   className={`flex items-center justify-between px-8 py-5 cursor-pointer transition-all hover:bg-slate-50 ${!t.selected ? 'opacity-40 grayscale' : ''}`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm text-slate-400">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm text-slate-400 shrink-0">
                       <span className="material-symbols-outlined text-xl">{getIconByCategoryName(t.category)}</span>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 leading-none mb-1">{t.description}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-800 leading-none mb-1 truncate max-w-[150px] sm:max-w-[250px]">{t.description}</p>
                       <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
                         <span>{new Date(t.date).toLocaleDateString()}</span>
                         <span className="h-1 w-1 rounded-full bg-slate-200"></span>
-                        <span>{t.category}</span>
+                        <span className="text-slate-500">{t.category}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`text-sm font-black tracking-tighter ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>
+                  <div className="flex items-center gap-4 pl-2">
+                    <span className={`text-sm font-black tracking-tighter whitespace-nowrap ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>
                       {t.type === 'income' ? '+' : ''}{formatCurrency(t.amount)}
                     </span>
-                    <div className={`h-5 w-5 rounded-md flex items-center justify-center border-2 transition-all ${t.selected ? 'bg-primary border-primary text-white' : 'border-slate-200'}`}>
-                      {t.selected && <span className="material-symbols-outlined text-xs font-black">check</span>}
+                    <div className={`h-6 w-6 rounded-lg flex items-center justify-center border-2 transition-all ${t.selected ? 'bg-primary border-primary text-white shadow-sm' : 'border-slate-200 bg-white'}`}>
+                      {t.selected && <span className="material-symbols-outlined text-sm font-black">check</span>}
                     </div>
                   </div>
                 </div>
@@ -349,32 +261,117 @@ export const StatementImportPage: React.FC = () => {
           <div className="flex gap-4">
             <Button 
               variant="secondary" 
-              onClick={() => setStep(1)} 
-              className="flex-1 py-5 rounded-[24px] font-black text-sm"
+              onClick={handleCancel} 
+              className="flex-1 py-5 rounded-[24px] font-black text-sm border-slate-200 text-slate-500 hover:text-slate-700"
             >
-              Recomeçar
+              Cancelar
             </Button>
             <Button 
               onClick={saveTransactions} 
               isLoading={isSaving} 
               disabled={selectedCount === 0 || !selectedAccountId}
-              className="flex-[2] py-5 rounded-[24px] bg-success text-white font-black text-sm shadow-xl shadow-success/20"
+              className="flex-[2] py-5 rounded-[24px] bg-success hover:bg-emerald-600 text-white font-black text-sm shadow-xl shadow-success/20"
             >
-              Confirmar e Salvar
+              Confirmar Importação
             </Button>
           </div>
+          
+          <NewAccountModal 
+            isOpen={isAccountModalOpen} 
+            onClose={() => setIsAccountModalOpen(false)} 
+            onSave={async (data) => {
+              await addAccount(data);
+              setIsAccountModalOpen(false);
+              addNotification("Conta criada! Selecione-a agora.", "success");
+            }} 
+          />
         </div>
-      )}
+    );
+  }
 
-      <NewAccountModal 
-        isOpen={isAccountModalOpen} 
-        onClose={() => setIsAccountModalOpen(false)} 
-        onSave={async (data) => {
-          await addAccount(data);
-          setIsAccountModalOpen(false);
-          addNotification("Conta criada! Selecione-a agora.", "success");
-        }} 
-      />
+  // VIEW: INPUT STATE (Step 1)
+  return (
+    <div className="mx-auto max-w-3xl space-y-8 pb-32 animate-in fade-in duration-500">
+      <header className="flex items-center gap-4">
+        <BackButton className="bg-white border border-slate-100 shadow-sm" />
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Importação Inteligente</h2>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">IA para Extratos, Fotos e Textos</p>
+        </div>
+      </header>
+
+      <div className="space-y-6">
+          <div className="flex p-1 bg-slate-100 rounded-2xl relative">
+            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm transition-all duration-300 ease-out ${mode === 'text' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
+            <button type="button" onClick={() => setMode('file')} className={`flex-1 relative z-10 py-3 text-xs font-black uppercase tracking-widest transition-colors ${mode === 'file' ? 'text-primary' : 'text-slate-400'}`}>
+               <span className="flex items-center justify-center gap-2"><span className="material-symbols-outlined text-lg">upload_file</span> Arquivo / Foto</span>
+            </button>
+            <button type="button" onClick={() => setMode('text')} className={`flex-1 relative z-10 py-3 text-xs font-black uppercase tracking-widest transition-colors ${mode === 'text' ? 'text-primary' : 'text-slate-400'}`}>
+               <span className="flex items-center justify-center gap-2"><span className="material-symbols-outlined text-lg">chat</span> Texto / Mensagem</span>
+            </button>
+          </div>
+
+          {mode === 'file' ? (
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className={`group relative flex flex-col items-center justify-center rounded-[40px] border-2 border-dashed transition-all p-12 text-center cursor-pointer min-h-[300px]
+                ${file ? 'border-primary bg-emerald-50/20' : 'border-slate-200 bg-white hover:border-primary hover:bg-slate-50'}`}
+            >
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept="image/*,application/pdf,.csv,text/csv" 
+                className="hidden" 
+              />
+              
+              {file ? (
+                <div className="flex flex-col items-center animate-in zoom-in-95">
+                   {previewUrl ? (
+                     <img src={previewUrl} alt="Preview" className="h-40 w-auto object-contain rounded-2xl mb-6 shadow-xl border border-white/50" />
+                   ) : (
+                     <div className="h-24 w-24 bg-slate-100 rounded-3xl flex items-center justify-center text-slate-400 mb-6 shadow-inner">
+                        <span className="material-symbols-outlined text-5xl">
+                          {file.name.endsWith('.csv') ? 'csv' : 'description'}
+                        </span>
+                     </div>
+                   )}
+                   <h4 className="text-base font-bold text-slate-800">{file.name}</h4>
+                   <p className="text-[10px] text-slate-400 font-bold uppercase mt-2 bg-white px-3 py-1 rounded-full shadow-sm">Clique para trocar</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-[32px] bg-slate-50 text-slate-300 group-hover:text-primary transition-colors shadow-sm">
+                    <span className="material-symbols-outlined text-5xl">cloud_upload</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">Envie seu comprovante</h3>
+                  <p className="text-sm text-slate-400 font-medium max-w-[260px] leading-relaxed">Suportamos fotos de recibos, prints de tela, PDFs de extrato e arquivos CSV.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="relative">
+              <textarea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Cole aqui suas mensagens ou anotações...&#10;Ex:&#10;Gastei 50 no almoço ontem&#10;Recebi 2000 de salário&#10;Uber 15 reais hoje cedo"
+                className="w-full h-[300px] rounded-[40px] border border-slate-200 p-8 text-sm font-medium text-slate-700 placeholder:text-slate-300 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 resize-none transition-all shadow-sm"
+              />
+              <div className="absolute bottom-6 right-6 flex items-center gap-2 pointer-events-none opacity-40">
+                <span className="material-symbols-outlined text-slate-400">auto_awesome</span>
+                <span className="text-[10px] font-black uppercase text-slate-400">IA Categorization</span>
+              </div>
+            </div>
+          )}
+
+          <Button 
+            onClick={handleStartProcessing} 
+            disabled={(mode === 'file' && !file) || (mode === 'text' && !textInput.trim())} 
+            className="w-full py-5 rounded-[24px] bg-slate-900 hover:bg-slate-800 text-white font-black text-sm shadow-xl shadow-slate-200 transition-all hover:scale-[1.01] active:scale-[0.99]"
+          >
+            Processar com Inteligência Artificial
+          </Button>
+      </div>
     </div>
   );
 };

@@ -12,15 +12,20 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full bg-white/80 px-6 py-2.5 backdrop-blur-xl md:hidden border-b border-slate-50">
+      <header className="sticky top-0 z-40 w-full bg-white/80 px-6 py-3 backdrop-blur-xl md:hidden border-b border-slate-50">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center">
              <Link to="/" className="flex items-center transition-opacity hover:opacity-80">
                <img 
-                 src="https://poup-beta.web.app/Icon/LogoPoup.svg" 
+                 src="https://raw.githubusercontent.com/0tiagooliveira/Poupe-/main/Logo%20Poup%2B%20Horizontal%20Verde.svg" 
                  alt="Poup+" 
-                 className="h-6 w-auto" 
+                 className="h-8 w-auto object-contain" 
+                 onError={(e) => {
+                   (e.target as HTMLImageElement).style.display = 'none';
+                   (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                 }}
                />
+               <span className="hidden text-xl font-black text-primary tracking-tighter">Poup+</span>
              </Link>
           </div>
 
@@ -31,7 +36,7 @@ export const Header: React.FC = () => {
             >
                <img 
                   src={currentUser?.photoURL || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
-                  className="h-8 w-8 rounded-full border border-slate-100 shadow-sm object-cover"
+                  className="h-9 w-9 rounded-full border border-slate-100 shadow-sm object-cover"
                   alt="Avatar"
                />
             </button>

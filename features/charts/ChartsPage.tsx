@@ -9,7 +9,8 @@ import { GoogleGenAI } from "@google/genai";
 import { getIconByCategoryName } from '../../utils/categoryIcons';
 import { MonthSelector } from '../dashboard/components/MonthSelector';
 import { CategoryChartCard } from '../dashboard/components/CategoryChartCard';
-import { Transaction } from '../../types';
+import { Transaction, CategoryData, TransactionType } from '../../types';
+import { useNavigate } from 'react-router-dom';
 
 // --- GRÁFICO ANUAL COM INTERATIVIDADE E FILTROS ---
 interface AnnualMixedChartProps {
@@ -382,6 +383,7 @@ const AICommentBubble: React.FC<{ text?: string, loading?: boolean, type?: 'succ
 
 export const ChartsPage: React.FC = () => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [currentYearDate, setCurrentYearDate] = useState(new Date());
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
   
@@ -449,6 +451,15 @@ export const ChartsPage: React.FC = () => {
   const handleMonthClick = (monthIndex: number) => {
     const newDate = new Date(currentYearDate.getFullYear(), monthIndex, 1);
     setCurrentMonthDate(newDate);
+  };
+
+  const handleCategoryClick = (category: CategoryData, type: TransactionType) => {
+    navigate('/transactions', { 
+      state: { 
+        category: category.name, 
+        type: type 
+      } 
+    });
   };
 
   // Preparação de dados Mensais (Filtrados)
@@ -588,6 +599,7 @@ export const ChartsPage: React.FC = () => {
                 type="income" 
                 categories={monthStats.incomeCats} 
                 total={monthStats.income} 
+                onCategoryClick={(cat) => handleCategoryClick(cat, 'income')}
              />
              <AICommentBubble text={aiComments.income} loading={isAnalyzing} type="success" label="IA sobre Entradas" />
          </div>
@@ -598,7 +610,8 @@ export const ChartsPage: React.FC = () => {
                 title="Saídas do Mês" 
                 type="expense" 
                 categories={monthStats.expenseCats} 
-                total={monthStats.expense} 
+                total={monthStats.expense}
+                onCategoryClick={(cat) => handleCategoryClick(cat, 'expense')} 
              />
              <AICommentBubble text={aiComments.expense} loading={isAnalyzing} type="warning" label="IA sobre Saídas" />
          </div>
@@ -624,7 +637,7 @@ export const ChartsPage: React.FC = () => {
             {(aiComments.general || isAnalyzing) && (
                 <div className="md:max-w-xs bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
                    <div className="flex items-center gap-2 mb-2">
-                      <span className="material-symbols-outlined text-xs text-indigo-300">psychology</span>
+                      <span className="material-symbols-outlined text-xs text-indigo-300">savings</span>
                       <span className="text-[9px] font-bold text-indigo-200 uppercase">Veredito da IA</span>
                    </div>
                    {isAnalyzing ? (

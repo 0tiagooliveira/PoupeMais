@@ -101,3 +101,31 @@ export interface NotificationContextType {
   clearHistory: () => void;
   markAllAsRead: () => void;
 }
+
+export interface AutomationRule {
+  id: string;
+  conditions: {
+    descriptionContains: string;
+    amountMin?: string;
+    amountMax?: string;
+    accountId?: string;
+  };
+  actions: {
+    categoryId?: string;
+    renameTo?: string;
+    isIgnored?: boolean;
+  };
+  createdAt: string;
+  isActive: boolean;
+}
+
+export interface DetectedTransaction {
+  date: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  category: string;
+  selected: boolean;
+}
+
+export type InputMode = 'file' | 'text';
