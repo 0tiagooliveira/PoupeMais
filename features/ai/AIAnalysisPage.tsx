@@ -64,11 +64,10 @@ interface Message {
 }
 
 const THINKING_STEPS = [
-  "Auditando movimentações...",
-  "Limpando faturas das receitas...",
-  "Mapeando centros de custo...",
-  "Projetando rentabilidade...",
-  "Finalizando diagnóstico..."
+  "Lendo dados...",
+  "Calculando métricas...",
+  "Gerando insights...",
+  "Finalizando..."
 ];
 
 const PRESET_QUESTIONS = [
@@ -82,7 +81,7 @@ export const AIAnalysisPage: React.FC = () => {
   const { currentUser } = useAuth();
   const { addNotification } = useNotification();
   const location = useLocation();
-  const navigate = useNavigate(); // Hook de navegação adicionado
+  const navigate = useNavigate();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   
@@ -145,7 +144,7 @@ export const AIAnalysisPage: React.FC = () => {
   useEffect(() => {
     let interval: any;
     if (isGenerating || isAsking) {
-      interval = setInterval(() => setThinkingStep(p => (p + 1) % THINKING_STEPS.length), 1500);
+      interval = setInterval(() => setThinkingStep(p => (p + 1) % THINKING_STEPS.length), 800); // Acelerado visualmente
     }
     return () => clearInterval(interval);
   }, [isGenerating, isAsking]);
@@ -216,10 +215,10 @@ export const AIAnalysisPage: React.FC = () => {
         };
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
+            model: 'gemini-3-flash-preview', // Trocado para Flash (Mais rápido)
             contents: [{ parts: [{ text: `CONTEXTO FINANCEIRO DO USUÁRIO: ${JSON.stringify(context)}. PERGUNTA: "${question}". Responda como o Mentor CFO do Poup+, de forma prática, curta e incentivadora em português.` }] }],
             config: {
-                systemInstruction: "Você é o Mentor CFO do Poup+. Sua linguagem é sofisticada mas acessível. Nunca ignore o contexto dos gastos reais do usuário fornecidos.",
+                systemInstruction: "Você é o Mentor CFO do Poup+. Sua linguagem é sofisticada mas acessível. Seja breve.",
             }
         });
 
@@ -255,7 +254,7 @@ export const AIAnalysisPage: React.FC = () => {
       };
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-3-flash-preview', // Trocado para Flash (Mais rápido)
         contents: [{ parts: [{ text: `Gere um diagnóstico CFO rigoroso baseado neste cenário: ${JSON.stringify(promptData)}` }] }],
         config: {
           responseMimeType: "application/json",
@@ -280,30 +279,23 @@ export const AIAnalysisPage: React.FC = () => {
       setAnalysis(parsed);
       addNotification('Auditoria concluída!', 'success');
       
-      // Auto-play diagnostic com estrutura rica e detalhada
-      const topCategoriesText = periodStats.expenseCats.slice(0, 3)
-        .map(c => `${c.name}: ${formatCurrency(c.amount)}`)
-        .join('. ');
+      // Auto-play: Narração Completa (Máximo Possível)
+      // Constrói um texto narrativo conectando todos os pontos da análise
+      let narrative = `Diagnóstico completo do Poup Mais. ${parsed.headline}. `;
+      narrative += `Sua nota de saúde financeira é ${parsed.healthScore} de 100. `;
+      narrative += `Resumo do período: ${parsed.summary} `;
+      narrative += `Minha dica estratégica para você: ${parsed.financialTip} `;
+      
+      if (parsed.vulnerabilities && parsed.vulnerabilities.length > 0) {
+        narrative += " Identifiquei algumas vulnerabilidades importantes: ";
+        parsed.vulnerabilities.forEach((v: any, index: number) => {
+           narrative += `${index + 1}. Em ${v.category}, ${v.observation}. `;
+        });
+      } else {
+        narrative += " Não encontrei vulnerabilidades críticas. Seu fluxo está saudável.";
+      }
 
-      const vulnerabilitiesText = parsed.vulnerabilities
-        .map((v: any) => `${v.category}. ${v.observation}`)
-        .join('. ');
-
-      const diagnosticText = `
-        Relatório Poup+ Intelligence Gerado. ${parsed.headline}.
-        
-        Fluxo Auditoria Reais: Entradas Brutas de ${formatCurrency(periodStats.income)}. Saídas Totais de ${formatCurrency(periodStats.expense)}.
-        
-        Mapeamento de Gastos. As maiores categorias foram: ${topCategoriesText}.
-        
-        Pulo do Gato: "${parsed.financialTip}".
-        
-        Vulnerabilidades de Caixa detectadas: ${vulnerabilitiesText}.
-        
-        Sua nota de saúde financeira é ${parsed.healthScore}.
-      `.replace(/\s+/g, ' ').trim();
-
-      generateAndPlayAudio(diagnosticText);
+      generateAndPlayAudio(narrative);
 
     } catch (e) { 
       addNotification('Falha ao processar auditoria.', 'error');
@@ -504,9 +496,23 @@ export const AIAnalysisPage: React.FC = () => {
                         <div className="flex items-center justify-center md:justify-start gap-4">
                            <span className="text-[10px] font-black bg-white/5 border border-white/10 px-5 py-2 rounded-full uppercase tracking-widest text-emerald-100/60 shadow-inner">Período: {analysis?.periodLabel}</span>
                            <button 
-                             onClick={() => generateAndPlayAudio(
-                               `Relatório Poup+ Intelligence. ${analysis.headline}. Fluxo Auditoria Reais: Entradas Brutas de ${formatCurrency(periodStats.income)}. Saídas Totais de ${formatCurrency(periodStats.expense)}. Mapeamento de Gastos: As maiores categorias foram: ${periodStats.expenseCats.slice(0, 3).map(c => `${c.name}: ${formatCurrency(c.amount)}`).join('. ')}. Pulo do Gato: ${analysis.financialTip}. Vulnerabilidades de Caixa: ${analysis.vulnerabilities.map(v => `${v.category}. ${v.observation}`).join('. ')}. Nota de saúde: ${analysis.healthScore}.`
-                             )}
+                             onClick={() => {
+                               // Narração Completa (Headline + Resumo + Dicas + Vulnerabilidades)
+                               let narrative = `Diagnóstico completo do Poup Mais. ${analysis?.headline}. `;
+                               narrative += `Sua nota de saúde financeira é ${analysis?.healthScore} de 100. `;
+                               narrative += `${analysis?.summary} `;
+                               narrative += `Minha dica estratégica para você: ${analysis?.financialTip} `;
+                               
+                               if (analysis?.vulnerabilities && analysis?.vulnerabilities.length > 0) {
+                                 narrative += " Identifiquei algumas vulnerabilidades importantes: ";
+                                 analysis?.vulnerabilities.forEach((v: any, index: number) => {
+                                    narrative += `${index + 1}. Em ${v.category}, ${v.observation}. `;
+                                 });
+                               } else {
+                                 narrative += " Não encontrei vulnerabilidades críticas. Seu fluxo está saudável.";
+                               }
+                               generateAndPlayAudio(narrative);
+                             }}
                              className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white hover:bg-emerald-400 transition-all shadow-xl shadow-primary/20 ${isSpeaking ? 'animate-pulse scale-110' : ''}`}
                            >
                              <span className="material-symbols-outlined text-xl">{isSpeaking ? 'volume_up' : 'play_arrow'}</span>

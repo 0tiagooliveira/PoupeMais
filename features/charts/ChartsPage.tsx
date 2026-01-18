@@ -387,8 +387,12 @@ export const ChartsPage: React.FC = () => {
   const [currentYearDate, setCurrentYearDate] = useState(new Date());
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
   
+  // Estados para IA do Widget Anual
+  const [annualInsight, setAnnualInsight] = useState('');
+  const [loadingAnnualInsight, setLoadingAnnualInsight] = useState(false);
+
   // Dados Anuais (apenas para o gráfico do topo)
-  const { transactions: annualTransactions } = useTransactions(currentYearDate, 'year');
+  const { transactions: annualTransactions, loading: loadingTransactions } = useTransactions(currentYearDate, 'year');
   
   // LÓGICA DE FILTRAGEM DE ANÁLISE
   const shouldIncludeInAnalysis = (t: Transaction) => {
@@ -446,6 +450,50 @@ export const ChartsPage: React.FC = () => {
       expense: monthsData[i].expense
     }));
   }, [annualTransactions]);
+
+  // Efeito para Gerar Insight Anual Automático
+  useEffect(() => {
+    if (loadingTransactions || !currentUser?.isPro || annualTransactions.length === 0) return;
+    
+    // Calcula totais do ano para o prompt
+    const totalInc = annualTransactions.reduce((acc, t) => shouldIncludeInAnalysis(t) && t.type === 'income' ? acc + t.amount : acc, 0);
+    const totalExp = annualTransactions.reduce((acc, t) => shouldIncludeInAnalysis(t) && t.type === 'expense' ? acc + t.amount : acc, 0);
+    
+    if (totalInc === 0 && totalExp === 0) return;
+
+    const fetchAnnualInsight = async () => {
+        setLoadingAnnualInsight(true);
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const prompt = `
+                Atue como o Poup+, um consultor financeiro pessoal.
+                Dados do ano de ${currentYearDate.getFullYear()}:
+                - Receitas Totais: R$ ${totalInc.toFixed(2)}
+                - Despesas Totais: R$ ${totalExp.toFixed(2)}
+                
+                Gere uma frase de impacto (máximo 15 palavras) resumindo o desempenho anual.
+                Exemplos: "Parabéns! Ano de muito lucro e crescimento.", "Atenção: Gastos superaram ganhos este ano.", "Equilíbrio perfeito, mas podemos investir mais.".
+                Seja direto e motivador.
+            `;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: [{ parts: [{ text: prompt }] }],
+            });
+            
+            setAnnualInsight(response.text?.trim() || `Análise de ${currentYearDate.getFullYear()} pronta.`);
+        } catch (error) {
+            console.error("Erro IA Insight Anual:", error);
+        } finally {
+            setLoadingAnnualInsight(false);
+        }
+    };
+
+    // Delay para não conflitar com renderização inicial
+    const timer = setTimeout(fetchAnnualInsight, 1000);
+    return () => clearTimeout(timer);
+  }, [annualTransactions, currentYearDate, currentUser, loadingTransactions]);
+
 
   // Handler para clique no gráfico anual
   const handleMonthClick = (monthIndex: number) => {
@@ -558,6 +606,50 @@ export const ChartsPage: React.FC = () => {
                 <button onClick={() => setCurrentYearDate(new Date(currentYearDate.getFullYear()+1, 0, 1))} className="p-1 hover:bg-slate-50 rounded-full"><span className="material-symbols-outlined text-slate-400">chevron_right</span></button>
             </div>
          </div>
+
+         {/* AI Annual Insight Widget */}
+         {(annualInsight || loadingAnnualInsight) && currentUser?.isPro && (
+            <button 
+                onClick={() => navigate('/ai-analysis')}
+                className="w-full bg-white p-5 rounded-[28px] shadow-sm border border-slate-100 flex items-center gap-5 transition-all hover:shadow-md hover:border-primary/20 group text-left relative overflow-hidden"
+            >
+                {/* Decorativo de fundo sutil */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/5 to-transparent rounded-bl-[100px] pointer-events-none transition-transform group-hover:scale-110"></div>
+
+                {/* Icone Avatar */}
+                <div className="relative shrink-0">
+                    <div className="h-14 w-14 rounded-[20px] bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                        <span className={`material-symbols-outlined text-2xl text-primary ${loadingAnnualInsight ? 'animate-spin' : ''}`}>
+                            {loadingAnnualInsight ? 'smart_toy' : 'savings'}
+                        </span>
+                    </div>
+                    {/* Badge de notificação/status */}
+                    <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm border border-slate-50">
+                        <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-pulse"></span>
+                    </div>
+                </div>
+
+                {/* Texto */}
+                <div className="flex-1 min-w-0 z-10">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Poup+ Intelligence</span>
+                        {!loadingAnnualInsight && annualInsight && <span className="h-1.5 w-1.5 rounded-full bg-primary/40"></span>}
+                    </div>
+                    
+                    <p className="text-sm font-bold text-slate-700 leading-snug line-clamp-2">
+                        {loadingAnnualInsight 
+                            ? `Analisando seu ano de ${currentYearDate.getFullYear()}...` 
+                            : annualInsight}
+                    </p>
+                </div>
+
+                {/* Seta */}
+                <div className="h-10 w-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0 z-10">
+                    <span className="material-symbols-outlined text-xl">arrow_forward</span>
+                </div>
+            </button>
+         )}
+
          <AnnualMixedChart 
             data={annualData} 
             selectedMonthIndex={currentMonthDate.getMonth()} 
