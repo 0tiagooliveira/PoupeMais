@@ -1,5 +1,8 @@
 {
   "name": "Poupe Mais",
   "description": "Uma aplicação web de finanças pessoais focada em modularidade, performance e UX, construída com React, TypeScript e Firebase.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
 }
