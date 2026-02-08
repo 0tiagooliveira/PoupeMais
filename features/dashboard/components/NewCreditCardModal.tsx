@@ -141,8 +141,8 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
               onClick={() => handleBankSelect(bank)}
               className={`flex flex-col items-center justify-center py-2 rounded-xl transition-all border ${
                   selectedBank === bank.name 
-                  ? 'border-primary bg-success/5 shadow-sm' 
-                  : 'border-slate-50 bg-white hover:bg-slate-50'
+                  ? 'border-primary bg-success/5 dark:bg-success/20 shadow-sm' 
+                  : 'border-slate-50 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               <BankLogo name={bank.name} color={bank.color} size="sm" />
@@ -164,32 +164,32 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
               className="text-sm font-bold"
             />
 
-            <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4 border border-slate-100 dark:border-slate-700">
                 <label className="text-xs font-bold text-slate-400 mb-1 block">Limite total</label>
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-slate-400">R$</span>
                     <input 
                         type="number" step="0.01" placeholder="0,00" value={limit}
                         onChange={e => setLimit(e.target.value)} required
-                        className="w-full bg-transparent text-2xl font-bold tracking-tighter text-slate-800 outline-none"
+                        className="w-full bg-transparent text-2xl font-bold tracking-tighter text-slate-800 dark:text-slate-100 outline-none"
                     />
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-500 ml-1">Fechamento</label>
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1">Fechamento</label>
                     <input 
                         type="number" min="1" max="31" value={closingDay} onChange={e => setClosingDay(e.target.value)} required
-                        className="w-full rounded-xl border border-slate-100 bg-white py-2.5 px-4 text-sm font-bold text-slate-700 outline-none"
+                        className="w-full rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 py-2.5 px-4 text-sm font-bold text-slate-700 dark:text-slate-200 outline-none"
                         placeholder="Dia"
                     />
                 </div>
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-500 ml-1">Vencimento</label>
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1">Vencimento</label>
                     <input 
                         type="number" min="1" max="31" value={dueDay} onChange={e => setDueDay(e.target.value)} required
-                        className="w-full rounded-xl border border-slate-100 bg-white py-2.5 px-4 text-sm font-bold text-slate-700 outline-none"
+                        className="w-full rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 py-2.5 px-4 text-sm font-bold text-slate-700 dark:text-slate-200 outline-none"
                         placeholder="Dia"
                     />
                 </div>

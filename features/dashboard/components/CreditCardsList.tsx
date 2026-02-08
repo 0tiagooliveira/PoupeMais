@@ -76,7 +76,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
   return (
     <div className="flex flex-col">
       <div className="mb-5 flex items-center justify-between px-1">
-        <h3 className="text-xl font-bold text-slate-800 tracking-tight">Cartões de crédito</h3>
+        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Cartões de crédito</h3>
         {cards.length > 0 && (
           <button 
             onClick={() => navigate('/credit-cards')}
@@ -88,11 +88,11 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
       </div>
       
       {cards.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[32px] border border-slate-100 bg-white p-10 text-center shadow-sm">
+        <div className="flex flex-col items-center justify-center rounded-[32px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center shadow-sm">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/5 text-success/40">
              <span className="material-symbols-outlined text-3xl">credit_card</span>
           </div>
-          <h4 className="mb-2 text-sm font-bold text-slate-800 tracking-tight">Nenhum cartão cadastrado</h4>
+          <h4 className="mb-2 text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">Nenhum cartão cadastrado</h4>
           <Button 
             onClick={onAddCard}
             className="bg-primary hover:bg-emerald-600 text-white font-bold text-xs px-8 rounded-2xl h-11 shadow-lg shadow-success/20"
@@ -110,7 +110,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
               <div 
                 key={card.id}
                 onClick={() => navigate('/credit-cards')} 
-                className="group relative overflow-hidden rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer"
+                className="group relative overflow-hidden rounded-[28px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer"
               >
                 {/* Lateral Accent */}
                 <div className="absolute top-0 left-0 h-full w-2" style={{ backgroundColor: card.color }}></div>
@@ -119,14 +119,14 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
                   <div className="flex items-center gap-5">
                     <BankLogo name={card.name} color={card.color} size="md" />
                     <div>
-                      <p className="text-lg font-bold text-slate-800 leading-none mb-1">{card.name}</p>
+                      <p className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-none mb-1">{card.name}</p>
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Vence dia {card.dueDay}</p>
                     </div>
                   </div>
                   
                   <button 
                     onClick={(e) => { e.stopPropagation(); setCardToDelete(card.id); }}
-                    className="text-slate-200 hover:text-danger transition-colors p-2 rounded-xl hover:bg-red-50"
+                    className="text-slate-200 dark:text-slate-700 hover:text-danger dark:hover:text-red-400 transition-colors p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
                     <span className="material-symbols-outlined text-xl">delete</span>
                   </button>
@@ -136,7 +136,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="space-y-0.5">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Limite Utilizado</span>
-                    <p className={`text-lg font-black tracking-tight ${stat.usedLimit > card.limit ? 'text-danger' : 'text-slate-800'}`}>
+                    <p className={`text-lg font-black tracking-tight ${stat.usedLimit > card.limit ? 'text-danger' : 'text-slate-800 dark:text-slate-100'}`}>
                       {formatCurrency(stat.usedLimit)}
                     </p>
                   </div>
@@ -150,7 +150,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
 
                 {/* Barra de Progresso do Uso */}
                 <div className="mb-6 space-y-1.5">
-                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-50">
+                    <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner border border-slate-50 dark:border-slate-700">
                         <div 
                             className={`h-full transition-all duration-1000 ease-out rounded-full shadow-sm ${barColor}`}
                             style={{ width: `${stat.percentage}%` }}
@@ -163,16 +163,16 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
                     </div>
                 </div>
 
-                <div className="flex items-end justify-between border-t border-slate-50 pt-5">
+                <div className="flex items-end justify-between border-t border-slate-50 dark:border-slate-800 pt-5">
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-tighter">Limite Total</span>
-                    <span className="text-base font-bold text-slate-500 tracking-tighter">
+                    <span className="text-base font-bold text-slate-500 dark:text-slate-400 tracking-tighter">
                       {formatCurrency(card.limit)}
                     </span>
                   </div>
                   <div className="text-right space-y-1">
                      <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-tighter">Fatura Atual</span>
-                     <span className="text-xl font-bold tracking-tighter block text-slate-800">
+                     <span className="text-xl font-bold tracking-tighter block text-slate-800 dark:text-slate-100">
                        {formatCurrency(stat.currentInvoice)}
                      </span>
                   </div>

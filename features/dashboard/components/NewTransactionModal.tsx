@@ -90,7 +90,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   initialCategory = '',
   onCreateRule
 }) => {
-  const { allCategories } = useCategories();
+  const { allCategories, addCustomCategory } = useCategories();
   const [type, setType] = useState<TransactionType>(initialType);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -175,6 +175,28 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
     }
   };
 
+  const handleCreateCategory = async () => {
+    if (!categorySearch.trim()) return;
+    
+    const newName = categorySearch.trim();
+    
+    try {
+      await addCustomCategory({
+        name: newName,
+        icon: 'category', // Ícone padrão
+        color: '#64748B', // Cor neutra padrão
+        type: type // Usa o tipo atual selecionado no modal (Receita ou Despesa)
+      });
+      
+      setCategory(newName);
+      setIsCategorySelectorOpen(false);
+      setCategorySearch('');
+      addNotification(`Categoria "${newName}" criada!`, 'success');
+    } catch (error) {
+      addNotification('Erro ao criar categoria.', 'error');
+    }
+  };
+
   const handleDelete = async () => {
     if (!transactionToEdit || !onDelete) return;
     setLoading(true);
@@ -208,33 +230,56 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 pt-2 relative">
         {isCategorySelectorOpen && (
           <div className="absolute inset-0 z-20 bg-surface flex flex-col animate-in slide-in-from-right duration-300">
-             <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-50">
-                <button type="button" onClick={() => setIsCategorySelectorOpen(false)} className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600">
+             <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-50 dark:border-slate-800">
+                <button type="button" onClick={() => setIsCategorySelectorOpen(false)} className="h-8 w-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                    <span className="material-symbols-outlined">arrow_back</span>
                 </button>
-                <h3 className="text-sm font-bold text-slate-800">Selecione uma Categoria</h3>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Selecione uma Categoria</h3>
              </div>
              <div className="mb-4 relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-                <input type="text" placeholder="Buscar categoria..." value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="w-full bg-slate-50 rounded-xl py-3 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-slate-100 transition-all" autoFocus />
+                <input type="text" placeholder="Buscar categoria..." value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl py-3 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-slate-100 dark:focus:ring-slate-700 transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400" autoFocus />
              </div>
              <div className="flex-1 overflow-y-auto custom-scrollbar pb-4 pr-1">
+                {categorySearch.trim() && (
+                    <button
+                        type="button"
+                        onClick={handleCreateCategory}
+                        className="w-full flex items-center gap-3 p-3 rounded-2xl mb-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors group active:scale-[0.98]"
+                    >
+                        <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400">add</span>
+                        </div>
+                        <div className="text-left">
+                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 block mb-0.5">Nova Categoria</span>
+                            <p className="text-sm font-bold">Criar "{categorySearch}"</p>
+                        </div>
+                    </button>
+                )}
+
                 <div className="grid grid-cols-3 gap-3">
                    {filteredCategories.map(cat => (
-                      <button key={cat.id || cat.name} type="button" onClick={() => { setCategory(cat.name); setIsCategorySelectorOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all active:scale-95">
+                      <button key={cat.id || cat.name} type="button" onClick={() => { setCategory(cat.name); setIsCategorySelectorOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-100 dark:hover:border-slate-700 transition-all active:scale-95">
                          <div className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm text-white text-xl" style={{ backgroundColor: cat.color }}>
                             <span className="material-symbols-outlined">{cat.icon || getIconByCategoryName(cat.name)}</span>
                          </div>
-                         <span className="text-[10px] font-bold text-slate-600 text-center leading-tight line-clamp-2">{cat.name}</span>
+                         <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2">{cat.name}</span>
                       </button>
                    ))}
                 </div>
+                
+                {filteredCategories.length === 0 && !categorySearch && (
+                    <div className="text-center py-10 opacity-50">
+                        <span className="material-symbols-outlined text-4xl mb-2 text-slate-400">category</span>
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Nenhuma categoria encontrada</p>
+                    </div>
+                )}
              </div>
           </div>
         )}
 
-        <div className="flex p-1 bg-slate-100 rounded-2xl relative">
-          <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm transition-all duration-300 ease-out ${type === 'income' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
+        <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl relative">
+          <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl bg-white dark:bg-slate-700 shadow-sm transition-all duration-300 ease-out ${type === 'income' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
           <button type="button" onClick={() => { setType('expense'); setCategory(''); }} className={`flex-1 relative z-10 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'expense' ? 'text-danger' : 'text-slate-400'}`}>Despesa</button>
           <button type="button" onClick={() => { setType('income'); setCategory(''); }} className={`flex-1 relative z-10 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'income' ? 'text-success' : 'text-slate-400'}`}>Receita</button>
         </div>
@@ -243,30 +288,30 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Valor da transação</label>
             <div className="relative inline-flex items-center justify-center">
                 <span className={`text-3xl font-bold mr-2 ${themeColor} opacity-60`}>R$</span>
-                <input type="number" step="0.01" placeholder="0,00" value={amount} onChange={e => setAmount(e.target.value)} required autoFocus={!transactionToEdit} className={`w-full max-w-[240px] bg-transparent text-5xl font-black tracking-tighter outline-none text-center placeholder:text-slate-200 ${themeColor}`} />
+                <input type="number" step="0.01" placeholder="0,00" value={amount} onChange={e => setAmount(e.target.value)} required autoFocus={!transactionToEdit} className={`w-full max-w-[240px] bg-transparent text-5xl font-black tracking-tighter outline-none text-center placeholder:text-slate-200 dark:placeholder:text-slate-700 ${themeColor}`} />
             </div>
         </div>
 
         <div className="relative">
              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none"><span className="material-symbols-outlined text-slate-400">edit</span></div>
-             <input type="text" placeholder="Descrição (ex: Mercado, Salário)" value={description} onChange={e => setDescription(e.target.value)} required className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl font-bold text-slate-700 outline-none border border-transparent focus:bg-white focus:border-slate-200 focus:shadow-sm transition-all placeholder:text-slate-400" />
+             <input type="text" placeholder="Descrição (ex: Mercado, Salário)" value={description} onChange={e => setDescription(e.target.value)} required className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl font-bold text-slate-700 dark:text-slate-200 outline-none border border-transparent focus:bg-white dark:focus:bg-slate-900 focus:border-slate-200 dark:focus:border-slate-700 focus:shadow-sm transition-all placeholder:text-slate-400" />
         </div>
 
         <div>
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block px-1">Categoria</label>
-            <button type="button" onClick={() => setIsCategorySelectorOpen(true)} className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all active:scale-[0.98] ${category ? `bg-white ${themeBorder} shadow-sm` : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200'}`}>
+            <button type="button" onClick={() => setIsCategorySelectorOpen(true)} className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all active:scale-[0.98] ${category ? `bg-white dark:bg-slate-900 ${themeBorder} shadow-sm` : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900 hover:border-slate-200'}`}>
                <div className="flex items-center gap-3">
                   {category && selectedCategoryData ? (
                      <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: selectedCategoryData.color }}><span className="material-symbols-outlined">{selectedCategoryData.icon || getIconByCategoryName(category)}</span></div>
                   ) : (
-                     <div className="h-10 w-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400"><span className="material-symbols-outlined">category</span></div>
+                     <div className="h-10 w-10 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400"><span className="material-symbols-outlined">category</span></div>
                   )}
                   <div className="text-left">
-                     <span className={`block text-sm font-bold ${category ? 'text-slate-800' : 'text-slate-400'}`}>{category || "Selecionar categoria"}</span>
+                     <span className={`block text-sm font-bold ${category ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400'}`}>{category || "Selecionar categoria"}</span>
                      {category && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Toque para alterar</span>}
                   </div>
                </div>
-               <span className="material-symbols-outlined text-slate-300">chevron_right</span>
+               <span className="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
             </button>
         </div>
 
@@ -277,7 +322,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                     {accounts.map(acc => {
                         const isSelected = accountId === acc.id;
                         return (
-                            <button key={acc.id} type="button" onClick={() => setAccountId(acc.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all whitespace-nowrap ${isSelected ? `bg-slate-800 border-slate-800 text-white shadow-md` : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                            <button key={acc.id} type="button" onClick={() => setAccountId(acc.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all whitespace-nowrap ${isSelected ? `bg-slate-800 dark:bg-slate-700 border-slate-800 dark:border-slate-700 text-white shadow-md` : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'}`}>
                                 <div className="bg-white rounded-full p-0.5"><BankLogo name={acc.name} color={acc.color} size="sm" /></div>
                                 <span className="text-xs font-bold">{acc.name}</span>
                             </button>
@@ -286,26 +331,26 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-2xl p-2 border border-slate-100">
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-2 border border-slate-100 dark:border-slate-700">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block ml-2">Data</label>
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full bg-transparent font-bold text-slate-700 outline-none px-2 text-sm" />
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full bg-transparent font-bold text-slate-700 dark:text-slate-200 outline-none px-2 text-sm" />
                 </div>
-                <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100">
-                    <button type="button" onClick={() => setStatus('completed')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'completed' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">check_circle</span></button>
-                    <button type="button" onClick={() => setStatus('pending')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'pending' ? 'bg-white shadow-sm text-amber-500' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">schedule</span></button>
+                <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl border border-slate-100 dark:border-slate-700">
+                    <button type="button" onClick={() => setStatus('completed')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'completed' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">check_circle</span></button>
+                    <button type="button" onClick={() => setStatus('pending')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'pending' ? 'bg-white dark:bg-slate-700 shadow-sm text-amber-500' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">schedule</span></button>
                 </div>
              </div>
         </div>
 
         <div className="space-y-3 pt-2">
-             <div className={`flex items-center justify-between p-3 rounded-2xl border ${isIgnored ? 'border-slate-200 bg-slate-50' : 'border-transparent hover:bg-slate-50'} transition-all`}>
+             <div className={`flex items-center justify-between p-3 rounded-2xl border ${isIgnored ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'} transition-all`}>
                 <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isIgnored ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-400'}`}><span className="material-symbols-outlined text-lg">visibility_off</span></div>
-                    <div><span className="text-xs font-bold text-slate-700 block">Ignorar lançamento</span><span className="text-[10px] text-slate-400 block">Não contabilizar em saldos ou relatórios</span></div>
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isIgnored ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}><span className="material-symbols-outlined text-lg">visibility_off</span></div>
+                    <div><span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Ignorar lançamento</span><span className="text-[10px] text-slate-400 block">Não contabilizar em saldos ou relatórios</span></div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={isIgnored} onChange={e => setIsIgnored(e.target.checked)} className="sr-only peer" />
-                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-800"></div>
+                    <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-800"></div>
                 </label>
              </div>
              
@@ -313,49 +358,49 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 <button 
                     type="button" 
                     onClick={() => onCreateRule(transactionToEdit)}
-                    className="flex items-center justify-between p-3 rounded-2xl border border-amber-100 bg-amber-50/50 hover:bg-amber-50 transition-all group w-full text-left"
+                    className="flex items-center justify-between p-3 rounded-2xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-900/20 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-all group w-full text-left"
                 >
                     <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-white text-amber-500 shadow-sm group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-lg">auto_fix_high</span></div>
-                        <div><span className="text-xs font-bold text-slate-700 block">Regra Inteligente</span><span className="text-[10px] text-slate-400 block">Automatizar lançamentos futuros</span></div>
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-white dark:bg-amber-900/40 text-amber-500 shadow-sm group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-lg">auto_fix_high</span></div>
+                        <div><span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Regra Inteligente</span><span className="text-[10px] text-slate-400 block">Automatizar lançamentos futuros</span></div>
                     </div>
                     <span className="material-symbols-outlined text-amber-300 group-hover:text-amber-500">chevron_right</span>
                 </button>
              )}
 
-             <div className={`flex flex-col rounded-2xl border transition-all ${isRecurring ? 'border-indigo-100 bg-indigo-50/30' : 'border-transparent hover:bg-slate-50'}`}>
+             <div className={`flex flex-col rounded-2xl border transition-all ${isRecurring ? 'border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/30 dark:bg-indigo-900/20' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
                 <div className="flex items-center justify-between p-3">
                     <div className="flex items-center gap-3">
-                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isRecurring ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}><span className="material-symbols-outlined text-lg">update</span></div>
-                        <div><span className="text-xs font-bold text-slate-700 block">Repetir lançamento</span></div>
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isRecurring ? 'bg-indigo-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}><span className="material-symbols-outlined text-lg">update</span></div>
+                        <div><span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Repetir lançamento</span></div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)} className="sr-only peer" />
-                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
+                        <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
                     </label>
                 </div>
                 {isRecurring && (
                      <div className="px-3 pb-3 flex items-center gap-3 animate-in slide-in-from-top-2">
-                        <select value={frequency} onChange={e => setFrequency(e.target.value as any)} className="flex-1 bg-white border border-indigo-100 text-xs font-bold text-indigo-700 rounded-xl py-2 px-3 outline-none">
+                        <select value={frequency} onChange={e => setFrequency(e.target.value as any)} className="flex-1 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900/30 text-xs font-bold text-indigo-700 dark:text-indigo-400 rounded-xl py-2 px-3 outline-none">
                             <option value="daily">Diariamente</option>
                             <option value="weekly">Semanalmente</option>
                             <option value="monthly">Mensalmente</option>
                             <option value="yearly">Anualmente</option>
                         </select>
-                        <div className="flex items-center gap-2 bg-white border border-indigo-100 rounded-xl px-3 py-1">
+                        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900/30 rounded-xl px-3 py-1">
                             <span className="text-xs font-bold text-indigo-400">x</span>
-                            <input type="number" value={repeatCount} onChange={e => setRepeatCount(e.target.value)} className="w-8 text-center font-bold text-indigo-700 outline-none text-sm" min="2" max="360" />
+                            <input type="number" value={repeatCount} onChange={e => setRepeatCount(e.target.value)} className="w-8 text-center bg-transparent font-bold text-indigo-700 dark:text-indigo-400 outline-none text-sm" min="2" max="360" />
                         </div>
                      </div>
                  )}
              </div>
         </div>
 
-        <div className="flex gap-3 pt-4 border-t border-slate-50 mt-2">
+        <div className="flex gap-3 pt-4 border-t border-slate-50 dark:border-slate-800 mt-2">
           {transactionToEdit && (
-             <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-slate-100 text-slate-400 hover:text-danger hover:bg-red-50 transition-all"><span className="material-symbols-outlined">delete</span></button>
+             <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-danger hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"><span className="material-symbols-outlined">delete</span></button>
           )}
-          <Button type="submit" isLoading={loading} className={`flex-1 rounded-2xl font-bold h-12 text-white shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all ${type === 'expense' ? 'bg-danger shadow-red-200' : 'bg-success shadow-emerald-200'}`}>{transactionToEdit ? 'Salvar Alterações' : 'Confirmar Lançamento'}</Button>
+          <Button type="submit" isLoading={loading} className={`flex-1 rounded-2xl font-bold h-12 text-white shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all ${type === 'expense' ? 'bg-danger shadow-red-200 dark:shadow-none' : 'bg-success shadow-emerald-200 dark:shadow-none'}`}>{transactionToEdit ? 'Salvar Alterações' : 'Confirmar Lançamento'}</Button>
         </div>
       </form>
       <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="Excluir Lançamento" message="Tem certeza que deseja remover este lançamento? O saldo da conta será atualizado." confirmText="Sim, excluir" variant="danger" isLoading={loading} />

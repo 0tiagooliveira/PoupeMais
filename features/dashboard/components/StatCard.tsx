@@ -18,12 +18,12 @@ export const StatCard: React.FC<StatCardProps> = ({ type, value, onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className="group cursor-pointer rounded-[32px] border border-slate-50 bg-white p-5 shadow-sm transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+      className="group cursor-pointer rounded-[32px] border border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
     >
       {/* Top row with label and small arrow */}
       <div className="mb-4 flex items-center justify-between">
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
-        <span className="material-symbols-outlined text-slate-200 text-sm transition-colors group-hover:text-slate-400">arrow_forward</span>
+        <span className="material-symbols-outlined text-slate-200 group-hover:text-slate-400 dark:text-slate-700 dark:group-hover:text-slate-500 text-sm transition-colors">arrow_forward</span>
       </div>
       
       {/* Content row with icon and value */}

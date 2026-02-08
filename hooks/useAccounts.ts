@@ -25,16 +25,7 @@ export const useAccounts = () => {
         ...doc.data()
       })) as Account[];
       
-      // FIX CRÍTICO: Sobrescreve visualmente o saldo da conta Nubank solicitada para R$ 752,87
-      // Isso garante que em qualquer lugar do app (Lista, Extrato, Dashboard) o valor seja consistente.
-      const fixedAccounts = data.map(acc => {
-        if (acc.name.includes('Nubank') || acc.name.includes('07502261-9')) {
-           return { ...acc, balance: 752.87 };
-        }
-        return acc;
-      });
-      
-      setAccounts(fixedAccounts);
+      setAccounts(data);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching accounts:", error);

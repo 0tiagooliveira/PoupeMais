@@ -117,7 +117,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
                 onClick={() => handleBankSelect(bank)}
                 className="group flex flex-col items-center gap-2 transition-all active:scale-90"
               >
-                <div className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${name === bank.name ? 'ring-[3px] ring-primary ring-offset-2 scale-110 shadow-lg' : 'ring-1 ring-slate-100 hover:ring-slate-300'}`}>
+                <div className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${name === bank.name ? 'ring-[3px] ring-primary ring-offset-2 scale-110 shadow-lg' : 'ring-1 ring-slate-100 dark:ring-slate-700 hover:ring-slate-300 dark:hover:ring-slate-600'}`}>
                     <BankLogo name={bank.name} color={bank.color} size="md" />
                     {name === bank.name && (
                         <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full h-5 w-5 flex items-center justify-center shadow-md border-2 border-white z-20">
@@ -126,7 +126,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
                     )}
                 </div>
                 <div className="flex flex-col items-center text-center mt-1">
-                    <span className={`text-[10px] font-bold leading-tight ${name === bank.name ? 'text-slate-800' : 'text-slate-500'}`}>{bank.name}</span>
+                    <span className={`text-[10px] font-bold leading-tight ${name === bank.name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>{bank.name}</span>
                     <span className="text-[8px] font-bold text-slate-400 tracking-tighter">Banco {bank.code}</span>
                 </div>
               </button>
@@ -154,7 +154,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
                 className={`rounded-xl px-4 py-2.5 text-xs font-bold tracking-tight transition-all ${
                     type === t 
                     ? 'bg-primary text-white shadow-lg shadow-success/20' 
-                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 {t}
@@ -163,10 +163,10 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
           </div>
         </div>
 
-        <div className="rounded-3xl bg-slate-50 p-6 border border-slate-100">
+        <div className="rounded-3xl bg-slate-50 dark:bg-slate-800 p-6 border border-slate-100 dark:border-slate-700">
             <label className="text-xs font-bold text-slate-400 mb-2 block">Saldo disponível</label>
             <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-slate-300">R$</span>
+                <span className="text-2xl font-bold text-slate-300 dark:text-slate-600">R$</span>
                 <input 
                     type="number" 
                     step="0.01" 
@@ -174,7 +174,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
                     value={balance}
                     onChange={e => setBalance(e.target.value)}
                     required
-                    className="w-full bg-transparent text-4xl font-bold tracking-tighter text-slate-800 outline-none placeholder:text-slate-100"
+                    className="w-full bg-transparent text-4xl font-bold tracking-tighter text-slate-800 dark:text-slate-100 outline-none placeholder:text-slate-100 dark:placeholder:text-slate-700"
                 />
             </div>
         </div>

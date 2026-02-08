@@ -20,7 +20,7 @@ interface AutomationRulesModalProps {
 export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOpen, onClose, baseTransaction }) => {
   const { currentUser } = useAuth();
   const { addNotification } = useNotification();
-  const { allCategories } = useCategories();
+  const { allCategories, addCustomCategory } = useCategories();
   const { accounts } = useAccounts();
 
   // Estados da Regra
@@ -69,6 +69,30 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
   const selectedCategoryData = useMemo(() => {
     return allCategories.find(c => c.name === targetCategory);
   }, [allCategories, targetCategory]);
+
+  const handleCreateCategory = async () => {
+    if (!categorySearch.trim()) return;
+    
+    const newName = categorySearch.trim();
+    // Tenta inferir o tipo com base na transação original, ou assume despesa como padrão para regras
+    const type = baseTransaction?.type || 'expense';
+
+    try {
+      await addCustomCategory({
+        name: newName,
+        icon: 'category', // Ícone padrão
+        color: '#64748B', // Cor neutra padrão
+        type: type
+      });
+      
+      setTargetCategory(newName);
+      setCategorySearch('');
+      setIsCategorySelectorOpen(false);
+      addNotification(`Categoria "${newName}" criada!`, 'success');
+    } catch (error) {
+      addNotification('Erro ao criar categoria.', 'error');
+    }
+  };
 
   const handleSaveRule = async () => {
     if (!currentUser) return;
@@ -179,6 +203,22 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
                 <input type="text" placeholder="Buscar..." value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="w-full bg-slate-50 rounded-xl py-3 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-slate-100 transition-all" autoFocus />
              </div>
              <div className="flex-1 overflow-y-auto custom-scrollbar pb-4 pr-1">
+                {categorySearch.trim() && (
+                    <button
+                        type="button"
+                        onClick={handleCreateCategory}
+                        className="w-full flex items-center gap-3 p-3 rounded-2xl mb-3 bg-emerald-50 border border-emerald-100 text-emerald-700 hover:bg-emerald-100 transition-colors group active:scale-[0.98]"
+                    >
+                        <div className="h-12 w-12 rounded-2xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <span className="material-symbols-outlined text-emerald-600">add</span>
+                        </div>
+                        <div className="text-left">
+                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 block mb-0.5">Nova Categoria</span>
+                            <p className="text-sm font-bold">Criar "{categorySearch}"</p>
+                        </div>
+                    </button>
+                )}
+                
                 <div className="grid grid-cols-3 gap-3">
                    {filteredCategories.map(cat => (
                       <button key={cat.id || cat.name} type="button" onClick={() => { setTargetCategory(cat.name); setIsCategorySelectorOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all active:scale-95">
@@ -189,6 +229,13 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
                       </button>
                    ))}
                 </div>
+                
+                {filteredCategories.length === 0 && !categorySearch && (
+                    <div className="text-center py-10 opacity-50">
+                        <span className="material-symbols-outlined text-4xl mb-2">category</span>
+                        <p className="text-xs font-bold">Nenhuma categoria encontrada</p>
+                    </div>
+                )}
              </div>
           </div>
         )}

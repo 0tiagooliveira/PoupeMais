@@ -136,12 +136,12 @@ export const QuickImportReviewModal: React.FC<QuickImportReviewModalProps> = ({ 
                     <span className="material-symbols-outlined text-lg">{getIconByCategoryName(t.category)}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">{t.description}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">{t.category} • {new Date(t.date).toLocaleDateString()}</p>
+                    <p className="text-xs font-medium text-slate-800 truncate">{t.description}</p>
+                    <p className="text-[9px] font-medium text-slate-400 uppercase">{t.category} • {new Date(t.date).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`text-xs font-black ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>
+                  <span className={`text-xs font-bold ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>
                     {t.type === 'income' ? '+' : ''}{formatCurrency(t.amount)}
                   </span>
                   <div className={`h-5 w-5 rounded-md border flex items-center justify-center transition-all ${t.selected ? 'bg-primary border-primary text-white' : 'border-slate-300 bg-white'}`}>
@@ -155,8 +155,8 @@ export const QuickImportReviewModal: React.FC<QuickImportReviewModalProps> = ({ 
 
         <div className="pt-4 border-t border-slate-50">
            <div className="flex items-center justify-between mb-4 px-1">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total selecionado</span>
-              <span className={`text-lg font-black tracking-tighter ${totalAmount >= 0 ? 'text-success' : 'text-danger'}`}>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total selecionado</span>
+              <span className={`text-lg font-bold tracking-tighter ${totalAmount >= 0 ? 'text-success' : 'text-danger'}`}>
                 {formatCurrency(totalAmount)}
               </span>
            </div>

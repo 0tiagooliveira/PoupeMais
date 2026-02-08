@@ -5,6 +5,7 @@ import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAccounts } from '../../hooks/useAccounts';
+import { useCreditCards } from '../../hooks/useCreditCards';
 import { useProcessing } from '../../contexts/ProcessingContext';
 import { formatCurrency } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
@@ -18,12 +19,13 @@ export const StatementImportPage: React.FC = () => {
   const { currentUser } = useAuth();
   const { addNotification } = useNotification();
   const { accounts, addAccount } = useAccounts();
+  const { cards } = useCreditCards();
   
-  // Utilizando o contexto global de processamento
   const { 
     isProcessing, 
     progressText, 
     results, 
+    detectedMetadata, 
     hasResults, 
     startProcessing, 
     clearResults, 
@@ -31,30 +33,31 @@ export const StatementImportPage: React.FC = () => {
   } = useProcessing();
   
   const [mode, setMode] = useState<InputMode>('file');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [textInput, setTextInput] = useState('');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
-  const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [destinationId, setDestinationId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      if (selectedFile.type.startsWith('image/')) {
-        setPreviewUrl(URL.createObjectURL(selectedFile));
-      } else {
-        setPreviewUrl(null);
-      }
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files);
+      setFiles(prev => [...prev, ...newFiles]);
     }
+    // Reset input to allow selecting same files again if needed
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeFile = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleStartProcessing = () => {
-    startProcessing(mode, file, textInput);
+    startProcessing(mode, files, textInput);
   };
 
   const toggleTransaction = (index: number) => {
@@ -63,12 +66,25 @@ export const StatementImportPage: React.FC = () => {
     setResults(newTrans);
   };
 
-  const saveTransactions = async () => {
-    if (!selectedAccountId) {
-      addNotification("Selecione uma conta para destino.", "warning");
-      return;
-    }
+  const toggleSourceType = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation(); 
+    const newTrans = [...results];
+    const current = newTrans[index].sourceType;
+    newTrans[index].sourceType = current === 'card' ? 'account' : 'card';
+    setResults(newTrans);
+  };
 
+  const getBankColor = (bankName: string) => {
+    const name = bankName.toLowerCase();
+    if (name.includes('nubank') || name.includes('nu pagamentos')) return '#820ad1';
+    if (name.includes('itaú') || name.includes('itau')) return '#ec7000';
+    if (name.includes('bradesco')) return '#cc092f';
+    if (name.includes('inter')) return '#ff7a00';
+    if (name.includes('santander')) return '#ec0000';
+    return '#21C25E';
+  };
+
+  const saveTransactions = async () => {
     const toSave = results.filter(t => t.selected);
     if (toSave.length === 0) return;
 
@@ -76,40 +92,172 @@ export const StatementImportPage: React.FC = () => {
     try {
       const batch = db.batch();
       const userRef = db.collection('users').doc(currentUser!.uid);
-      const accountRef = userRef.collection('accounts').doc(selectedAccountId);
       
-      let totalIncrement = 0;
+      // --- DETECÇÃO DE DUPLICIDADE ---
+      const dates = toSave.map(t => new Date(t.date).getTime());
+      const minDate = new Date(Math.min(...dates));
+      const maxDate = new Date(Math.max(...dates));
+      
+      minDate.setDate(minDate.getDate() - 5);
+      maxDate.setDate(maxDate.getDate() + 5);
 
-      toSave.forEach(t => {
+      const existingSnap = await userRef.collection('transactions')
+        .where('date', '>=', minDate.toISOString())
+        .where('date', '<=', maxDate.toISOString())
+        .get();
+
+      const existingSignatures = new Set<string>();
+      existingSnap.docs.forEach(doc => {
+          const d = doc.data();
+          const dateStr = d.date.split('T')[0];
+          const desc = d.description.trim().toLowerCase();
+          const amount = parseFloat(d.amount).toFixed(2);
+          const sig = `${dateStr}|${amount}|${desc}|${d.type}`;
+          existingSignatures.add(sig);
+      });
+
+      const accountsMap = new Map<string, string>();
+      const cardsMap = new Map<string, string>();
+
+      accounts.forEach(acc => accountsMap.set(acc.name.toLowerCase(), acc.id));
+      cards.forEach(card => cardsMap.set(card.name.toLowerCase(), card.id));
+
+      let futureInstallmentsCount = 0;
+      let duplicatesSkipped = 0;
+      let savedCount = 0;
+
+      for (const t of toSave) {
+        const tDateStr = t.date.includes('T') ? t.date.split('T')[0] : t.date;
+        const tDesc = t.description.trim().toLowerCase();
+        const tAmount = t.amount.toFixed(2);
+        const tSig = `${tDateStr}|${tAmount}|${tDesc}|${t.type}`;
+
+        if (existingSignatures.has(tSig)) {
+            duplicatesSkipped++;
+            continue;
+        }
+
+        const bankName = t.bankName || detectedMetadata?.bankName || 'Banco Desconhecido';
+        const normalizedBankName = bankName.toLowerCase();
+        
+        let targetId = '';
+        let isCard = t.sourceType === 'card';
+
+        if (destinationId) {
+            targetId = destinationId;
+            const destIsCard = cards.some(c => c.id === destinationId);
+            const destIsAccount = accounts.some(a => a.id === destinationId);
+            if (destIsCard) isCard = true;
+            else if (destIsAccount) isCard = false;
+        } else {
+            if (isCard) {
+                const existingCardName = Array.from(cardsMap.keys()).find(name => name.includes(normalizedBankName) || normalizedBankName.includes(name));
+                if (existingCardName) {
+                    targetId = cardsMap.get(existingCardName)!;
+                } else {
+                    const newCardRef = userRef.collection('credit_cards').doc();
+                    batch.set(newCardRef, {
+                        name: bankName,
+                        limit: detectedMetadata?.limit || 1000,
+                        closingDay: detectedMetadata?.closingDay || 1,
+                        dueDay: detectedMetadata?.dueDay || 10,
+                        color: getBankColor(bankName),
+                        createdAt: new Date().toISOString()
+                    });
+                    targetId = newCardRef.id;
+                    // ATUALIZA O MAPA IMEDIATAMENTE para evitar duplicatas na mesma importação
+                    cardsMap.set(normalizedBankName, targetId);
+                    addNotification(`Cartão "${bankName}" criado.`, 'info');
+                }
+            } else {
+                const existingAccountName = Array.from(accountsMap.keys()).find(name => name.includes(normalizedBankName) || normalizedBankName.includes(name));
+                if (existingAccountName) {
+                    targetId = accountsMap.get(existingAccountName)!;
+                } else {
+                    const newAccountRef = userRef.collection('accounts').doc();
+                    batch.set(newAccountRef, {
+                        name: bankName,
+                        type: 'Corrente',
+                        balance: 0,
+                        initialBalance: 0,
+                        color: getBankColor(bankName),
+                        createdAt: new Date().toISOString()
+                    });
+                    targetId = newAccountRef.id;
+                    // ATUALIZA O MAPA IMEDIATAMENTE para evitar duplicatas na mesma importação
+                    accountsMap.set(normalizedBankName, targetId);
+                    addNotification(`Conta "${bankName}" criada.`, 'info');
+                }
+            }
+        }
+
+        savedCount++;
         const transRef = userRef.collection('transactions').doc();
-        const { selected, ...transactionData } = t;
+        const { selected, sourceType, bankName: bName, installmentNumber, totalInstallments, ...transactionData } = t;
         
         batch.set(transRef, {
           ...transactionData,
-          accountId: selectedAccountId,
+          accountId: targetId,
           status: 'completed',
           createdAt: new Date().toISOString(),
           isFixed: false,
-          isRecurring: false
+          isRecurring: false,
+          installmentNumber: installmentNumber ?? null,
+          totalInstallments: totalInstallments ?? null
         });
         
-        totalIncrement += (t.type === 'income' ? t.amount : -t.amount);
-      });
+        if (!isCard) {
+            batch.update(userRef.collection('accounts').doc(targetId), {
+                balance: firebase.firestore.FieldValue.increment(t.type === 'income' ? t.amount : -t.amount)
+            });
+        }
 
-      batch.update(accountRef, {
-        balance: firebase.firestore.FieldValue.increment(totalIncrement)
-      });
+        if (isCard && installmentNumber && totalInstallments && totalInstallments > installmentNumber) {
+            const remaining = totalInstallments - installmentNumber;
+            const baseDate = new Date(t.date);
+            const baseDesc = t.description.replace(/\s?\d{1,2}[\/-]\d{1,2}|\s?\d{1,2}\sde\s\d{1,2}/gi, '').trim();
 
-      await batch.commit();
-      addNotification("Lançamentos importados com sucesso!", "success");
+            for (let i = 1; i <= remaining; i++) {
+                const nextInst = installmentNumber + i;
+                const nextDate = new Date(baseDate);
+                nextDate.setMonth(baseDate.getMonth() + i);
+                const futureRef = userRef.collection('transactions').doc();
+                batch.set(futureRef, {
+                    ...transactionData,
+                    description: `${baseDesc} ${nextInst}/${totalInstallments}`, 
+                    accountId: targetId,
+                    status: 'pending', 
+                    date: nextDate.toISOString(),
+                    createdAt: new Date().toISOString(),
+                    isFixed: false,
+                    isRecurring: false,
+                    installmentNumber: nextInst,
+                    totalInstallments: totalInstallments
+                });
+                futureInstallmentsCount++;
+            }
+        }
+      }
+
+      if (savedCount > 0) {
+          await batch.commit();
+          let successMsg = `${savedCount} importados!`;
+          if (futureInstallmentsCount > 0) successMsg += ` + ${futureInstallmentsCount} parcelas.`;
+          if (duplicatesSkipped > 0) successMsg += ` (${duplicatesSkipped} ignorados)`;
+          addNotification(successMsg, "success", 6000);
+      } else if (duplicatesSkipped > 0) {
+          addNotification(`Todos os ${duplicatesSkipped} itens já existiam.`, "info", 5000);
+      } else {
+          addNotification("Nenhum lançamento novo para salvar.", "warning");
+      }
       
-      // Limpa tudo após salvar
       clearResults();
-      setFile(null);
+      setFiles([]);
       setTextInput('');
-      setPreviewUrl(null);
+      setDestinationId('');
     } catch (err) {
-      addNotification("Erro ao salvar dados no banco.", "error");
+      console.error(err);
+      addNotification("Erro ao salvar. " + (err instanceof Error ? err.message : ''), "error");
     } finally {
       setIsSaving(false);
     }
@@ -117,9 +265,9 @@ export const StatementImportPage: React.FC = () => {
 
   const handleCancel = () => {
     clearResults();
-    setFile(null);
+    setFiles([]);
     setTextInput('');
-    setPreviewUrl(null);
+    setDestinationId('');
   };
 
   const selectedCount = results.filter(t => t.selected).length;
@@ -141,7 +289,7 @@ export const StatementImportPage: React.FC = () => {
         </div>
 
         <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2 text-center">
-          Poup+ IA trabalhando
+          Processando...
         </h3>
         
         <div className="h-8 mb-4 overflow-hidden relative w-full text-center">
@@ -153,103 +301,99 @@ export const StatementImportPage: React.FC = () => {
         <div className="w-full max-w-xs h-2 bg-slate-100 rounded-full overflow-hidden mb-8">
            <div className="h-full bg-gradient-to-r from-primary to-emerald-400 animate-[loading_2s_ease-in-out_infinite] w-[30%] rounded-full"></div>
         </div>
-        
-        <p className="mt-2 text-xs text-slate-400 font-medium max-w-xs text-center leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
-          <span className="block mb-1 font-bold text-slate-500">Dica:</span>
-          Você pode sair desta tela. O processamento continuará em segundo plano e avisaremos quando terminar.
-        </p>
       </div>
     );
   }
 
-  // VIEW: REVIEW STATE (Step 2)
+  // VIEW: REVIEW STATE
   if (hasResults) {
     return (
         <div className="mx-auto max-w-3xl space-y-8 pb-32 animate-in fade-in duration-500">
           <header className="flex items-center gap-4">
             <Button variant="ghost" onClick={handleCancel} className="h-10 w-10 rounded-full p-0"><span className="material-symbols-outlined">close</span></Button>
             <div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Revisão</h2>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Revisão em Lote</h2>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Confirme os dados extraídos</p>
             </div>
           </header>
 
-          <section className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Conta para Destino</h3>
-              {accounts.length > 0 && (
-                 <button onClick={() => setIsAccountModalOpen(true)} className="text-[10px] font-black text-primary uppercase hover:underline">Nova Conta</button>
-              )}
-            </div>
-
-            {accounts.length === 0 ? (
-              <div className="flex flex-col items-center py-6 text-center">
-                <div className="h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-4">
-                    <span className="material-symbols-outlined">account_balance</span>
-                </div>
-                <p className="text-sm text-slate-500 font-bold mb-4">Você ainda não tem contas cadastradas.</p>
-                <Button onClick={() => setIsAccountModalOpen(true)} variant="secondary" className="rounded-2xl font-bold px-8">
-                  + Criar minha primeira conta
-                </Button>
-              </div>
-            ) : (
-              <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-1">
-                {accounts.map(acc => {
-                  const isSelected = selectedAccountId === acc.id;
-                  return (
-                    <button 
-                      key={acc.id} 
-                      onClick={() => setSelectedAccountId(acc.id)}
-                      className={`flex flex-col items-center gap-2 min-w-[100px] p-4 rounded-[24px] border transition-all
-                        ${isSelected ? 'bg-slate-900 border-slate-900 text-white shadow-xl scale-105' : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'}`}
-                    >
-                      <div className="bg-white rounded-full p-0.5 shadow-sm">
-                        <BankLogo name={acc.name} color={acc.color} size="sm" />
-                      </div>
-                      <span className="text-[11px] font-bold truncate w-full text-center">{acc.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+          <div className="bg-white p-6 rounded-[32px] border border-emerald-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+             <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Destino dos Lançamentos</label>
+                <p className="text-xs text-slate-500 max-w-xs">Selecione para evitar duplicação de cartões (Ex: Nubank)</p>
+             </div>
+             <select 
+                value={destinationId} 
+                onChange={(e) => setDestinationId(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 w-full md:w-auto min-w-[250px]"
+             >
+                <option value="">✨ Automático (Detectar/Criar)</option>
+                {cards.length > 0 && (
+                    <optgroup label="Seus Cartões de Crédito">
+                        {cards.map(card => <option key={card.id} value={card.id}>{card.name}</option>)}
+                    </optgroup>
+                )}
+                {accounts.length > 0 && (
+                    <optgroup label="Suas Contas Bancárias">
+                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                    </optgroup>
+                )}
+             </select>
+          </div>
 
           <section className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
             <div className="bg-slate-50 px-8 py-5 flex items-center justify-between border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identificado ({selectedCount})</span>
-                   <span className="text-[9px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">via Gemini AI</span>
+                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identificado ({selectedCount})</span>
+                   <span className="text-[9px] font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">Automático</span>
                 </div>
-                <span className={`text-sm font-black tracking-tighter ${totalAmount >= 0 ? 'text-success' : 'text-danger'}`}>
+                <span className={`text-sm font-bold tracking-tighter ${totalAmount >= 0 ? 'text-success' : 'text-danger'}`}>
                   {formatCurrency(totalAmount)}
                 </span>
             </div>
 
-            <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto custom-scrollbar">
+            <div className="divide-y divide-slate-50 max-h-[500px] overflow-y-auto custom-scrollbar">
               {results.map((t, i) => (
                 <div 
                   key={i} 
                   onClick={() => toggleTransaction(i)}
-                  className={`flex items-center justify-between px-8 py-5 cursor-pointer transition-all hover:bg-slate-50 ${!t.selected ? 'opacity-40 grayscale' : ''}`}
+                  className={`flex items-center justify-between px-6 py-4 cursor-pointer transition-all hover:bg-slate-50 ${!t.selected ? 'opacity-40 grayscale' : ''}`}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm text-slate-400 shrink-0">
                       <span className="material-symbols-outlined text-xl">{getIconByCategoryName(t.category)}</span>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-800 leading-none mb-1 truncate max-w-[150px] sm:max-w-[250px]">{t.description}</p>
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-slate-800 leading-none mb-1 truncate">{t.description}</p>
+                          {t.installmentNumber && t.totalInstallments && (
+                              <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 uppercase whitespace-nowrap">
+                                  {t.installmentNumber}/{t.totalInstallments}
+                              </span>
+                          )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400 uppercase tracking-tight flex-wrap">
                         <span>{new Date(t.date).toLocaleDateString()}</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-200"></span>
+                        
+                        <div 
+                            onClick={(e) => toggleSourceType(i, e)}
+                            className={`flex cursor-pointer items-center gap-1 px-2 py-1 rounded-lg border transition-all hover:brightness-95 active:scale-95 ${t.sourceType === 'card' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}
+                        >
+                            <span className="material-symbols-outlined text-[14px]">{t.sourceType === 'card' ? 'credit_card' : 'account_balance'}</span>
+                            <span className="truncate max-w-[100px] font-bold text-[10px]">{t.bankName}</span>
+                        </div>
+                        
                         <span className="h-1 w-1 rounded-full bg-slate-200"></span>
                         <span className="text-slate-500">{t.category}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 pl-2">
+                  <div className="flex items-center gap-3 pl-2">
                     <span className={`text-sm font-black tracking-tighter whitespace-nowrap ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>
                       {t.type === 'income' ? '+' : ''}{formatCurrency(t.amount)}
                     </span>
-                    <div className={`h-6 w-6 rounded-lg flex items-center justify-center border-2 transition-all ${t.selected ? 'bg-primary border-primary text-white shadow-sm' : 'border-slate-200 bg-white'}`}>
+                    <div className={`h-6 w-6 rounded-lg flex items-center justify-center border-2 transition-all shrink-0 ${t.selected ? 'bg-primary border-primary text-white shadow-sm' : 'border-slate-200 bg-white'}`}>
                       {t.selected && <span className="material-symbols-outlined text-sm font-black">check</span>}
                     </div>
                   </div>
@@ -269,10 +413,10 @@ export const StatementImportPage: React.FC = () => {
             <Button 
               onClick={saveTransactions} 
               isLoading={isSaving} 
-              disabled={selectedCount === 0 || !selectedAccountId}
+              disabled={selectedCount === 0}
               className="flex-[2] py-5 rounded-[24px] bg-success hover:bg-emerald-600 text-white font-black text-sm shadow-xl shadow-success/20"
             >
-              Confirmar Importação
+              Salvar Tudo
             </Button>
           </div>
           
@@ -282,7 +426,7 @@ export const StatementImportPage: React.FC = () => {
             onSave={async (data) => {
               await addAccount(data);
               setIsAccountModalOpen(false);
-              addNotification("Conta criada! Selecione-a agora.", "success");
+              addNotification("Conta criada!", "success");
             }} 
           />
         </div>
@@ -295,8 +439,8 @@ export const StatementImportPage: React.FC = () => {
       <header className="flex items-center gap-4">
         <BackButton className="bg-white border border-slate-100 shadow-sm" />
         <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Importação Inteligente</h2>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">IA para Extratos, Fotos e Textos</p>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Importação Múltipla</h2>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Extratos, Faturas e CSVs</p>
         </div>
       </header>
 
@@ -304,18 +448,18 @@ export const StatementImportPage: React.FC = () => {
           <div className="flex p-1 bg-slate-100 rounded-2xl relative">
             <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm transition-all duration-300 ease-out ${mode === 'text' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
             <button type="button" onClick={() => setMode('file')} className={`flex-1 relative z-10 py-3 text-xs font-black uppercase tracking-widest transition-colors ${mode === 'file' ? 'text-primary' : 'text-slate-400'}`}>
-               <span className="flex items-center justify-center gap-2"><span className="material-symbols-outlined text-lg">upload_file</span> Arquivo / Foto</span>
+               <span className="flex items-center justify-center gap-2"><span className="material-symbols-outlined text-lg">upload_file</span> Arquivos</span>
             </button>
             <button type="button" onClick={() => setMode('text')} className={`flex-1 relative z-10 py-3 text-xs font-black uppercase tracking-widest transition-colors ${mode === 'text' ? 'text-primary' : 'text-slate-400'}`}>
-               <span className="flex items-center justify-center gap-2"><span className="material-symbols-outlined text-lg">chat</span> Texto / Mensagem</span>
+               <span className="flex items-center justify-center gap-2"><span className="material-symbols-outlined text-lg">chat</span> Texto</span>
             </button>
           </div>
 
           {mode === 'file' ? (
             <div 
               onClick={() => fileInputRef.current?.click()}
-              className={`group relative flex flex-col items-center justify-center rounded-[40px] border-2 border-dashed transition-all p-12 text-center cursor-pointer min-h-[300px]
-                ${file ? 'border-primary bg-emerald-50/20' : 'border-slate-200 bg-white hover:border-primary hover:bg-slate-50'}`}
+              className={`group relative flex flex-col items-center justify-center rounded-[40px] border-2 border-dashed transition-all p-8 text-center cursor-pointer min-h-[300px]
+                ${files.length > 0 ? 'border-primary bg-emerald-50/20' : 'border-slate-200 bg-white hover:border-primary hover:bg-slate-50'}`}
             >
               <input 
                 type="file" 
@@ -323,29 +467,39 @@ export const StatementImportPage: React.FC = () => {
                 onChange={handleFileChange} 
                 accept="image/*,application/pdf,.csv,text/csv" 
                 className="hidden" 
+                multiple
               />
               
-              {file ? (
-                <div className="flex flex-col items-center animate-in zoom-in-95">
-                   {previewUrl ? (
-                     <img src={previewUrl} alt="Preview" className="h-40 w-auto object-contain rounded-2xl mb-6 shadow-xl border border-white/50" />
-                   ) : (
-                     <div className="h-24 w-24 bg-slate-100 rounded-3xl flex items-center justify-center text-slate-400 mb-6 shadow-inner">
-                        <span className="material-symbols-outlined text-5xl">
-                          {file.name.endsWith('.csv') ? 'csv' : 'description'}
-                        </span>
-                     </div>
-                   )}
-                   <h4 className="text-base font-bold text-slate-800">{file.name}</h4>
-                   <p className="text-[10px] text-slate-400 font-bold uppercase mt-2 bg-white px-3 py-1 rounded-full shadow-sm">Clique para trocar</p>
+              {files.length > 0 ? (
+                <div className="w-full max-w-sm space-y-4 animate-in zoom-in-95">
+                   <div className="h-20 w-20 mx-auto bg-white rounded-3xl flex items-center justify-center text-primary shadow-lg relative">
+                      <span className="material-symbols-outlined text-4xl">folder_zip</span>
+                      <div className="absolute -top-2 -right-2 bg-slate-900 text-white h-7 w-7 rounded-full flex items-center justify-center font-bold text-xs shadow-md border-2 border-white">
+                        {files.length}
+                      </div>
+                   </div>
+                   
+                   <div className="bg-white rounded-2xl p-2 max-h-[180px] overflow-y-auto custom-scrollbar border border-slate-100 shadow-sm text-left">
+                      {files.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl group/item">
+                           <div className="flex items-center gap-2 overflow-hidden">
+                              <span className="material-symbols-outlined text-slate-400 text-lg">{f.name.endsWith('.csv') ? 'csv' : 'description'}</span>
+                              <span className="text-xs font-bold text-slate-700 truncate">{f.name}</span>
+                           </div>
+                           <button onClick={(e) => removeFile(i, e)} className="text-slate-300 hover:text-danger p-1 rounded-lg"><span className="material-symbols-outlined text-base">close</span></button>
+                        </div>
+                      ))}
+                   </div>
+                   
+                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Clique para adicionar mais</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
                   <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-[32px] bg-slate-50 text-slate-300 group-hover:text-primary transition-colors shadow-sm">
                     <span className="material-symbols-outlined text-5xl">cloud_upload</span>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">Envie seu comprovante</h3>
-                  <p className="text-sm text-slate-400 font-medium max-w-[260px] leading-relaxed">Suportamos fotos de recibos, prints de tela, PDFs de extrato e arquivos CSV.</p>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">Arraste ou selecione arquivos</h3>
+                  <p className="text-sm text-slate-400 font-medium max-w-[260px] leading-relaxed">Suportamos múltiplos PDFs, imagens e CSVs de uma só vez.</p>
                 </div>
               )}
             </div>
@@ -354,22 +508,22 @@ export const StatementImportPage: React.FC = () => {
               <textarea
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Cole aqui suas mensagens ou anotações...&#10;Ex:&#10;Gastei 50 no almoço ontem&#10;Recebi 2000 de salário&#10;Uber 15 reais hoje cedo"
+                placeholder="Cole aqui o conteúdo do PDF ou mensagens..."
                 className="w-full h-[300px] rounded-[40px] border border-slate-200 p-8 text-sm font-medium text-slate-700 placeholder:text-slate-300 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 resize-none transition-all shadow-sm"
               />
               <div className="absolute bottom-6 right-6 flex items-center gap-2 pointer-events-none opacity-40">
                 <span className="material-symbols-outlined text-slate-400">auto_awesome</span>
-                <span className="text-[10px] font-black uppercase text-slate-400">IA Categorization</span>
+                <span className="text-[10px] font-black uppercase text-slate-400">Detecção Automática</span>
               </div>
             </div>
           )}
 
           <Button 
             onClick={handleStartProcessing} 
-            disabled={(mode === 'file' && !file) || (mode === 'text' && !textInput.trim())} 
+            disabled={(mode === 'file' && files.length === 0) || (mode === 'text' && !textInput.trim())} 
             className="w-full py-5 rounded-[24px] bg-slate-900 hover:bg-slate-800 text-white font-black text-sm shadow-xl shadow-slate-200 transition-all hover:scale-[1.01] active:scale-[0.99]"
           >
-            Processar com Inteligência Artificial
+            {files.length > 1 ? `Processar ${files.length} Arquivos` : 'Processar com Inteligência Artificial'}
           </Button>
       </div>
     </div>

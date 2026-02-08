@@ -119,6 +119,13 @@ export interface AutomationRule {
   isActive: boolean;
 }
 
+export interface DetectedMetadata {
+  limit?: number;
+  closingDay?: number;
+  dueDay?: number;
+  bankName?: string;
+}
+
 export interface DetectedTransaction {
   date: string;
   description: string;
@@ -126,6 +133,10 @@ export interface DetectedTransaction {
   type: 'income' | 'expense';
   category: string;
   selected: boolean;
+  sourceType?: 'account' | 'card'; // Identifica se é Conta ou Cartão
+  bankName?: string; // Ex: Nubank, Itaú
+  installmentNumber?: number;
+  totalInstallments?: number;
 }
 
 export type InputMode = 'file' | 'text';

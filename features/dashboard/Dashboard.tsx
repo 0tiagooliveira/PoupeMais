@@ -177,14 +177,14 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-24">
-      <div className="flex items-center justify-between bg-white border border-slate-50 p-4 rounded-[28px] shadow-sm animate-in fade-in slide-in-from-top-4 duration-700">
+      <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-50 dark:border-slate-800 p-4 rounded-[28px] shadow-sm animate-in fade-in slide-in-from-top-4 duration-700 transition-colors">
         <div className="flex items-center gap-4">
            <button onClick={() => setIsProfileActionsOpen(true)} className="h-14 w-14 rounded-full border-2 border-success p-0.5 overflow-hidden flex-shrink-0 shadow-sm transition-transform hover:scale-110 active:scale-95">
              <img src={currentUser?.photoURL || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} alt="Perfil" className="h-full w-full rounded-full object-cover" />
            </button>
            <div className="flex flex-col text-left">
               <span className="text-sm font-medium text-secondary">Bem-vindo de volta,</span>
-              <h2 className="text-lg font-bold text-slate-800 tracking-tight leading-tight">{currentUser?.displayName || 'Usuário'}</h2>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight leading-tight">{currentUser?.displayName || 'Usuário'}</h2>
            </div>
         </div>
         <button onClick={() => { setIsNotificationsOpen(true); markAllAsRead(); }} className="relative flex h-12 w-12 items-center justify-center text-slate-400 hover:text-primary transition-all rounded-full hover:bg-success/5 active:scale-90">
@@ -194,14 +194,14 @@ export const Dashboard: React.FC = () => {
       </div>
 
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-        <div className="flex justify-center"><MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-slate-100" /></div>
+        <div className="flex justify-center"><MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} className="bg-white dark:bg-slate-900 px-4 py-2 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors" /></div>
         
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
             <div className="md:col-span-7">
                 <BalanceCard balance={globalBalance} />
             </div>
             
-            <div className="md:col-span-5 bg-white rounded-[32px] p-6 border border-emerald-100 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+            <div className="md:col-span-5 bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-emerald-100 dark:border-emerald-900/30 shadow-sm flex flex-col justify-between relative overflow-hidden group transition-colors">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-700"></div>
                 <div className="relative z-10">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Lançamento Inteligente</p>
@@ -210,28 +210,28 @@ export const Dashboard: React.FC = () => {
                             onClick={() => handleLaunchClick('scanner')} 
                             className="flex flex-col items-center gap-2 group/btn"
                         >
-                            <div className="h-14 w-14 rounded-2xl bg-emerald-50 text-primary flex items-center justify-center shadow-sm group-hover/btn:bg-primary group-hover/btn:text-white group-hover/btn:shadow-xl group-hover/btn:-translate-y-1 transition-all duration-300">
+                            <div className="h-14 w-14 rounded-2xl bg-emerald-50 dark:bg-slate-800 text-primary flex items-center justify-center shadow-sm group-hover/btn:bg-primary group-hover/btn:text-white group-hover/btn:shadow-xl group-hover/btn:-translate-y-1 transition-all duration-300">
                                 <span className="material-symbols-outlined text-3xl font-light">photo_camera</span>
                             </div>
-                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Scanner</span>
+                            <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Scanner</span>
                         </button>
                         <button 
                             onClick={() => setIsVoiceModalOpen(true)} 
                             className="flex flex-col items-center gap-2 group/btn"
                         >
-                            <div className="h-14 w-14 rounded-2xl bg-emerald-50 text-primary flex items-center justify-center shadow-sm group-hover/btn:bg-primary group-hover/btn:text-white group-hover/btn:shadow-xl group-hover/btn:-translate-y-1 transition-all duration-300">
+                            <div className="h-14 w-14 rounded-2xl bg-emerald-50 dark:bg-slate-800 text-primary flex items-center justify-center shadow-sm group-hover/btn:bg-primary group-hover/btn:text-white group-hover/btn:shadow-xl group-hover/btn:-translate-y-1 transition-all duration-300">
                                 <span className="material-symbols-outlined text-3xl font-light">mic</span>
                             </div>
-                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Voz</span>
+                            <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Voz</span>
                         </button>
                         <button 
                             onClick={() => handleLaunchClick('statement')} 
                             className="flex flex-col items-center gap-2 group/btn"
                         >
-                            <div className="h-14 w-14 rounded-2xl bg-emerald-50 text-primary flex items-center justify-center shadow-sm group-hover/btn:bg-primary group-hover/btn:text-white group-hover/btn:shadow-xl group-hover/btn:-translate-y-1 transition-all duration-300">
+                            <div className="h-14 w-14 rounded-2xl bg-emerald-50 dark:bg-slate-800 text-primary flex items-center justify-center shadow-sm group-hover/btn:bg-primary group-hover/btn:text-white group-hover/btn:shadow-xl group-hover/btn:-translate-y-1 transition-all duration-300">
                                 <span className="material-symbols-outlined text-3xl font-light">cloud_upload</span>
                             </div>
-                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Extrato</span>
+                            <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Extrato</span>
                         </button>
                     </div>
                 </div>
@@ -246,16 +246,16 @@ export const Dashboard: React.FC = () => {
 
         <button 
           onClick={() => navigate('/ai-analysis')}
-          className="w-full bg-white p-5 rounded-[28px] shadow-sm border border-slate-100 flex items-center gap-5 transition-all hover:shadow-md hover:border-primary/20 group text-left relative overflow-hidden"
+          className="w-full bg-white dark:bg-slate-900 p-5 rounded-[28px] shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-5 transition-all hover:shadow-md hover:border-primary/20 group text-left relative overflow-hidden"
         >
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/5 to-transparent rounded-bl-[100px] pointer-events-none transition-transform group-hover:scale-110"></div>
             <div className="relative shrink-0">
-                <div className="h-14 w-14 rounded-[20px] bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 flex items-center justify-center shadow-sm">
-                    <span className={`material-symbols-outlined text-2xl text-primary ${loadingInsight ? 'animate-spin' : ''}`}>
-                        {loadingInsight ? 'smart_toy' : 'savings'}
+                <div className="h-14 w-14 rounded-[20px] bg-gradient-to-br from-emerald-50 to-white dark:from-slate-800 dark:to-slate-700 border border-emerald-100 dark:border-slate-600 flex items-center justify-center shadow-sm">
+                    <span className={`material-symbols-outlined text-2xl text-primary ${loadingInsight ? 'animate-bounce' : ''}`}>
+                        savings
                     </span>
                 </div>
-                <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm border border-slate-50">
+                <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-50 dark:border-slate-700">
                     <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-pulse"></span>
                 </div>
             </div>
@@ -263,11 +263,11 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-2 mb-1">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Poup+ Intelligence</span>
                 </div>
-                <p className="text-sm font-bold text-slate-700 leading-snug line-clamp-2">
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-snug line-clamp-2">
                     {loadingInsight ? "Analisando suas finanças..." : (dailyInsight || "Toque para auditoria completa e conselhos do CFO.")}
                 </p>
             </div>
-            <div className="h-10 w-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0 z-10">
+            <div className="h-10 w-10 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-400 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0 z-10">
                 <span className="material-symbols-outlined text-xl">arrow_forward</span>
             </div>
         </button>

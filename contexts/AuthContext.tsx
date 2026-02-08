@@ -20,7 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Se o usuário logado for um dos e-mails de teste solicitados, 
         // forçamos o status PRO para liberar todas as funcionalidades da IA e do SaaS.
         const email = user.email?.toLowerCase();
-        if (email === 'teste@gmail.com' || email === 'marisa@gmail.com') {
+        if (email === 'teste@gmail.com' || email === 'marisa@gmail.com' || email === 'tiago336699@gmail.com') {
           userProfile.isPro = true;
         }
         

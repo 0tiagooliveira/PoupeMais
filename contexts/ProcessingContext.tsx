@@ -1,30 +1,31 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
-import { DetectedTransaction, InputMode } from '../types';
+import { GoogleGenAI } from "@google/genai";
+import { DetectedTransaction, DetectedMetadata, InputMode } from '../types';
 import { useNotification } from './NotificationContext';
 import { useAuth } from './AuthContext';
+import { extractTextFromPDF, parseNubankText, parseCSV } from '../utils/localParsers';
 
 interface ProcessingContextType {
   isProcessing: boolean;
   processingPhase: number;
   progressText: string;
   results: DetectedTransaction[];
+  detectedMetadata: DetectedMetadata | null;
   hasResults: boolean;
-  startProcessing: (mode: InputMode, file: File | null, textInput: string) => Promise<void>;
+  startProcessing: (mode: InputMode, files: File[], textInput: string) => Promise<void>;
   clearResults: () => void;
   setResults: React.Dispatch<React.SetStateAction<DetectedTransaction[]>>;
 }
 
 const ProcessingContext = createContext<ProcessingContextType | undefined>(undefined);
 
-const AI_PHASES = [
-  "Digitalizando documento...",
-  "Extraindo datas e valores...",
-  "Analisando contexto das despesas...",
-  "Consultando base de categorias...",
-  "Aplicando inteligência financeira...",
-  "Finalizando organização..."
+const PROCESSING_PHASES = [
+  "Lendo arquivo...",
+  "Identificando padrões...",
+  "Calculando parcelas...",
+  "Categorizando...",
+  "Finalizando..."
 ];
 
 export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -33,36 +34,28 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingPhase, setProcessingPhase] = useState(0);
+  const [progressText, setProgressText] = useState(PROCESSING_PHASES[0]);
   const [results, setResults] = useState<DetectedTransaction[]>([]);
+  const [detectedMetadata, setDetectedMetadata] = useState<DetectedMetadata | null>(null);
 
   useEffect(() => {
     let interval: any;
     if (isProcessing) {
       setProcessingPhase(0);
       interval = setInterval(() => {
-        setProcessingPhase(prev => (prev + 1) % AI_PHASES.length);
-      }, 2000);
+        setProcessingPhase(prev => (prev + 1) % PROCESSING_PHASES.length);
+      }, 600);
     }
     return () => clearInterval(interval);
   }, [isProcessing]);
 
-  const fileToData = (file: File): Promise<{ base64?: string, text?: string }> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
-        reader.readAsText(file);
-        reader.onload = () => resolve({ text: reader.result as string });
-      } else {
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve({ base64: (reader.result as string).split(',')[1] });
-      }
-      
-      reader.onerror = error => reject(error);
-    });
-  };
+  useEffect(() => {
+    if (isProcessing && !progressText.includes('Arquivo')) {
+        setProgressText(PROCESSING_PHASES[processingPhase]);
+    }
+  }, [processingPhase, isProcessing]);
 
-  const startProcessing = useCallback(async (mode: InputMode, file: File | null, textInput: string) => {
+  const startProcessing = useCallback(async (mode: InputMode, files: File[], textInput: string) => {
     if (!currentUser?.isPro) {
       addNotification("Funcionalidade exclusiva para usuários PRO.", "info");
       return;
@@ -70,98 +63,145 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     setIsProcessing(true);
     setResults([]);
+    setDetectedMetadata(null);
+    
+    let allTransactions: DetectedTransaction[] = [];
+    let lastMetadata: DetectedMetadata | null = null;
+    let successCount = 0;
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      let contents: any = [];
-      let inputContext = "";
+      // 1. MODO ARQUIVO (Múltiplos)
+      if (mode === 'file' && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            setProgressText(`Processando arquivo ${i + 1} de ${files.length}: ${file.name}`);
+            
+            let fileTransactions: DetectedTransaction[] = [];
+            let fileMetadata: DetectedMetadata | null = null;
 
-      if (mode === 'file' && file) {
-        const { base64, text } = await fileToData(file);
-        inputContext = "Extraia dados deste arquivo (Extrato Bancário, CSV ou Foto de Recibo).";
-        
-        const parts: any[] = [{ text: inputContext }];
-        if (text) {
-          parts.push({ text: `CONTEÚDO DO ARQUIVO:\n${text}` });
-        } else if (base64) {
-          parts.push({
-            inlineData: {
-              mimeType: file.type || 'image/jpeg',
-              data: base64
+            if (file.type === 'application/pdf') {
+               try {
+                 const textToParse = await extractTextFromPDF(file);
+                 
+                 // Processamento 100% Local para PDFs
+                 const localResult = parseNubankText(textToParse, file.name);
+                 
+                 if (localResult.transactions.length > 0) {
+                     fileTransactions = localResult.transactions;
+                     fileMetadata = localResult.metadata;
+                 } else {
+                     console.warn(`Nenhuma transação encontrada localmente em ${file.name}`);
+                     // Opcional: Se quiser manter IA apenas para imagens/casos extremos, descomente abaixo. 
+                     // Mas o pedido foi para remover a regra da IA ler tudo.
+                     // const aiResult = await processWithAI(null, textToParse);
+                     // fileTransactions = aiResult.transactions;
+                 }
+               } catch (e) {
+                 console.error(`Erro ao ler PDF ${file.name}`, e);
+                 addNotification(`Erro ao ler PDF ${file.name}`, "error");
+               }
+            } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+               const text = await file.text();
+               const csvResult = parseCSV(text);
+               fileTransactions = csvResult.transactions;
+               fileMetadata = csvResult.metadata;
+            } else if (file.type.startsWith('image/')) {
+               // Imagens ainda usam IA pois OCR local é pesado/complexo para browser
+               try {
+                 const aiResult = await processWithAI(file, null);
+                 fileTransactions = aiResult.transactions;
+                 fileMetadata = aiResult.metadata;
+               } catch (e) {
+                 console.error(`Erro ao processar imagem ${file.name}`, e);
+               }
             }
-          });
+
+            if (fileTransactions.length > 0) {
+                allTransactions = [...allTransactions, ...fileTransactions];
+                if (fileMetadata) lastMetadata = { ...lastMetadata, ...fileMetadata };
+                successCount++;
+            }
+            
+            // Pequeno delay visual para UI não piscar
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
-        contents = [{ parts }];
-      } else {
-        inputContext = "Analise este texto informal (pode ser cópia de SMS, WhatsApp ou anotações).";
-        contents = [{ parts: [{ text: `${inputContext}\n\nTEXTO DO USUÁRIO:\n${textInput}` }] }];
+      } 
+      // 2. MODO TEXTO (Único)
+      else if (mode === 'text' && textInput) {
+         setProgressText("Analisando texto...");
+         const localResult = parseNubankText(textInput, "Texto Colado");
+         if (localResult.transactions.length > 0) {
+            allTransactions = localResult.transactions;
+            lastMetadata = localResult.metadata;
+            successCount = 1;
+         } else {
+            // Fallback para IA apenas em texto livre não estruturado
+            try {
+                const aiResult = await processWithAI(null, textInput);
+                allTransactions = aiResult.transactions;
+                lastMetadata = aiResult.metadata;
+                if (allTransactions.length > 0) successCount = 1;
+            } catch (e) {
+                console.error("Erro ao processar texto com IA", e);
+            }
+         }
       }
 
-      const today = new Date().toISOString().split('T')[0];
-      const prompt = `
-      Você é um assistente financeiro inteligente. Sua tarefa é extrair transações financeiras do conteúdo fornecido.
-      
-      REGRAS DE INTERPRETAÇÃO:
-      1. Se a data não for explícita (ex: "ontem", "hoje"), use como base a data de hoje: ${today}.
-      2. Se for um texto informal (ex: "Gastei 50 no almoço"), o valor é 50, tipo 'expense', descrição 'Almoço'.
-      3. Identifique padrões de SMS de banco (ex: "Compra aprovada Nubank R$ 20,00 Padaria").
-      4. CATEGORIZAÇÃO: Tente mapear para uma destas categorias padrão: Alimentação, Transporte, Moradia, Lazer, Saúde, Educação, Compras, Salário, Investimentos, Cartão de crédito, Serviços, Outros.
-      5. FATURAS DE CARTÃO: Identifique especificamente se o comprovante é um pagamento de fatura de cartão de crédito. Se for, categorize como 'Cartão de crédito' e use o tipo 'expense'. Se for um estorno ou crédito de fatura, use 'income'.
-      6. Se o valor for negativo ou indicar saída/compra/débito, type = 'expense'. Se for crédito/depósito/pix recebido, type = 'income'. Use valor ABSOLUTO (positivo) no JSON.
-
-      Retorne APENAS um JSON array.
-      `;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents,
-        config: {
-          systemInstruction: prompt,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                date: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
-                description: { type: Type.STRING },
-                amount: { type: Type.NUMBER },
-                type: { type: Type.STRING, enum: ["income", "expense"] },
-                category: { type: Type.STRING }
-              },
-              required: ['date', 'description', 'amount', 'type', 'category']
-            }
-          }
-        }
-      });
-
-      const extracted = JSON.parse(response.text || "[]") as DetectedTransaction[];
-      
-      if (extracted.length === 0) {
-        addNotification("Nenhuma transação identificada.", "warning");
+      if (allTransactions.length > 0) {
+          setResults(allTransactions.map(t => ({ ...t, selected: true })));
+          setDetectedMetadata(lastMetadata);
+          addNotification(`${allTransactions.length} registros extraídos com sucesso.`, "success");
       } else {
-        setResults(extracted.map(t => ({ ...t, selected: true })));
-        addNotification(`${extracted.length} transações identificadas!`, "success");
+          addNotification("Não foi possível identificar transações. Verifique o formato do arquivo.", "warning");
       }
 
     } catch (err) {
-      console.error("AI Error:", err);
-      addNotification("Erro ao processar dados. Tente novamente.", "error");
+      console.error("Processing Error:", err);
+      addNotification("Erro no processamento.", "error");
     } finally {
       setIsProcessing(false);
+      setProgressText(PROCESSING_PHASES[0]);
     }
   }, [currentUser, addNotification]);
 
+  // Helper para IA (Mantido apenas para Imagens ou Texto Livre confuso)
+  const processWithAI = async (file: File | null, text: string | null) => {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      let contents: any = [];
+      let prompt = `Extraia transações financeiras. Retorne JSON: { metadata: { limit, dueDay, closingDay, bankName }, transactions: [{ date: 'YYYY-MM-DD', description, amount (positivo), type: 'income'|'expense', category }] }`;
+
+      if (file) {
+         const reader = new FileReader();
+         const base64 = await new Promise<string>((resolve) => {
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.readAsDataURL(file);
+         });
+         contents = [{ parts: [{ text: prompt }, { inlineData: { mimeType: file.type, data: base64 } }] }];
+      } else {
+         contents = [{ parts: [{ text: `${prompt}\n\nTEXTO:\n${text}` }] }];
+      }
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents,
+        config: { responseMimeType: "application/json" }
+      });
+
+      return JSON.parse(response.text || "{ \"transactions\": [], \"metadata\": {} }");
+  };
+
   const clearResults = useCallback(() => {
     setResults([]);
+    setDetectedMetadata(null);
   }, []);
 
   return (
     <ProcessingContext.Provider value={{
       isProcessing,
       processingPhase,
-      progressText: AI_PHASES[processingPhase],
+      progressText,
       results,
+      detectedMetadata,
       hasResults: results.length > 0,
       startProcessing,
       clearResults,

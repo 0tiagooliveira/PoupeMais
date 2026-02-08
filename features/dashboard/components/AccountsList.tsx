@@ -63,7 +63,7 @@ export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccou
         <h3 className="text-xs font-bold text-slate-400">Minhas contas</h3>
         <button 
           onClick={onAddAccount} 
-          className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:bg-success/10 hover:text-success transition-all active:scale-90"
+          className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-success/10 hover:text-success transition-all active:scale-90"
         >
           <span className="material-symbols-outlined text-lg font-bold">add</span>
         </button>
@@ -74,17 +74,17 @@ export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccou
           <div 
             key={account.id} 
             onClick={() => onAccountClick(account)}
-            className="group flex cursor-pointer items-center justify-between rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-success/30 hover:shadow-md active:scale-[0.98]"
+            className="group flex cursor-pointer items-center justify-between rounded-[24px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition-all hover:border-success/30 hover:shadow-md active:scale-[0.98]"
           >
             <div className="flex items-center gap-4">
               <BankLogo name={account.name} color={account.color} />
               <div className="flex flex-col">
-                <p className="text-sm font-bold text-slate-800 leading-none mb-1">{account.name}</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-none mb-1">{account.name}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-[9px] font-bold text-slate-400">{account.type}</p>
                   <button 
                     onClick={(e) => { e.stopPropagation(); onEditAccount(account); }}
-                    className="flex h-4 w-4 items-center justify-center rounded bg-slate-50 text-[10px] text-slate-300 hover:text-primary transition-colors"
+                    className="flex h-4 w-4 items-center justify-center rounded bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-300 hover:text-primary transition-colors"
                   >
                     <span className="material-symbols-outlined text-[12px]">settings</span>
                   </button>
@@ -98,14 +98,14 @@ export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccou
                     {formatCurrency(account.balance)}
                   </span>
                </div>
-               <span className="material-symbols-outlined text-slate-200 group-hover:text-success transition-colors">chevron_right</span>
+               <span className="material-symbols-outlined text-slate-200 dark:text-slate-700 group-hover:text-success transition-colors">chevron_right</span>
             </div>
           </div>
         ))}
 
         {accounts.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-slate-100 bg-slate-50/50 p-12 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-slate-200 shadow-sm border border-slate-100">
+          <div className="flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-12 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-200 dark:text-slate-600 shadow-sm border border-slate-100 dark:border-slate-800">
                 <span className="material-symbols-outlined text-3xl">account_balance</span>
             </div>
             <p className="text-xs font-bold text-slate-400 mb-6">Nenhuma conta conectada</p>

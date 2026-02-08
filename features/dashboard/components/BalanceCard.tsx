@@ -13,11 +13,11 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
   const isPositive = balance >= 0;
 
   return (
-    <Card className="py-6 shadow-sm bg-white border border-slate-100">
+    <Card className="py-6 shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 transition-colors">
       <div className="flex flex-col items-center justify-center text-center">
         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Saldo Atual em Contas</span>
         
-        <div className={`text-4xl font-black tracking-tighter ${isPositive ? 'text-slate-800' : 'text-danger'}`}>
+        <div className={`text-4xl font-black tracking-tighter ${isPositive ? 'text-slate-800 dark:text-white' : 'text-danger'}`}>
           {formatCurrency(balance)}
         </div>
       </div>

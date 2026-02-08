@@ -44,7 +44,7 @@ export const VoiceLaunchModal: React.FC<VoiceLaunchModalProps> = ({ isOpen, onCl
       recorder.onstop = async () => {
         const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const file = new File([audioBlob], "voice.webm", { type: 'audio/webm' });
-        startProcessing('file', file, '');
+        startProcessing('file', [file], '');
         onProcessed();
         stream.getTracks().forEach(track => track.stop());
       };

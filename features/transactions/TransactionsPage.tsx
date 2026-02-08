@@ -32,7 +32,6 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [transactionForRule, setTransactionForRule] = useState<Transaction | null>(null);
   
-  // Inicialização inteligente dos filtros baseada na navegação (location.state)
   const [searchQuery, setSearchQuery] = useState('');
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(() => {
@@ -49,7 +48,6 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  // Limpa o state do location após o uso inicial para não interferir em navegações futuras na mesma sessão
   useEffect(() => {
     if (location.state) {
       window.history.replaceState({}, document.title);
@@ -82,7 +80,6 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
     return isPayment || isRefund;
   };
 
-  // 1. Filtragem Base
   const baseFilteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       if (accountId && t.accountId !== accountId) return false;
@@ -94,14 +91,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
     });
   }, [transactions, accountId, typeFilter, initialFilterType]);
 
-  // 2. Lista de categorias
   const availableCategories = useMemo(() => {
     const cats = new Set<string>();
     baseFilteredTransactions.forEach(t => cats.add(t.category));
     return Array.from(cats).sort();
   }, [baseFilteredTransactions]);
 
-  // 3. Filtragem Final
   const filteredTransactions = useMemo(() => {
     let result = [...baseFilteredTransactions];
     if (statusFilter !== 'all') result = result.filter(t => t.status === statusFilter);
@@ -176,10 +171,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
       {/* Header */}
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-            <BackButton className="bg-white border border-slate-100 shadow-sm" />
+            <BackButton className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm" />
             <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold tracking-tight text-slate-800 truncate max-w-[200px] sm:max-w-md">{displayTitle}</h2>
+                    <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100 truncate max-w-[200px] sm:max-w-md">{displayTitle}</h2>
                 </div>
                 <p className="text-[10px] text-slate-400 font-bold tracking-tight uppercase">
                   {selectedCategory ? `Filtro por Categoria` : selectedAccount ? `Instituição: ${selectedAccount.name}` : 'Histórico Consolidado'}
@@ -187,10 +182,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
             </div>
         </div>
         <div className="flex items-center gap-3">
-            <MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} />
+            <MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2" />
             <button 
                 onClick={() => navigate('/import-statement')}
-                className="flex items-center gap-2 px-4 h-10 rounded-2xl bg-white text-slate-600 font-bold text-xs border border-slate-100 shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+                className="flex items-center gap-2 px-4 h-10 rounded-2xl bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 font-bold text-xs border border-slate-100 dark:border-slate-800 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
                 title="Importação Inteligente"
             >
                 <span className="material-symbols-outlined text-lg">cloud_upload</span>
@@ -241,24 +236,24 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
                     placeholder="Buscar por descrição ou categoria..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-[22px] border-none bg-white py-4 pl-12 pr-4 text-sm font-bold text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    className="w-full rounded-[22px] border-none bg-white dark:bg-slate-900 py-4 pl-12 pr-4 text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400"
                 />
             </div>
-            <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={`flex items-center justify-center gap-2 rounded-[22px] px-6 py-4 text-sm font-bold transition-all ${showAdvancedFilters ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-600 shadow-sm hover:bg-slate-50'}`}>
+            <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={`flex items-center justify-center gap-2 rounded-[22px] px-6 py-4 text-sm font-bold transition-all ${showAdvancedFilters ? 'bg-slate-800 text-white shadow-lg' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
                 <span className="material-symbols-outlined text-xl">tune</span> Filtros {isFiltersActive && <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>}
             </button>
-            <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="flex items-center justify-center gap-2 rounded-[22px] bg-white px-6 py-4 text-sm font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+            <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="flex items-center justify-center gap-2 rounded-[22px] bg-white dark:bg-slate-900 px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95">
                 <span className="material-symbols-outlined text-xl">{sortOrder === 'desc' ? 'south' : 'north'}</span> {sortOrder === 'desc' ? 'Mais recentes' : 'Mais antigos'}
             </button>
         </div>
 
         {showAdvancedFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-[28px] bg-white p-6 shadow-md animate-in slide-in-from-top-4 duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-[28px] bg-white dark:bg-slate-900 p-6 shadow-md animate-in slide-in-from-top-4 duration-300 border border-slate-100 dark:border-slate-800">
              <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar por Status</label>
                 <div className="flex gap-2">
                     {['all', 'completed', 'pending'].map((s) => (
-                        <button key={s} onClick={() => setStatusFilter(s as any)} className={`flex-1 rounded-xl py-2.5 text-xs font-bold border transition-all ${statusFilter === s ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50'}`}>
+                        <button key={s} onClick={() => setStatusFilter(s as any)} className={`flex-1 rounded-xl py-2.5 text-xs font-bold border transition-all ${statusFilter === s ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
                             {s === 'all' ? 'Todos' : s === 'completed' ? 'Pagos' : 'Pendentes'}
                         </button>
                     ))}
@@ -268,7 +263,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar por Tipo</label>
                 <div className="flex gap-2">
                     {['all', 'income', 'expense'].map((t) => (
-                        <button key={t} onClick={() => { setTypeFilter(t as any); setSelectedCategory(null); }} className={`flex-1 rounded-xl py-2.5 text-xs font-bold border transition-all ${typeFilter === t ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50'}`}>
+                        <button key={t} onClick={() => { setTypeFilter(t as any); setSelectedCategory(null); }} className={`flex-1 rounded-xl py-2.5 text-xs font-bold border transition-all ${typeFilter === t ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
                             {t === 'all' ? 'Todos' : t === 'income' ? 'Entradas' : 'Saídas'}
                         </button>
                     ))}
@@ -279,11 +274,11 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
 
         {/* Chips de Categoria */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 px-1">
-            <button onClick={() => setSelectedCategory(null)} className={`flex-shrink-0 rounded-full px-5 py-2 text-[11px] font-black uppercase tracking-wider transition-all border ${!selectedCategory ? activeChipClass : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}>
+            <button onClick={() => setSelectedCategory(null)} className={`flex-shrink-0 rounded-full px-5 py-2 text-[11px] font-black uppercase tracking-wider transition-all border ${!selectedCategory ? activeChipClass : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'}`}>
                 Todas
             </button>
             {availableCategories.map(cat => (
-                <button key={cat} onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)} className={`flex-shrink-0 rounded-full px-5 py-2 text-[11px] font-black uppercase tracking-wider transition-all border ${selectedCategory === cat ? activeChipClass : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}>
+                <button key={cat} onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)} className={`flex-shrink-0 rounded-full px-5 py-2 text-[11px] font-black uppercase tracking-wider transition-all border ${selectedCategory === cat ? activeChipClass : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'}`}>
                     {cat}
                 </button>
             ))}
@@ -291,7 +286,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
       </div>
 
       {/* Lista */}
-      <div className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-[32px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm transition-colors">
         {loading ? (
           <div className="flex flex-col items-center justify-center p-32 space-y-4">
              <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-100 border-t-primary"></div>
@@ -299,57 +294,57 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
           </div>
         ) : filteredTransactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-24 text-center">
-            <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-slate-50 text-slate-200">
+            <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-slate-50 dark:bg-slate-800 text-slate-200 dark:text-slate-600">
                 <span className="material-symbols-outlined text-5xl">search_off</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-800">Nenhum lançamento encontrado</h3>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Nenhum lançamento encontrado</h3>
             <p className="mt-2 text-sm text-slate-400 font-medium max-w-xs mx-auto">Tente ajustar seus filtros ou termos de busca para encontrar o que procura.</p>
-            {isFiltersActive && <Button onClick={clearFilters} variant="secondary" className="mt-8 rounded-2xl font-bold px-10 border-slate-200 text-slate-600">Limpar todos os filtros</Button>}
+            {isFiltersActive && <Button onClick={clearFilters} variant="secondary" className="mt-8 rounded-2xl font-bold px-10 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">Limpar todos os filtros</Button>}
           </div>
         ) : (
-          <div className="divide-y divide-slate-50">
+          <div className="divide-y divide-slate-50 dark:divide-slate-800">
             {filteredTransactions.map((transaction) => {
               const itemIsExpense = transaction.type === 'expense';
               const isNeutral = isNeutralIncome(transaction);
               let itemColor, itemBg;
               
               if (transaction.isIgnored) {
-                  itemColor = 'text-slate-400';
-                  itemBg = 'bg-slate-50';
+                  itemColor = 'text-slate-400 dark:text-slate-500';
+                  itemBg = 'bg-slate-50 dark:bg-slate-800';
               } else if (isNeutral) {
-                  itemColor = 'text-slate-600';
-                  itemBg = 'bg-slate-100';
+                  itemColor = 'text-slate-600 dark:text-slate-300';
+                  itemBg = 'bg-slate-100 dark:bg-slate-800';
               } else {
                   itemColor = itemIsExpense ? 'text-danger' : 'text-success';
-                  itemBg = itemIsExpense ? 'bg-red-50' : 'bg-emerald-50';
+                  itemBg = itemIsExpense ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20';
               }
               const cat = getCategoryInfo(transaction.category);
               const isParcelado = transaction.totalInstallments && transaction.totalInstallments > 1;
               const isPending = transaction.status === 'pending';
               
               return (
-                <div key={transaction.id} onClick={() => handleTransactionClick(transaction)} className={`group flex cursor-pointer items-center justify-between px-6 py-5 transition-all hover:bg-slate-50/80 ${isPending ? 'opacity-60 grayscale-[0.3]' : ''} ${transaction.isIgnored ? 'opacity-50' : ''}`}>
+                <div key={transaction.id} onClick={() => handleTransactionClick(transaction)} className={`group flex cursor-pointer items-center justify-between px-6 py-5 transition-all hover:bg-slate-50/80 dark:hover:bg-slate-800/50 ${isPending ? 'opacity-60 grayscale-[0.3]' : ''} ${transaction.isIgnored ? 'opacity-50' : ''}`}>
                   <div className="flex items-center gap-4 min-w-0">
                     <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[18px] shadow-sm transition-transform group-hover:scale-110 ${itemBg} ${itemColor}`}>
                       <span className="material-symbols-outlined text-2xl">{transaction.isIgnored ? 'visibility_off' : (isNeutral ? 'sync_alt' : cat.icon)}</span>
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`font-bold text-sm leading-snug truncate ${transaction.isIgnored ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{transaction.description}</p>
-                        {isPending && <span className="text-[8px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-widest flex-shrink-0">Pendente</span>}
-                        {isParcelado && <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border flex-shrink-0 ${itemIsExpense ? 'bg-red-50 text-danger border-red-100' : 'bg-emerald-50 text-success border-emerald-100'}`}>{transaction.installmentNumber}/{transaction.totalInstallments}</span>}
+                        <p className={`font-bold text-sm leading-snug truncate ${transaction.isIgnored ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-800 dark:text-slate-100'}`}>{transaction.description}</p>
+                        {isPending && <span className="text-[8px] font-black bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-widest flex-shrink-0">Pendente</span>}
+                        {isParcelado && <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border flex-shrink-0 ${itemIsExpense ? 'bg-red-50 dark:bg-red-900/20 text-danger border-red-100 dark:border-red-900/30' : 'bg-emerald-50 dark:bg-emerald-900/20 text-success border-emerald-100 dark:border-emerald-900/30'}`}>{transaction.installmentNumber}/{transaction.totalInstallments}</span>}
                       </div>
-                      <div className="mt-1 flex items-center gap-2 text-[10px] font-bold text-slate-400 tracking-tight">
-                        <span className="text-slate-500 uppercase flex-shrink-0">{new Date(transaction.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
-                        <span className="h-1 w-1 rounded-full bg-slate-200 flex-shrink-0"></span>
+                      <div className="mt-1 flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-tight">
+                        <span className="text-slate-500 dark:text-slate-400 uppercase flex-shrink-0">{new Date(transaction.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0"></span>
                         <span className="uppercase truncate">{isNeutral ? 'Neutro' : transaction.category}</span>
-                        {!accountId && <><span className="h-1 w-1 rounded-full bg-slate-200 flex-shrink-0"></span><div className="flex items-center gap-1 min-w-0"><span className="material-symbols-outlined text-[12px] opacity-40">account_balance_wallet</span><span className="truncate max-w-[80px]">{accountsMap[transaction.accountId]}</span></div></>}
+                        {!accountId && <><span className="h-1 w-1 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0"></span><div className="flex items-center gap-1 min-w-0"><span className="material-symbols-outlined text-[12px] opacity-40">account_balance_wallet</span><span className="truncate max-w-[80px]">{accountsMap[transaction.accountId]}</span></div></>}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 pl-2 flex-shrink-0">
                      <div className="text-right"><span className={`text-base font-black tracking-tighter ${itemColor}`}>{isNeutral ? '' : (itemIsExpense ? '-' : '+')}{formatCurrency(transaction.amount)}</span></div>
-                     <button onClick={(e) => handleCreateRule(e, transaction)} className="h-8 w-8 rounded-xl bg-indigo-50 text-indigo-400 flex items-center justify-center hover:bg-indigo-100 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100" title="Criar regra inteligente">
+                     <button onClick={(e) => handleCreateRule(e, transaction)} className="h-8 w-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-400 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100" title="Criar regra inteligente">
                         <span className="material-symbols-outlined text-base">auto_fix_high</span>
                      </button>
                   </div>

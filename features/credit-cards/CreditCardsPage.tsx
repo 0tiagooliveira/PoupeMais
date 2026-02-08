@@ -55,7 +55,7 @@ const SplineAreaChart: React.FC<{ data: { label: string, value: number }[], heig
              const y = getY(val);
              return (
                <g key={i}>
-                 <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="#f1f5f9" strokeWidth="1" />
+                 <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="1" />
                  <text x={paddingX - 10} y={y + 4} textAnchor="end" className="text-[14px] fill-slate-400 font-medium">
                    {val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}
                  </text>
@@ -247,12 +247,12 @@ export const CreditCardsPage: React.FC = () => {
     <div className="space-y-6 pb-24 animate-in fade-in duration-500">
       <header className="flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
-          <BackButton className="bg-white shadow-sm border border-slate-100" />
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Cartões de Crédito</h2>
+          <BackButton className="bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800" />
+          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Cartões de Crédito</h2>
         </div>
       </header>
 
-      <div className="flex gap-8 border-b border-slate-100 px-2">
+      <div className="flex gap-8 border-b border-slate-100 dark:border-slate-800 px-2">
         <button onClick={() => setViewMode('faturas')} className={`pb-4 text-sm font-bold transition-all relative ${viewMode === 'faturas' ? 'text-primary' : 'text-slate-400'}`}>
           <div className="flex items-center gap-2"><span className="material-symbols-outlined text-xl">payments</span> Faturas</div>
           {viewMode === 'faturas' && <div className="absolute bottom-0 left-0 h-1 w-full bg-primary rounded-full" />}
@@ -281,37 +281,37 @@ export const CreditCardsPage: React.FC = () => {
                 </div>
               </button>
             ))}
-            <button onClick={() => { setCardToEdit(null); setIsModalOpen(true); }} className="min-w-[60px] h-[180px] rounded-[32px] border-2 border-dashed border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"><span className="material-symbols-outlined text-slate-300">add</span></button>
+            <button onClick={() => { setCardToEdit(null); setIsModalOpen(true); }} className="min-w-[60px] h-[180px] rounded-[32px] border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><span className="material-symbols-outlined text-slate-300">add</span></button>
           </div>
 
           <div className="flex flex-row-reverse gap-3 overflow-x-auto no-scrollbar py-2 px-1 justify-end">
              {invoicesData.map((inv, idx) => (
-               <button key={inv.id} onClick={() => setSelectedInvoiceIndex(idx)} className={`min-w-[140px] p-4 rounded-[24px] border transition-all text-left flex flex-col justify-between ${selectedInvoiceIndex === idx ? 'bg-white border-primary shadow-lg ring-1 ring-primary' : 'bg-slate-50 border-slate-100 opacity-60 hover:opacity-100'}`}>
-                 <div className="flex justify-between items-center mb-3"><span className={`text-[11px] font-black uppercase ${selectedInvoiceIndex === idx ? 'text-primary' : 'text-slate-500'}`}>{inv.label}</span>{inv.isCurrent && <span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span>}</div>
-                 <p className="text-lg font-black text-slate-800 mb-1">{formatCurrency(inv.total)}</p>
-                 <div className="mt-auto pt-2 border-t border-slate-100 w-full"><p className="text-[9px] font-bold text-slate-400">{inv.status}</p></div>
+               <button key={inv.id} onClick={() => setSelectedInvoiceIndex(idx)} className={`min-w-[140px] p-4 rounded-[24px] border transition-all text-left flex flex-col justify-between ${selectedInvoiceIndex === idx ? 'bg-white dark:bg-slate-800 border-primary shadow-lg ring-1 ring-primary' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 opacity-60 hover:opacity-100'}`}>
+                 <div className="flex justify-between items-center mb-3"><span className={`text-[11px] font-black uppercase ${selectedInvoiceIndex === idx ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}>{inv.label}</span>{inv.isCurrent && <span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span>}</div>
+                 <p className="text-lg font-black text-slate-800 dark:text-slate-200 mb-1">{formatCurrency(inv.total)}</p>
+                 <div className="mt-auto pt-2 border-t border-slate-100 dark:border-slate-700 w-full"><p className="text-[9px] font-bold text-slate-400">{inv.status}</p></div>
                </button>
              ))}
           </div>
 
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden min-h-[200px]">
-            <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-100">
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden min-h-[200px] transition-colors">
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Extrato da Fatura</span>
-                <span className="text-[10px] font-bold text-slate-500 italic">{activeInvoice?.cycleRange}</span>
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 italic">{activeInvoice?.cycleRange}</span>
             </div>
             {activeInvoice?.transactions.length === 0 ? (
               <div className="p-12 text-center text-slate-300 italic flex flex-col items-center justify-center"><span className="material-symbols-outlined text-4xl mb-2 opacity-20">credit_card_off</span><p className="text-xs font-bold uppercase tracking-widest">Fatura Zerada</p></div>
             ) : (
-              <div className="divide-y divide-slate-50">
+              <div className="divide-y divide-slate-50 dark:divide-slate-800">
                 {activeInvoice?.transactions.map((t) => {
                   const cat = [...incomeCategories, ...expenseCategories].find(c => c.name === t.category) || { icon: 'shopping_cart', color: '#94a3b8' };
                   return (
-                    <div key={t.id} className="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
+                    <div key={t.id} className="flex items-center justify-between p-5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                        <div className="flex items-center gap-4">
-                          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-sm ${t.type === 'income' ? 'bg-success/10 text-success' : 'bg-slate-50 text-slate-500'}`}><span className="material-symbols-outlined text-xl">{t.type === 'income' ? 'undo' : cat.icon}</span></div>
-                          <div><p className="text-sm font-bold text-slate-800 leading-none mb-1 line-clamp-1">{t.description}</p><p className="text-[10px] font-bold text-slate-400">{new Date(t.date).toLocaleDateString()} • {t.category}</p></div>
+                          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-sm ${t.type === 'income' ? 'bg-success/10 text-success' : 'bg-slate-50 dark:bg-slate-700 text-slate-500'}`}><span className="material-symbols-outlined text-xl">{t.type === 'income' ? 'undo' : cat.icon}</span></div>
+                          <div><p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-none mb-1 line-clamp-1">{t.description}</p><p className="text-[10px] font-bold text-slate-400">{new Date(t.date).toLocaleDateString()} • {t.category}</p></div>
                        </div>
-                       <span className={`text-sm font-black ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>{t.type === 'income' ? '-' : ''}{formatCurrency(t.amount)}</span>
+                       <span className={`text-sm font-black ${t.type === 'income' ? 'text-success' : 'text-slate-800 dark:text-slate-200'}`}>{t.type === 'income' ? '-' : ''}{formatCurrency(t.amount)}</span>
                     </div>
                   )
                 })}
@@ -320,12 +320,12 @@ export const CreditCardsPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* CONSOLIDATED VIEW - IDENTICAL TO SCREENSHOTS */
+        /* CONSOLIDATED VIEW */
         <div className="space-y-10 animate-in slide-in-from-bottom-8 duration-700">
           {/* Gráfico 1: Visão Consolidada - Faturas Mensais */}
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
             <header className="mb-6">
-              <h3 className="text-xl font-bold text-slate-800 tracking-tight">Visão Consolidada - Faturas Mensais</h3>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Visão Consolidada - Faturas Mensais</h3>
               <p className="text-sm font-medium text-slate-400 mt-1">Total consolidado de faturas de todos os cartões, mês a mês</p>
             </header>
             
@@ -335,9 +335,9 @@ export const CreditCardsPage: React.FC = () => {
           </div>
 
           {/* Gráfico 2: Projeção de Compras Parceladas */}
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
             <header className="mb-6">
-              <h3 className="text-xl font-bold text-slate-800 tracking-tight">Projeção de Compras Parceladas</h3>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Projeção de Compras Parceladas</h3>
               <p className="text-sm font-medium text-slate-400 mt-1">Total de parcelas projetadas para os próximos meses por cartão</p>
             </header>
             

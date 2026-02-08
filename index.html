@@ -9,15 +9,42 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
       :root {
+        /* Light Mode Defaults */
         --primary: #21C25E;
         --danger: #FF4444;
+        --bg-color: #F8FAFC;
+        --surface-color: #ffffff;
+        --text-primary: #1e293b;
+        --text-secondary: #94a3b8;
+        --border-color: #e2e8f0;
       }
+
+      /* Dark Mode Overrides */
+      .dark {
+        --bg-color: #020617; /* Slate 950 */
+        --surface-color: #0f172a; /* Slate 900 */
+        --text-primary: #f8fafc;
+        --text-secondary: #64748b;
+        --border-color: #1e293b;
+      }
+
       body {
+        background-color: var(--bg-color);
+        color: var(--text-primary);
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: contain;
         letter-spacing: -0.01em;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
+
+      /* Smooth transitions for theme changes */
+      *, *::before, *::after {
+        transition-property: background-color, border-color, color, fill, stroke;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 150ms;
+      }
+
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       
@@ -46,18 +73,37 @@
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
       }
+      
+      .dark .glass {
+        background: rgba(15, 23, 42, 0.7);
+      }
     </style>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
               primary: '#21C25E',
-              secondary: '#94a3b8',
+              secondary: 'var(--text-secondary)',
               success: '#21C25E',
               danger: '#FF4444',
-              background: '#F8FAFC',
-              surface: '#ffffff',
+              background: 'var(--bg-color)',
+              surface: 'var(--surface-color)',
+              slate: {
+                 50: '#f8fafc',  // Ajuste fino para modo claro
+                 100: '#f1f5f9',
+                 800: '#1e293b',
+                 900: '#0f172a',
+              }
+            },
+            borderColor: {
+              DEFAULT: 'var(--border-color)',
+              slate: {
+                50: 'var(--border-color)',
+                100: 'var(--border-color)', // Força bordas a usarem a variável no modo escuro
+                200: 'var(--border-color)',
+              }
             },
             borderRadius: {
               '2xl': '1rem',
@@ -79,12 +125,14 @@
     "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
     "firebase/": "https://esm.sh/firebase@^12.8.0/",
     "papaparse": "https://esm.sh/papaparse@^5.5.3",
-    "@google/genai": "https://esm.sh/@google/genai@^1.37.0"
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+    "pdfjs-dist": "https://esm.sh/pdfjs-dist@4.0.379",
+    "pdfjs-dist/build/pdf.worker.min.mjs": "https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs"
   }
 }
 </script>
 </head>
-  <body class="bg-background text-slate-600 antialiased overflow-x-hidden">
+  <body class="bg-background text-slate-600 dark:text-slate-300 antialiased overflow-x-hidden">
     <div id="root"></div>
   </body>
 </html>

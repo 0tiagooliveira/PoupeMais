@@ -94,9 +94,9 @@ export const CategoriesPage: React.FC = () => {
     <div className="mx-auto max-w-2xl pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8 flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
-          <BackButton />
+          <BackButton className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm" />
           <div>
-            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Categorias</h2>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Categorias</h2>
             <p className="text-xs font-bold text-slate-400">Organize suas finanças</p>
           </div>
         </div>
@@ -109,11 +109,11 @@ export const CategoriesPage: React.FC = () => {
       </div>
 
       <div className="mb-8 flex justify-center">
-        <div className="inline-flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
+        <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setFilterType('expense')}
             className={`px-8 py-2.5 rounded-xl text-xs font-black transition-all ${
-              filterType === 'expense' ? 'bg-white shadow-sm text-danger' : 'text-slate-400'
+              filterType === 'expense' ? 'bg-white dark:bg-slate-900 shadow-sm text-danger' : 'text-slate-400'
             }`}
           >
             Despesas
@@ -121,7 +121,7 @@ export const CategoriesPage: React.FC = () => {
           <button
             onClick={() => setFilterType('income')}
             className={`px-8 py-2.5 rounded-xl text-xs font-black transition-all ${
-              filterType === 'income' ? 'bg-white shadow-sm text-success' : 'text-slate-400'
+              filterType === 'income' ? 'bg-white dark:bg-slate-900 shadow-sm text-success' : 'text-slate-400'
             }`}
           >
             Receitas
@@ -138,17 +138,17 @@ export const CategoriesPage: React.FC = () => {
           {filteredCategories.map((cat) => (
             <div 
               key={cat.id || cat.name} 
-              className="group flex items-center justify-between p-4 bg-white rounded-[24px] border border-slate-100 shadow-sm transition-all hover:border-primary/20 hover:shadow-md"
+              className="group flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:border-primary/20 hover:shadow-md"
             >
               <div className="flex items-center gap-4">
                 <div 
-                  className="flex h-11 w-11 items-center justify-center rounded-[14px] shadow-sm ring-1 ring-inset ring-slate-100/50"
+                  className="flex h-11 w-11 items-center justify-center rounded-[14px] shadow-sm ring-1 ring-inset ring-slate-100/50 dark:ring-slate-700/50"
                   style={{ backgroundColor: `${cat.color}15`, color: cat.color }}
                 >
                   <span className="material-symbols-outlined text-xl">{cat.icon}</span>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-800">{cat.name}</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{cat.name}</p>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     {cat.isCustom ? 'Personalizada' : 'Sistema'}
                   </p>
@@ -160,19 +160,19 @@ export const CategoriesPage: React.FC = () => {
                   <>
                     <button 
                       onClick={() => handleEditClick(cat)}
-                      className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-primary hover:bg-blue-50 transition-all"
+                      className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
                     >
                       <span className="material-symbols-outlined text-lg">edit</span>
                     </button>
                     <button 
                       onClick={() => deleteCustomCategory(cat.id)}
-                      className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-danger hover:bg-red-50 transition-all"
+                      className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-danger hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
                     >
                       <span className="material-symbols-outlined text-lg">delete</span>
                     </button>
                   </>
                 ) : (
-                  <span className="text-[10px] font-bold text-slate-200 uppercase mr-2 px-2 py-1 rounded-lg border border-slate-50">Fixa</span>
+                  <span className="text-[10px] font-bold text-slate-200 dark:text-slate-700 uppercase mr-2 px-2 py-1 rounded-lg border border-slate-50 dark:border-slate-800">Fixa</span>
                 )}
               </div>
             </div>
@@ -206,7 +206,7 @@ export const CategoriesPage: React.FC = () => {
                   key={icon}
                   type="button"
                   onClick={() => setNewIcon(icon)}
-                  className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all ${newIcon === icon ? 'bg-primary text-white shadow-md scale-110' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                  className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all ${newIcon === icon ? 'bg-primary text-white shadow-md scale-110' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                 >
                   <span className="material-symbols-outlined text-lg leading-none">{icon}</span>
                 </button>
@@ -222,7 +222,7 @@ export const CategoriesPage: React.FC = () => {
                   key={color}
                   type="button"
                   onClick={() => setNewColor(color)}
-                  className={`h-8 w-8 rounded-full border-2 transition-all ${newColor === color ? 'border-slate-800 scale-110 shadow-md' : 'border-transparent'}`}
+                  className={`h-8 w-8 rounded-full border-2 transition-all ${newColor === color ? 'border-slate-800 dark:border-slate-200 scale-110 shadow-md' : 'border-transparent'}`}
                   style={{ backgroundColor: color }}
                 />
               ))}

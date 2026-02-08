@@ -154,8 +154,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           onClick={handleAvatarClick}
           className={`relative group cursor-pointer transition-transform active:scale-95 ${uploading ? 'pointer-events-none' : ''}`}
         >
-          <div className={`h-32 w-32 overflow-hidden rounded-full border-4 transition-all duration-300 shadow-xl flex items-center justify-center bg-slate-50
-            ${uploading ? 'border-primary' : 'border-white group-hover:border-primary/40'}`}
+          <div className={`h-32 w-32 overflow-hidden rounded-full border-4 transition-all duration-300 shadow-xl flex items-center justify-center bg-slate-50 dark:bg-slate-800
+            ${uploading ? 'border-primary' : 'border-white dark:border-slate-700 group-hover:border-primary/40'}`}
           >
             {uploading ? (
                <div className="flex flex-col items-center justify-center">
@@ -190,7 +190,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
             )}
           </div>
           
-          <div className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-lg border-2 border-white">
+          <div className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-lg border-2 border-white dark:border-slate-800">
             <span className="material-symbols-outlined text-lg">add_a_photo</span>
           </div>
         </div>
@@ -219,12 +219,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           className="rounded-2xl font-bold"
         />
 
-        <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+        <div className="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4 border border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-2 mb-1">
             <span className="material-symbols-outlined text-primary text-sm">info</span>
             <p className="text-[10px] font-black text-primary uppercase tracking-widest">Dica</p>
           </div>
-          <p className="text-[11px] font-medium text-slate-500 leading-snug">
+          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-snug">
             Ao clicar em alterar, seu navegador poderá solicitar acesso à câmera ou galeria de fotos.
           </p>
         </div>

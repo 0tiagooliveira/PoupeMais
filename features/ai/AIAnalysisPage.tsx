@@ -55,6 +55,14 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
+// Helper para data local YYYY-MM-DD
+const toInputDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 interface StructuredAnalysis {
   healthScore: number;
   scoreReasons: string[];
@@ -122,12 +130,14 @@ export const AIAnalysisPage: React.FC = () => {
   const [savingTransaction, setSavingTransaction] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState('');
 
+  // Estados de Data com Inicialização Local
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(1);
-    return d.toISOString().split('T')[0];
+    return toInputDate(d);
   });
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => toInputDate(new Date()));
+  const [selectedPreset, setSelectedPreset] = useState('currentMonth');
 
   const isPro = currentUser?.isPro || false;
 
@@ -182,6 +192,46 @@ export const AIAnalysisPage: React.FC = () => {
     handleAskQuestion("Analisando comprovante...", undefined, base64);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const preset = e.target.value;
+    setSelectedPreset(preset);
+    
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    switch (preset) {
+        case 'currentMonth':
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            break;
+        case 'lastMonth':
+            start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            end = new Date(today.getFullYear(), today.getMonth(), 0);
+            break;
+        case 'last30':
+            start = new Date();
+            start.setDate(today.getDate() - 30);
+            end = today;
+            break;
+        case 'currentYear':
+            start = new Date(today.getFullYear(), 0, 1);
+            end = new Date(today.getFullYear(), 11, 31);
+            break;
+        case 'custom':
+            return;
+    }
+    
+    setStartDate(toInputDate(start));
+    setEndDate(toInputDate(end));
+  };
+
+  const handleDateChange = (type: 'start' | 'end', value: string) => {
+      setSelectedPreset('custom');
+      if (type === 'start') setStartDate(value);
+      else setEndDate(value);
+  }
 
   const startRecording = async () => {
     if (!isPro) return;
@@ -248,7 +298,7 @@ export const AIAnalysisPage: React.FC = () => {
 
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const parts: any[] = [{ text: `CONTEXTO FINANCEIRO: ${JSON.stringify(periodStats)}.` }];
+        const parts: any[] = [{ text: `CONTEXTO FINANCEIRO (${periodStats.label}): ${JSON.stringify(periodStats)}.` }];
 
         if (base64Audio) {
             parts.push({ inlineData: { mimeType: 'audio/webm', data: base64Audio } });
@@ -336,45 +386,96 @@ export const AIAnalysisPage: React.FC = () => {
   };
 
   const periodStats = useMemo(() => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-    const filtered = allTransactions.filter(t => { const d = new Date(t.date); return d >= start && d <= end && !t.isIgnored; });
+    // Ajusta datas para cobrir o dia inteiro em timezone local
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T23:59:59.999');
+    
+    const filtered = allTransactions.filter(t => { 
+        // Compara com a data UTC salva, convertendo para objeto Date
+        const d = new Date(t.date); 
+        return d >= start && d <= end && !t.isIgnored; 
+    });
+    
     let income = 0; let expense = 0; const expMap = new Map<string, number>();
     filtered.forEach(t => { if (t.type === 'income') income += t.amount; else { expense += t.amount; expMap.set(t.category, (expMap.get(t.category) || 0) + t.amount); } });
     const expenseCats = Array.from(expMap.entries()).map(([name, amount], i) => ({ id: name, name, amount, color: ['#EF4444', '#F43F5E', '#E11D48'][i % 3], icon: getIconByCategoryName(name) })).sort((a, b) => b.amount - a.amount);
-    return { income, expense, expenseCats, label: `${start.toLocaleDateString('pt-BR')} a ${end.toLocaleDateString('pt-BR')}` };
+    
+    // Formata o label do período
+    const startStr = new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR');
+    const endStr = new Date(endDate + 'T12:00:00').toLocaleDateString('pt-BR');
+    
+    return { income, expense, expenseCats, label: `${startStr} a ${endStr}` };
   }, [allTransactions, startDate, endDate]);
 
   if (loading) return ( <div className="flex flex-col items-center justify-center p-32 space-y-6"> <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-100 border-t-primary"></div> <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">IA Sincronizando...</p> </div> );
 
   return (
     <div className="space-y-10 pb-32 max-w-7xl mx-auto px-2 lg:px-6 animate-in fade-in duration-700">
-      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
         <div className="space-y-1">
-          <h2 className="text-4xl font-black text-slate-800 tracking-tighter flex items-center gap-3">Poup+ <span className="text-primary italic">Intelligence</span></h2>
+          <h2 className="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tighter flex items-center gap-3">
+            Poup+ <span className="text-primary italic">Intelligence</span>
+          </h2>
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.25em]">Consultoria Estratégica Premium</p>
         </div>
-        <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-[32px] shadow-sm border border-slate-100">
-           <div className="flex items-center gap-3 px-2">
-              <span className="text-[10px] font-black text-slate-300 uppercase">Período</span>
-              <div className="flex items-center gap-1 bg-slate-50 rounded-2xl px-3 py-2 border border-slate-100/50">
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent border-none text-xs font-bold text-slate-600 outline-none w-28" />
-                <span className="text-slate-300 mx-1">—</span>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent border-none text-xs font-bold text-slate-600 outline-none w-28" />
+        
+        <div className="flex flex-col sm:flex-row items-center gap-4 bg-white dark:bg-slate-900 p-2 pr-2 pl-6 rounded-[24px] shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+           <div className="flex items-center gap-4 mr-2">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">Período</span>
+              
+              <div className="flex items-center gap-2">
+                  {/* Date Inputs - Primary Interface */}
+                  <div className="flex items-center gap-2">
+                    <input 
+                        type="date" 
+                        value={startDate} 
+                        onChange={e => handleDateChange('start', e.target.value)} 
+                        className="bg-transparent border-none text-sm font-bold text-slate-700 dark:text-slate-200 outline-none p-0 w-[105px] hover:text-primary transition-colors cursor-pointer" 
+                    />
+                    <span className="text-slate-300 font-light">—</span>
+                    <input 
+                        type="date" 
+                        value={endDate} 
+                        onChange={e => handleDateChange('end', e.target.value)} 
+                        className="bg-transparent border-none text-sm font-bold text-slate-700 dark:text-slate-200 outline-none p-0 w-[105px] hover:text-primary transition-colors cursor-pointer" 
+                    />
+                  </div>
+
+                  {/* Preset Dropdown - Secondary/Icon Interface */}
+                  <div className="relative group">
+                      <button className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-400 hover:bg-primary hover:text-white transition-all">
+                        <span className="material-symbols-outlined text-lg">calendar_month</span>
+                      </button>
+                      <select 
+                        value={selectedPreset} 
+                        onChange={handlePresetChange}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      >
+                        <option value="currentMonth">Este Mês</option>
+                        <option value="lastMonth">Mês Passado</option>
+                        <option value="last30">Últimos 30 dias</option>
+                        <option value="currentYear">Este Ano</option>
+                        <option value="custom">Personalizado</option>
+                      </select>
+                  </div>
               </div>
            </div>
-           <Button onClick={handleGenerate} disabled={isGenerating || !isPro} className="rounded-2xl font-black uppercase tracking-widest text-[10px] bg-primary hover:bg-emerald-600 text-white px-8 h-12 shadow-xl shadow-primary/20">
-                {isGenerating ? 'Processando...' : 'Gerar Diagnóstico'}
+           
+           <Button 
+             onClick={handleGenerate} 
+             disabled={isGenerating || !isPro} 
+             className="w-full sm:w-auto rounded-[20px] font-black uppercase tracking-widest text-[11px] bg-primary hover:bg-emerald-600 text-white px-8 h-12 shadow-lg shadow-primary/20 transition-transform active:scale-95"
+           >
+                {isGenerating ? 'Processando...' : 'GERAR DIAGNÓSTICO'}
             </Button>
         </div>
       </header>
 
-      <section className="bg-white rounded-[40px] p-8 border border-emerald-100 shadow-2xl shadow-primary/5 overflow-hidden flex flex-col min-h-[600px]">
+      <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 border border-emerald-100 dark:border-emerald-900/30 shadow-2xl shadow-primary/5 overflow-hidden flex flex-col min-h-[600px] transition-colors">
         <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
                 <div className="h-14 w-14 rounded-[22px] bg-primary flex items-center justify-center text-white shadow-xl shadow-primary/30"><span className="material-symbols-outlined text-3xl font-light">savings</span></div>
-                <div><h4 className="text-xl font-black text-slate-800 tracking-tight">Consultoria CFO</h4><p className="text-[10px] font-black text-primary uppercase tracking-widest">Mentor Digital Ativo</p></div>
+                <div><h4 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Consultoria CFO</h4><p className="text-[10px] font-black text-primary uppercase tracking-widest">Mentor Digital Ativo</p></div>
             </div>
             <div className="flex gap-2">
                 {isSpeaking && <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full animate-pulse"><span className="material-symbols-outlined text-primary text-sm">volume_up</span></div>}
@@ -387,7 +488,7 @@ export const AIAnalysisPage: React.FC = () => {
             {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in`}>
                     <div className="max-w-[85%] space-y-3">
-                        <div className={`p-5 rounded-[30px] ${m.role === 'user' ? 'bg-slate-100 text-slate-800 rounded-tr-none' : 'bg-primary text-white rounded-tl-none shadow-xl'}`}>
+                        <div className={`p-5 rounded-[30px] ${m.role === 'user' ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tr-none' : 'bg-primary text-white rounded-tl-none shadow-xl'}`}>
                             {m.isImage && m.imageData && <img src={`data:image/jpeg;base64,${m.imageData}`} className="max-h-56 rounded-2xl mb-4 border-2 border-white/20 shadow-2xl" />}
                             <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap">{m.content}</p>
                             <span className="text-[9px] mt-2 block opacity-40 uppercase font-black">{m.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
@@ -416,21 +517,21 @@ export const AIAnalysisPage: React.FC = () => {
         </div>
 
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-8">
-            {PRESET_QUESTIONS.map((q) => ( <button key={q.id} onClick={() => handleAskQuestion(q.text)} disabled={isAsking || isRecording || !isPro} className="flex-shrink-0 flex items-center gap-3 px-6 py-3 rounded-2xl bg-emerald-50 border border-emerald-100 hover:border-primary text-xs font-black text-primary"><span className="material-symbols-outlined text-xl">{q.icon}</span>{q.text}</button> ))}
+            {PRESET_QUESTIONS.map((q) => ( <button key={q.id} onClick={() => handleAskQuestion(q.text)} disabled={isAsking || isRecording || !isPro} className="flex-shrink-0 flex items-center gap-3 px-6 py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 hover:border-primary text-xs font-black text-primary"><span className="material-symbols-outlined text-xl">{q.icon}</span>{q.text}</button> ))}
         </div>
 
         <div className="flex items-center gap-3">
             <div className="relative flex-1">
-                <input type="text" value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAskQuestion(inputMessage)} placeholder={isRecording ? "Gravando..." : "Pergunte ou envie foto de comprovante..."} disabled={isRecording} className="w-full bg-slate-50 rounded-[28px] py-5 pl-8 pr-16 text-sm font-bold text-slate-800 outline-none border-2 border-transparent focus:bg-white focus:border-primary/20 transition-all" />
+                <input type="text" value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAskQuestion(inputMessage)} placeholder={isRecording ? "Gravando..." : "Pergunte ou envie foto de comprovante..."} disabled={isRecording} className="w-full bg-slate-50 dark:bg-slate-800 rounded-[28px] py-5 pl-8 pr-16 text-sm font-bold text-slate-800 dark:text-slate-200 outline-none border-2 border-transparent focus:bg-white dark:focus:bg-slate-900 focus:border-primary/20 transition-all" />
                 <button onClick={() => handleAskQuestion(inputMessage)} disabled={isAsking || (!inputMessage.trim() && !isRecording) || !isPro} className="absolute right-2.5 top-1/2 -translate-y-1/2 h-12 w-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-xl active:scale-90"><span className="material-symbols-outlined text-2xl">send</span></button>
             </div>
-            <button onClick={handleFileClick} className="h-[60px] w-[60px] rounded-full flex items-center justify-center bg-white border-2 border-primary/20 text-primary hover:bg-primary/5 active:scale-90 transition-all shadow-lg"><span className="material-symbols-outlined text-2xl">photo_camera</span></button>
+            <button onClick={handleFileClick} className="h-[60px] w-[60px] rounded-full flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-primary/20 text-primary hover:bg-primary/5 active:scale-90 transition-all shadow-lg"><span className="material-symbols-outlined text-2xl">photo_camera</span></button>
             <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-            <button onClick={isRecording ? stopRecording : startRecording} disabled={isAsking || !isPro} className={`h-[60px] w-[60px] rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-danger text-white animate-pulse' : 'bg-white border-2 border-primary/20 text-primary hover:bg-primary/5'}`}><span className="material-symbols-outlined text-3xl font-light">{isRecording ? 'stop' : 'mic'}</span></button>
+            <button onClick={isRecording ? stopRecording : startRecording} disabled={isAsking || !isPro} className={`h-[60px] w-[60px] rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-danger text-white animate-pulse' : 'bg-white dark:bg-slate-800 border-2 border-primary/20 text-primary hover:bg-primary/5'}`}><span className="material-symbols-outlined text-3xl font-light">{isRecording ? 'stop' : 'mic'}</span></button>
         </div>
       </section>
 
-      {isGenerating ? ( <div className="bg-white rounded-[40px] p-24 text-center border border-emerald-100 shadow-2xl animate-in zoom-in-95"> <div className="relative h-32 w-32 mx-auto mb-10"><div className="absolute inset-0 rounded-full border-[6px] border-slate-100 border-t-primary animate-spin"></div></div> <h3 className="text-3xl font-black text-slate-800 tracking-tighter">Gerando Auditoria</h3> </div> ) : analysis && (
+      {isGenerating ? ( <div className="bg-white dark:bg-slate-900 rounded-[40px] p-24 text-center border border-emerald-100 dark:border-emerald-900/30 shadow-2xl animate-in zoom-in-95"> <div className="relative h-32 w-32 mx-auto mb-10"><div className="absolute inset-0 rounded-full border-[6px] border-slate-100 dark:border-slate-800 border-t-primary animate-spin"></div></div> <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">Gerando Auditoria</h3> </div> ) : analysis && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-12 duration-1000">
           <div className="lg:col-span-8 space-y-8">
             <div className="bg-gradient-to-br from-emerald-900 to-slate-900 rounded-[50px] p-10 text-white shadow-2xl relative overflow-hidden">
@@ -438,18 +539,65 @@ export const AIAnalysisPage: React.FC = () => {
                     <div className="relative h-44 w-44"><svg className="h-full w-full -rotate-90" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="#ffffff08" strokeWidth="3" /><circle cx="18" cy="18" r="16" fill="none" stroke="#21C25E" strokeWidth="3" strokeDasharray={`${analysis.healthScore}, 100`} strokeLinecap="round" className="transition-all duration-[2000ms]" /></svg><div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-5xl font-black">{analysis.healthScore}</span></div></div>
                     <div className="flex-1 text-center md:text-left space-y-4">
                         <div className="flex items-center justify-center md:justify-start gap-4"><span className="text-[10px] font-black bg-white/5 border border-white/10 px-5 py-2 rounded-full uppercase">Período: {analysis.periodLabel}</span><button onClick={() => generateAndPlayAudio(`${analysis.headline}. ${analysis.summary}`)} className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-xl ${isSpeaking ? 'animate-pulse' : ''}`}><span className="material-symbols-outlined text-xl">{isSpeaking ? 'volume_up' : 'play_arrow'}</span></button></div>
-                        <h3 className="text-4xl font-black leading-tight tracking-tighter">{analysis.headline}</h3><p className="text-base text-emerald-100/70 font-bold">{analysis.summary}</p>
+                        <h3 className="text-4xl font-black leading-tight tracking-tighter">{analysis.headline}</h3>
+                        <p className="text-sm font-medium text-slate-300 leading-relaxed max-w-xl">{analysis.summary}</p>
                     </div>
                 </div>
+                <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/5 pt-8">
+                    {analysis.scoreReasons.slice(0, 4).map((r, i) => (
+                        <div key={i} className="flex items-center gap-2 bg-white/5 px-4 py-3 rounded-2xl border border-white/5"><span className="material-symbols-outlined text-primary text-sm">check_circle</span><span className="text-[10px] font-bold text-slate-200 leading-tight">{r}</span></div>
+                    ))}
+                </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-xl"><h4 className="text-[11px] font-black text-slate-300 uppercase mb-8">Fluxo Real</h4><div className="space-y-6"><div className="flex justify-between items-center p-6 bg-emerald-50/40 rounded-[30px] border border-emerald-100/50"><span className="text-xs font-black text-emerald-800 uppercase">Entradas</span><span className="text-xl font-black text-primary">{formatCurrency(periodStats.income)}</span></div><div className="flex justify-between items-center p-6 bg-rose-50/40 rounded-[30px] border border-rose-100/50"><span className="text-xs font-black text-rose-800 uppercase">Saídas</span><span className="text-xl font-black text-danger">{formatCurrency(periodStats.expense)}</span></div></div></div>
-                <CategoryChartCard title="Mapeamento de Gastos" type="expense" categories={periodStats.expenseCats} total={periodStats.expense} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-slate-900 rounded-[40px] p-8 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-2xl">tips_and_updates</span></div>
+                    <h4 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-3">Conselho Prático</h4>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed">{analysis.financialTip}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-[40px] p-8 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-2xl">warning</span></div>
+                    <h4 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-3">Pontos de Atenção</h4>
+                    <ul className="space-y-3">
+                        {analysis.vulnerabilities.map((v, i) => (
+                            <li key={i} className="flex items-start gap-3">
+                                <div className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></div>
+                                <div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">{v.category}</span><span className="text-xs font-bold text-slate-600 dark:text-slate-300 leading-tight block">{v.observation}</span></div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             </div>
           </div>
-          <div className="lg:col-span-4 space-y-8">
-            <div className="bg-primary rounded-[40px] p-8 text-white shadow-2xl overflow-hidden relative group"><span className="material-symbols-outlined absolute top-0 right-0 p-4 opacity-10 text-[150px] rotate-12">lightbulb</span><div className="h-14 w-14 rounded-[20px] bg-white flex items-center justify-center text-primary shadow-2xl mb-6"><span className="material-symbols-outlined text-3xl">tips_and_updates</span></div><h4 className="text-[11px] font-black text-emerald-900/60 uppercase mb-2 tracking-widest">Pulo do Gato</h4><p className="text-lg font-black italic">"{analysis.financialTip}"</p></div>
-            <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-xl"><h4 className="text-[11px] font-black text-slate-300 uppercase mb-8">Vulnerabilidades</h4><div className="space-y-4">{analysis.vulnerabilities.map((v, i) => (<div key={i} className="p-6 bg-slate-50 rounded-[30px] border border-slate-100"><p className="text-sm font-black text-slate-800 mb-2 flex items-center gap-3"><span className="w-2.5 h-2.5 rounded-full bg-danger"></span>{v.category}</p><p className="text-[11px] text-slate-500 font-bold leading-relaxed">{v.observation}</p></div>))}</div></div>
+
+          <div className="lg:col-span-4 space-y-6">
+             <div className="bg-slate-900 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden group">
+                <div className="relative z-10">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Fluxo do Período</p>
+                    <div className="space-y-6">
+                        <div><p className="text-xs font-bold text-slate-400 mb-1">Entradas</p><p className="text-3xl font-black text-emerald-400 tracking-tighter">{formatCurrency(periodStats.income)}</p></div>
+                        <div><p className="text-xs font-bold text-slate-400 mb-1">Saídas</p><p className="text-3xl font-black text-rose-400 tracking-tighter">{formatCurrency(periodStats.expense)}</p></div>
+                        <div className="pt-6 border-t border-white/10"><p className="text-xs font-bold text-slate-400 mb-1">Resultado</p><p className={`text-4xl font-black tracking-tighter ${periodStats.income - periodStats.expense >= 0 ? 'text-white' : 'text-rose-400'}`}>{formatCurrency(periodStats.income - periodStats.expense)}</p></div>
+                    </div>
+                </div>
+                <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-all duration-700"></div>
+             </div>
+
+             <div className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+                <div className="p-6 border-b border-slate-50 dark:border-slate-800"><h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest">Maiores Gastos</h4></div>
+                <div className="p-2">
+                    {periodStats.expenseCats.slice(0, 5).map((cat, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400"><span className="material-symbols-outlined text-lg">{cat.icon}</span></div>
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{cat.name}</span>
+                            </div>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-100">{formatCurrency(cat.amount)}</span>
+                        </div>
+                    ))}
+                </div>
+             </div>
           </div>
         </div>
       )}

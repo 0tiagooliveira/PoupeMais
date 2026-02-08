@@ -40,8 +40,8 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
   [categories, hoveredId]);
 
   return (
-    <Card className="!p-6 border-none shadow-sm relative group overflow-hidden">
-      <h3 className={`mb-6 text-lg font-black tracking-tight truncate ${type === 'expense' ? 'text-rose-500' : 'text-slate-700'}`}>
+    <Card className="!p-6 border-none shadow-sm relative group overflow-hidden bg-white dark:bg-slate-900">
+      <h3 className={`mb-6 text-lg font-black tracking-tight truncate ${type === 'expense' ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>
         {title}
       </h3>
       
@@ -51,7 +51,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
             width={size} height={size} 
             className="transform -rotate-90 overflow-visible"
           >
-            <circle cx={center} cy={center} r={radius} fill="none" stroke="#f8fafc" strokeWidth={strokeWidth} />
+            <circle cx={center} cy={center} r={radius} fill="none" className="stroke-slate-50 dark:stroke-slate-800" strokeWidth={strokeWidth} />
             
             {total > 0 && categories.map((cat) => {
               const percentage = Math.max(0, cat.amount / total);
@@ -98,7 +98,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
 
         <div className="flex-1 w-full min-w-0 space-y-3">
           {categories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-slate-300">
+            <div className="flex flex-col items-center justify-center py-6 text-slate-300 dark:text-slate-600">
                <span className="material-symbols-outlined text-4xl opacity-20 mb-2">pie_chart</span>
                <p className="text-[10px] font-black uppercase tracking-widest">Sem lançamentos</p>
             </div>
@@ -111,7 +111,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
                 <div 
                   key={cat.id} 
                   onClick={() => onCategoryClick?.(cat)}
-                  className={`flex items-center gap-3 transition-all duration-300 cursor-pointer p-1 rounded-xl hover:bg-slate-50 ${hoveredId && !isHovered ? 'opacity-30 blur-[0.5px]' : 'opacity-100'}`}
+                  className={`flex items-center gap-3 transition-all duration-300 cursor-pointer p-1 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 ${hoveredId && !isHovered ? 'opacity-30 blur-[0.5px]' : 'opacity-100'}`}
                   onMouseEnter={() => setHoveredId(cat.id)}
                   onMouseLeave={() => setHoveredId(null)}
                 >
@@ -124,13 +124,13 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
 
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-end mb-1">
-                      <span className="text-xs font-bold text-slate-700 truncate mr-2">{cat.name}</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate mr-2">{cat.name}</span>
                       <div className="text-right flex-shrink-0">
-                        <span className="text-[10px] sm:text-[11px] font-black text-slate-800 block leading-tight">{formatCurrency(cat.amount)}</span>
-                        <span className="text-[8px] sm:text-[9px] font-black text-slate-300">{percentage.toFixed(1)}%</span>
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-slate-100 block leading-tight">{formatCurrency(cat.amount)}</span>
+                        <span className="text-[8px] sm:text-[9px] font-black text-slate-300 dark:text-slate-500">{percentage.toFixed(1)}%</span>
                       </div>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-50 overflow-hidden border border-slate-100/50">
+                    <div className="h-1.5 w-full rounded-full bg-slate-50 dark:bg-slate-800 overflow-hidden border border-slate-100/50 dark:border-slate-700/50">
                       <div className="h-full rounded-full transition-all duration-700 shadow-sm" style={{ width: `${percentage}%`, backgroundColor: cat.color }} />
                     </div>
                   </div>
