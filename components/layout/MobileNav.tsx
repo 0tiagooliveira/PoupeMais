@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { NewTransactionModal } from '../../features/dashboard/components/NewTransactionModal';
@@ -15,19 +15,20 @@ export const MobileNav: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // Links da esquerda (antes do botão +)
+  // Links da esquerda (antes do botÃ£o +)
   const mainLinks = [
-    { to: '/', icon: 'home', label: 'Início' },
+    { to: '/', icon: 'home', label: 'InÃ­cio' },
     { to: '/transactions', icon: 'receipt_long', label: 'Extrato' },
   ];
 
-  // Links do menu secundário (modal)
+  // Links do menu secundÃ¡rio (modal)
   const menuLinks = [
-    { to: '/ai-analysis', icon: 'savings', label: 'Poup IA', desc: 'Inteligência Artificial', pro: true },
-    { to: '/charts', icon: 'bar_chart', label: 'Análise', desc: 'Gráficos e relatórios' },
-    { to: '/credit-cards', icon: 'credit_card', label: 'Cartões', desc: 'Faturas e limites' },
-    { to: '/pricing', icon: 'verified', label: 'Plano PRO', desc: 'Benefícios exclusivos', pro: true },
-    { to: '/settings', icon: 'settings', label: 'Ajustes', desc: 'Perfil e configurações' },
+    { to: '/ai-analysis', icon: 'savings', label: 'Poup IA', desc: 'InteligÃªncia Artificial', pro: true },
+    { to: '/charts', icon: 'bar_chart', label: 'AnÃ¡lise', desc: 'GrÃ¡ficos e relatÃ³rios' },
+    { to: '/goals', icon: 'flag', label: 'Metas', desc: 'Acompanhe objetivos' },
+    { to: '/credit-cards', icon: 'credit_card', label: 'CartÃµes', desc: 'Faturas e limites' },
+    { to: '/pricing', icon: 'verified', label: 'Plano PRO', desc: 'BenefÃ­cios exclusivos', pro: true },
+    { to: '/settings', icon: 'settings', label: 'Ajustes', desc: 'Perfil e configuraÃ§Ãµes' },
   ];
 
   return (
@@ -98,7 +99,7 @@ export const MobileNav: React.FC = () => {
         accounts={accounts}
       />
 
-      <Modal isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} title="Navegação">
+      <Modal isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} title="NavegaÃ§Ã£o">
         <div className="grid grid-cols-1 gap-3 py-2">
            {menuLinks.map((link) => (
              <button

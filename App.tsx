@@ -16,10 +16,9 @@ import { CreditCardsPage } from './features/credit-cards/CreditCardsPage';
 import { AIAnalysisPage } from './features/ai/AIAnalysisPage';
 import { PricingPage } from './features/pricing/PricingPage';
 import { StatementImportPage } from './features/import/StatementImportPage';
-import { Layout } from './components/layout/Layout';
+import { GoalsPage } from './features/goals/GoalsPage';import { Layout } from './components/layout/Layout';
 
-const App: React.FC = () => {
-  return (
+const App: React.FC = () => {  return (
     <AuthProvider>
       <NotificationProvider>
         <ProcessingProvider>
@@ -40,6 +39,7 @@ const App: React.FC = () => {
                     <Route path="/categories" element={<CategoriesPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/credit-cards" element={<CreditCardsPage />} />
+                    <Route path="/goals" element={<GoalsPage />} />
                     <Route path="/pricing" element={<PricingPage />} />
                     <Route path="/import-statement" element={<StatementImportPage />} />
                  </Route>
