@@ -13,8 +13,8 @@ export const Layout: React.FC = () => {
       <GlobalProcessingStatus />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 pb-24 md:pb-8">
-          <div className="mx-auto max-w-5xl">
+        <main className="flex-1 overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 pb-24 md:pb-8 w-full">
+          <div className="mx-auto w-full max-w-[1440px]">
             <Outlet />
           </div>
         </main>

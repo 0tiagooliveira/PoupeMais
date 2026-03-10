@@ -69,7 +69,7 @@ export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccou
         </button>
       </div>
       
-      <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {accounts.map((account) => (
           <div 
             key={account.id} 

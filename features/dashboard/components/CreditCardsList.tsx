@@ -101,7 +101,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {cards.map((card) => {
             const stat = cardStats[card.id] || { currentInvoice: 0, usedLimit: 0, available: card.limit, percentage: 0 };
             const barColor = stat.percentage > 85 ? 'bg-danger' : stat.percentage > 60 ? 'bg-amber-400' : 'bg-success';

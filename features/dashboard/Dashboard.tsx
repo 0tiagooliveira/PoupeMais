@@ -208,7 +208,7 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 pb-24">
+    <div className="mx-auto max-w-[1400px] space-y-8 pb-24 w-full">
       <div className="flex items-center justify-between bg-white border border-slate-50 p-4 rounded-[28px] shadow-sm animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="flex items-center gap-4">
            <button 
@@ -269,20 +269,20 @@ export const Dashboard: React.FC = () => {
 
             <button 
             onClick={openTransactionModalForOcr}
-            className="w-full bg-indigo-50 p-5 rounded-[28px] shadow-sm border border-indigo-100/50 flex items-center gap-5 transition-all hover:shadow-md hover:border-indigo-300 group text-left relative overflow-hidden"
+            className="w-full bg-emerald-50 p-5 rounded-[28px] shadow-sm border border-emerald-100/50 flex items-center gap-5 transition-all hover:shadow-md hover:border-emerald-300 group text-left relative overflow-hidden"
             >
                 {/* Decorativo de fundo sutil */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500/5 to-transparent rounded-bl-[100px] pointer-events-none transition-transform group-hover:scale-110"></div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-bl-[100px] pointer-events-none transition-transform group-hover:scale-110"></div>
 
                 {/* Icone Avatar */}
                 <div className="relative shrink-0">
-                    <div className="h-14 w-14 rounded-[20px] bg-gradient-to-br from-indigo-100 to-white border border-indigo-200 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                        <span className="material-symbols-outlined text-2xl text-indigo-600">
+                    <div className="h-14 w-14 rounded-[20px] bg-gradient-to-br from-emerald-100 to-white border border-emerald-200 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                        <span className="material-symbols-outlined text-2xl text-emerald-600">
                             document_scanner
                         </span>
                     </div>
                     {/* Badge Novo */}
-                    <div className="absolute -top-2 -right-3 px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[8px] font-black uppercase tracking-widest shadow-sm">
+                    <div className="absolute -top-2 -right-3 px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[8px] font-black uppercase tracking-widest shadow-sm">
                         Novo
                     </div>
                 </div>
@@ -290,10 +290,10 @@ export const Dashboard: React.FC = () => {
                 {/* Texto */}
                 <div className="flex-1 min-w-0 z-10 pr-2">
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Scanner OCR</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Poup+ Vision</span>
                     </div>
                     
-                    <p className="text-sm font-bold text-indigo-900 leading-snug line-clamp-2">
+                    <p className="text-sm font-bold text-emerald-900 leading-snug line-clamp-2">
                         Escanear recibo ou nota com IA
                     </p>
                 </div>
@@ -301,34 +301,61 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid gap-8 lg:grid-cols-2 pt-2 animate-in fade-in slide-in-from-bottom-12 duration-1000 stagger-2">
-        <div className="flex flex-col gap-8">
-          <AccountsList accounts={accounts} onAddAccount={() => { setAccountToEdit(null); setIsAccountModalOpen(true); }} onAccountClick={(acc) => navigate(`/transactions/account/${acc.id}`)} onEditAccount={(acc) => { setAccountToEdit(acc); setIsAccountModalOpen(true); }} />
-          <CreditCardsList cards={cards} transactions={transactions} onAddCard={() => setIsCreditCardModalOpen(true)} onDeleteCard={deleteCard} />
+<div className="flex flex-col gap-6 pt-2 animate-in fade-in slide-in-from-bottom-12 duration-1000 stagger-2">
+        
+        {/* Contas e Cartões Ocupando a Largura Toda em suas Linhas */}
+        <AccountsList 
+            accounts={accounts} 
+            onAddAccount={() => { setAccountToEdit(null); setIsAccountModalOpen(true); }} 
+            onAccountClick={(acc) => navigate(`/transactions/account/${acc.id}`)} 
+            onEditAccount={(acc) => { setAccountToEdit(acc); setIsAccountModalOpen(true); }} 
+        />
+        
+        <CreditCardsList 
+            cards={cards} 
+            transactions={transactions} 
+            onAddCard={() => setIsCreditCardModalOpen(true)} 
+            onDeleteCard={deleteCard} 
+        />
+
+        {/* Resumo de Transações Lado a Lado (PC) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+            <TransactionSummaryCard
+                type="income"
+                total={totalIncome}
+                transactions={recentIncomes}
+                onViewAll={() => navigate('/incomes')}
+                onAdd={() => openTransactionModal('income')}
+                onItemClick={handleTransactionItemClick}
+            />
+            <TransactionSummaryCard
+                type="expense"
+                total={totalExpenses}
+                transactions={recentExpenses}
+                onViewAll={() => navigate('/expenses')}
+                onAdd={() => openTransactionModal('expense')}
+                onItemClick={handleTransactionItemClick}
+            />
         </div>
 
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 gap-6">
-             <TransactionSummaryCard 
+        {/* Gráficos de Categorias Lado a Lado (PC) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+            <CategoryChartCard 
+                title="Receitas por categoria" 
                 type="income" 
+                categories={incomeCategoriesData} 
                 total={totalIncome} 
-                transactions={recentIncomes} 
-                onViewAll={() => navigate('/incomes')} 
-                onAdd={() => openTransactionModal('income')} 
-                onItemClick={handleTransactionItemClick}
-             />
-             <TransactionSummaryCard 
+                onCategoryClick={(cat) => handleCategoryClick(cat, 'income')} 
+            />
+            <CategoryChartCard 
+                title="Gastos por categoria" 
                 type="expense" 
+                categories={expenseCategoriesData} 
                 total={totalExpenses} 
-                transactions={recentExpenses} 
-                onViewAll={() => navigate('/expenses')} 
-                onAdd={() => openTransactionModal('expense')} 
-                onItemClick={handleTransactionItemClick}
-             />
-          </div>
-          <CategoryChartCard title="Receitas por categoria" type="income" categories={incomeCategoriesData} total={totalIncome} onCategoryClick={(cat) => handleCategoryClick(cat, 'income')} />
-          <CategoryChartCard title="Gastos por categoria" type="expense" categories={expenseCategoriesData} total={totalExpenses} onCategoryClick={(cat) => handleCategoryClick(cat, 'expense')} />
+                onCategoryClick={(cat) => handleCategoryClick(cat, 'expense')} 
+            />
         </div>
+
       </div>
 
       <QuickActionModal 
