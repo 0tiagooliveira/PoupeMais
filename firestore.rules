@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Verifica se o usuário está autenticado e é o dono dos dados
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Regras para a coleção de usuários e todas as suas subcoleções
+    match /users/{userId} {
+      // Permite leitura e escrita no documento do próprio usuário
+      allow read, write: if isOwner(userId);
+      
+      // Proteção Recursiva: 
+      // O curinga {allPaths=**} garante que transações, contas, cartões e 
+      // QUALQUER subcoleção futura herdem a mesma regra de proteção.
+      match /{allPaths=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Bloqueio Global (Boa prática de segurança: negue tudo por padrão para outros caminhos)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
