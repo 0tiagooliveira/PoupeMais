@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useTransactions } from '../../hooks/useTransactions';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,7 +12,7 @@ import { CategoryChartCard } from '../dashboard/components/CategoryChartCard';
 import { Transaction, CategoryData, TransactionType } from '../../types';
 import { useNavigate } from 'react-router-dom';
 
-// --- GRÁFICO ANUAL COM INTERATIVIDADE E FILTROS ---
+// --- GRÃFICO ANUAL COM INTERATIVIDADE E FILTROS ---
 interface AnnualMixedChartProps {
   data: any[];
   selectedMonthIndex: number;
@@ -32,7 +32,7 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
     setFilters(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Configurações do SVG (ViewBox Fixo, mas renderizado responsivamente via CSS)
+  // ConfiguraÃ§Ãµes do SVG (ViewBox Fixo, mas renderizado responsivamente via CSS)
   const viewBoxWidth = 1000;
   const viewBoxHeight = 350;
   const paddingX = 50; 
@@ -42,7 +42,7 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
   const chartHeight = viewBoxHeight - paddingY - topPadding;
   const chartWidth = viewBoxWidth - paddingX * 2;
 
-  // 1. Calcular Escalas dinâmicas baseadas nos filtros ativos
+  // 1. Calcular Escalas dinÃ¢micas baseadas nos filtros ativos
   const activeValues: number[] = [0]; // Inicializa com 0 para evitar erros se tudo estiver desmarcado
   if (filters.income) activeValues.push(...data.map(d => d.income));
   if (filters.expense) activeValues.push(...data.map(d => d.expense));
@@ -52,14 +52,14 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
   let maxVal = Math.max(...activeValues);
   let minVal = Math.min(...activeValues); 
 
-  // Ajustes de margem para o gráfico não tocar nas bordas
-  if (maxVal === 0 && minVal === 0) maxVal = 1000; // Valor padrão se vazio
+  // Ajustes de margem para o grÃ¡fico nÃ£o tocar nas bordas
+  if (maxVal === 0 && minVal === 0) maxVal = 1000; // Valor padrÃ£o se vazio
   maxVal = maxVal * 1.1; 
   if (minVal < 0) minVal = minVal * 1.2;
 
   const range = maxVal - minVal;
   
-  // Função Y: Valor -> Pixel
+  // FunÃ§Ã£o Y: Valor -> Pixel
   const getY = (val: number) => {
     if (range === 0) return topPadding + chartHeight;
     const percentage = (val - minVal) / range; 
@@ -68,7 +68,7 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
 
   const zeroY = getY(0);
 
-  // Função X: Índice -> Pixel
+  // FunÃ§Ã£o X: Ãndice -> Pixel
   const stepX = chartWidth / (data.length - 1 || 1);
   const getX = (i: number) => paddingX + (i * stepX);
 
@@ -105,11 +105,11 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
 
   return (
     <div ref={containerRef} className="w-full bg-white rounded-[32px] p-4 sm:p-6 border border-slate-100 shadow-sm relative group select-none">
-      {/* Cabeçalho / Legenda Interativa */}
+      {/* CabeÃ§alho / Legenda Interativa */}
       <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-4">
          <h3 className="text-sm font-bold text-slate-700">Panorama Anual</h3>
          
-         {/* Botões de Filtro */}
+         {/* BotÃµes de Filtro */}
          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl overflow-x-auto max-w-full">
             <button 
                 onClick={() => setFilters({ income: true, expense: true, flow: true })}
@@ -133,7 +133,7 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
                 onClick={() => toggleFilter('flow')}
                 className={`px-3 py-1.5 flex items-center gap-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${filters.flow ? 'bg-white shadow-sm text-slate-700 border border-slate-100' : 'text-slate-400 opacity-60 hover:opacity-100'}`}
             >
-              <span className={`w-2 h-2 rounded-full ${filters.flow ? 'bg-slate-800' : 'bg-slate-300'}`}></span> Fluxo
+              <span className={`w-2 h-2 rounded-full ${filters.flow ? 'bg-primary' : 'bg-slate-300'}`}></span> Fluxo
             </button>
          </div>
       </div>
@@ -267,7 +267,7 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
                 );
              })}
 
-             {/* HIT AREAS (Retângulos Invisíveis Largos para Interação) */}
+             {/* HIT AREAS (RetÃ¢ngulos InvisÃ­veis Largos para InteraÃ§Ã£o) */}
              {data.map((_, i) => {
                const x = getX(i);
                const colWidth = stepX;
@@ -291,12 +291,12 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
              })}
           </svg>
 
-          {/* TOOLTIP FLUTUANTE HTML (Posicionado via style relativo ao container do gráfico) */}
+          {/* TOOLTIP FLUTUANTE HTML (Posicionado via style relativo ao container do grÃ¡fico) */}
           {activeData && activeIndex !== null && (
              <div 
                className="absolute z-20 pointer-events-none animate-in fade-in zoom-in-95 duration-150"
                style={{ 
-                 // Cálculo de porcentagem para posicionar o tooltip responsivamente
+                 // CÃ¡lculo de porcentagem para posicionar o tooltip responsivamente
                  left: `${((getX(activeIndex)) / viewBoxWidth) * 100}%`,
                  top: 0,
                  transform: 'translateX(-50%) translateY(10px)'
@@ -331,7 +331,7 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
                       {filters.flow && (
                           <div className="flex items-center justify-between gap-3 pt-1.5 border-t border-slate-50 mt-1">
                             <div className="flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-800"></div>
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
                                 <span className="text-[10px] font-bold text-slate-500">Fluxo</span>
                             </div>
                             <span className={`text-[11px] font-black ${(activeData.income - activeData.expense) >= 0 ? 'text-[#059669]' : 'text-rose-500'}`}>
@@ -350,7 +350,7 @@ const AnnualMixedChart: React.FC<AnnualMixedChartProps> = ({ data, selectedMonth
   );
 };
 
-// --- BALÃO DE COMENTÁRIO DA IA (Mantido Igual) ---
+// --- BALÃƒO DE COMENTÃRIO DA IA (Mantido Igual) ---
 const AICommentBubble: React.FC<{ text?: string, loading?: boolean, type?: 'success' | 'warning' | 'neutral', label: string }> = ({ text, loading, type = 'neutral', label }) => {
   if (!text && !loading) return null;
 
@@ -391,10 +391,10 @@ export const ChartsPage: React.FC = () => {
   const [annualInsight, setAnnualInsight] = useState('');
   const [loadingAnnualInsight, setLoadingAnnualInsight] = useState(false);
 
-  // Dados Anuais (apenas para o gráfico do topo)
+  // Dados Anuais (apenas para o grÃ¡fico do topo)
   const { transactions: annualTransactions, loading: loadingTransactions } = useTransactions(currentYearDate, 'year');
   
-  // LÓGICA DE FILTRAGEM DE ANÁLISE
+  // LÃ“GICA DE FILTRAGEM DE ANÃLISE
   const shouldIncludeInAnalysis = (t: Transaction) => {
     if (t.isIgnored) return false;
 
@@ -402,17 +402,17 @@ export const ChartsPage: React.FC = () => {
     const cleanCat = t.category.toLowerCase();
 
     const isCreditCardPayment = 
-        cleanCat.includes('pagamento de cartão') || 
+        cleanCat.includes('pagamento de cartÃ£o') || 
         cleanCat.includes('fatura') ||
         cleanDesc.includes('pagamento de fatura') ||
-        (cleanDesc.includes('fatura') && (cleanDesc.includes('cartão') || cleanDesc.includes('card') || cleanDesc.includes('nubank') || cleanDesc.includes('itau')));
+        (cleanDesc.includes('fatura') && (cleanDesc.includes('cartÃ£o') || cleanDesc.includes('card') || cleanDesc.includes('nubank') || cleanDesc.includes('itau')));
 
     if (isCreditCardPayment) return false;
 
     return true;
   };
   
-  // Dados Mensais para análise focada
+  // Dados Mensais para anÃ¡lise focada
   const monthlyTransactions = useMemo(() => {
     return annualTransactions.filter(t => {
        const tDate = new Date(t.date);
@@ -428,12 +428,12 @@ export const ChartsPage: React.FC = () => {
     expense?: string;
   }>({});
 
-  // Efeito para limpar comentários ao trocar o mês
+  // Efeito para limpar comentÃ¡rios ao trocar o mÃªs
   useEffect(() => {
     setAiComments({});
   }, [currentMonthDate]);
 
-  // Preparação de dados Anuais (Filtrados)
+  // PreparaÃ§Ã£o de dados Anuais (Filtrados)
   const annualData = useMemo(() => {
     const monthsData = Array(12).fill(0).map(() => ({ income: 0, expense: 0 }));
     annualTransactions.forEach(t => {
@@ -451,7 +451,7 @@ export const ChartsPage: React.FC = () => {
     }));
   }, [annualTransactions]);
 
-  // Efeito para Gerar Insight Anual Automático
+  // Efeito para Gerar Insight Anual AutomÃ¡tico
   useEffect(() => {
     if (loadingTransactions || !currentUser?.isPro || annualTransactions.length === 0) return;
     
@@ -471,8 +471,8 @@ export const ChartsPage: React.FC = () => {
                 - Receitas Totais: R$ ${totalInc.toFixed(2)}
                 - Despesas Totais: R$ ${totalExp.toFixed(2)}
                 
-                Gere uma frase de impacto (máximo 15 palavras) resumindo o desempenho anual.
-                Exemplos: "Parabéns! Ano de muito lucro e crescimento.", "Atenção: Gastos superaram ganhos este ano.", "Equilíbrio perfeito, mas podemos investir mais.".
+                Gere uma frase de impacto (mÃ¡ximo 15 palavras) resumindo o desempenho anual.
+                Exemplos: "ParabÃ©ns! Ano de muito lucro e crescimento.", "AtenÃ§Ã£o: Gastos superaram ganhos este ano.", "EquilÃ­brio perfeito, mas podemos investir mais.".
                 Seja direto e motivador.
             `;
 
@@ -481,7 +481,7 @@ export const ChartsPage: React.FC = () => {
                 contents: [{ parts: [{ text: prompt }] }],
             });
             
-            setAnnualInsight(response.text?.trim() || `Análise de ${currentYearDate.getFullYear()} pronta.`);
+            setAnnualInsight(response.text?.trim() || `AnÃ¡lise de ${currentYearDate.getFullYear()} pronta.`);
         } catch (error) {
             console.error("Erro IA Insight Anual:", error);
         } finally {
@@ -489,13 +489,13 @@ export const ChartsPage: React.FC = () => {
         }
     };
 
-    // Delay para não conflitar com renderização inicial
+    // Delay para nÃ£o conflitar com renderizaÃ§Ã£o inicial
     const timer = setTimeout(fetchAnnualInsight, 1000);
     return () => clearTimeout(timer);
   }, [annualTransactions, currentYearDate, currentUser, loadingTransactions]);
 
 
-  // Handler para clique no gráfico anual
+  // Handler para clique no grÃ¡fico anual
   const handleMonthClick = (monthIndex: number) => {
     const newDate = new Date(currentYearDate.getFullYear(), monthIndex, 1);
     setCurrentMonthDate(newDate);
@@ -510,7 +510,7 @@ export const ChartsPage: React.FC = () => {
     });
   };
 
-  // Preparação de dados Mensais (Filtrados)
+  // PreparaÃ§Ã£o de dados Mensais (Filtrados)
   const monthStats = useMemo(() => {
     let income = 0;
     let expense = 0;
@@ -560,7 +560,7 @@ export const ChartsPage: React.FC = () => {
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const prompt = `
-            Você é a IA do Poup+. Analise APENAS os dados deste mês de ${new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(currentMonthDate)}:
+            VocÃª Ã© a IA do Poup+. Analise APENAS os dados deste mÃªs de ${new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(currentMonthDate)}:
             
             1. Receitas Totais: R$ ${monthStats.income.toFixed(2)}
                Principais Fontes: ${monthStats.incomeCats.slice(0,3).map(c => `${c.name} (${c.amount})`).join(', ')}
@@ -568,13 +568,13 @@ export const ChartsPage: React.FC = () => {
             2. Despesas Totais: R$ ${monthStats.expense.toFixed(2)}
                Maiores Gastos: ${monthStats.expenseCats.slice(0,3).map(c => `${c.name} (${c.amount})`).join(', ')}
             
-            3. Balanço Final: R$ ${monthStats.result.toFixed(2)}
+            3. BalanÃ§o Final: R$ ${monthStats.result.toFixed(2)}
 
-            Gere um JSON com 3 comentários curtos (máximo 1 frase cada) e diretos para o usuário:
+            Gere um JSON com 3 comentÃ¡rios curtos (mÃ¡ximo 1 frase cada) e diretos para o usuÃ¡rio:
             {
-                "income": "Comentário sobre as receitas (elogie se for bom, ou sugira diversificação)",
-                "expense": "Comentário sobre os gastos (alerte sobre a categoria mais alta se necessário)",
-                "general": "Comentário final sobre o resultado do mês (saldo positivo/negativo)"
+                "income": "ComentÃ¡rio sobre as receitas (elogie se for bom, ou sugira diversificaÃ§Ã£o)",
+                "expense": "ComentÃ¡rio sobre os gastos (alerte sobre a categoria mais alta se necessÃ¡rio)",
+                "general": "ComentÃ¡rio final sobre o resultado do mÃªs (saldo positivo/negativo)"
             }
         `;
 
@@ -623,7 +623,7 @@ export const ChartsPage: React.FC = () => {
                             {loadingAnnualInsight ? 'smart_toy' : 'savings'}
                         </span>
                     </div>
-                    {/* Badge de notificação/status */}
+                    {/* Badge de notificaÃ§Ã£o/status */}
                     <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm border border-slate-50">
                         <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-pulse"></span>
                     </div>
@@ -659,11 +659,11 @@ export const ChartsPage: React.FC = () => {
 
       <div className="flex items-center gap-4">
          <div className="h-px bg-slate-200 flex-1"></div>
-         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Análise Detalhada</span>
+         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">AnÃ¡lise Detalhada</span>
          <div className="h-px bg-slate-200 flex-1"></div>
       </div>
 
-      {/* 2. Filtro de Mês + Botão de Análise IA */}
+      {/* 2. Filtro de MÃªs + BotÃ£o de AnÃ¡lise IA */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm py-2 flex flex-col md:flex-row items-center justify-between gap-4">
          <div className="bg-white p-1.5 rounded-[20px] shadow-sm border border-slate-100">
             <MonthSelector currentDate={currentMonthDate} onMonthChange={setCurrentMonthDate} />
@@ -677,17 +677,17 @@ export const ChartsPage: React.FC = () => {
             {isAnalyzing ? (
                 <span className="flex items-center gap-2"><span className="material-symbols-outlined animate-spin">sync</span> Analisando dados...</span>
             ) : (
-                <span className="flex items-center gap-2"><span className="material-symbols-outlined">auto_awesome</span> Comentar Mês com IA</span>
+                <span className="flex items-center gap-2"><span className="material-symbols-outlined">auto_awesome</span> Comentar MÃªs com IA</span>
             )}
          </Button>
       </div>
 
-      {/* 3. Colunas de Análise (Rosquinhas) */}
+      {/* 3. Colunas de AnÃ¡lise (Rosquinhas) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
          {/* Receitas */}
          <div className="space-y-4">
              <CategoryChartCard 
-                title="Entradas do Mês" 
+                title="Entradas do MÃªs" 
                 type="income" 
                 categories={monthStats.incomeCats} 
                 total={monthStats.income} 
@@ -699,21 +699,21 @@ export const ChartsPage: React.FC = () => {
          {/* Despesas */}
          <div className="space-y-4">
              <CategoryChartCard 
-                title="Saídas do Mês" 
+                title="SaÃ­das do MÃªs" 
                 type="expense" 
                 categories={monthStats.expenseCats} 
                 total={monthStats.expense}
                 onCategoryClick={(cat) => handleCategoryClick(cat, 'expense')} 
              />
-             <AICommentBubble text={aiComments.expense} loading={isAnalyzing} type="warning" label="IA sobre Saídas" />
+             <AICommentBubble text={aiComments.expense} loading={isAnalyzing} type="warning" label="IA sobre SaÃ­das" />
          </div>
       </div>
 
       {/* 4. Resultado Geral */}
-      <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-primary to-emerald-800 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden">
          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Balanço Líquido ({new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(currentMonthDate)})</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">BalanÃ§o LÃ­quido ({new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(currentMonthDate)})</p>
                 <div className="flex items-baseline gap-2">
                     <span className={`text-4xl font-black tracking-tighter ${monthStats.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {formatCurrency(monthStats.result)}
@@ -725,7 +725,7 @@ export const ChartsPage: React.FC = () => {
                     )}
                 </div>
             </div>
-            {/* Balão de comentário geral da IA integrado */}
+            {/* BalÃ£o de comentÃ¡rio geral da IA integrado */}
             {(aiComments.general || isAnalyzing) && (
                 <div className="md:max-w-xs bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
                    <div className="flex items-center gap-2 mb-2">

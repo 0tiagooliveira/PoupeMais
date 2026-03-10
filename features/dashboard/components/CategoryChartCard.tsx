@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { formatCurrency } from '../../../utils/formatters';
@@ -100,7 +100,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
           {categories.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 text-slate-300">
                <span className="material-symbols-outlined text-4xl opacity-20 mb-2">pie_chart</span>
-               <p className="text-[10px] font-black uppercase tracking-widest">Sem lançamentos</p>
+               <p className="text-[10px] font-black uppercase tracking-widest">Sem lanÃ§amentos</p>
             </div>
           ) : (
             categories.slice(0, 5).map((cat) => {
@@ -143,7 +143,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
 
       {hoveredId && hoveredCat && (
         <div className="fixed z-[100] pointer-events-none transform -translate-x-1/2 -translate-y-[125%] animate-in fade-in zoom-in-95 duration-200" style={{ left: tooltipPos.x, top: tooltipPos.y }}>
-          <div className="bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3">
+          <div className="bg-primary/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3">
              <div className="h-10 w-10 rounded-xl flex items-center justify-center shadow-inner" style={{ backgroundColor: `${hoveredCat.color}20`, color: hoveredCat.color }}>
                <span className="material-symbols-outlined text-xl">{hoveredCat.icon}</span>
              </div>

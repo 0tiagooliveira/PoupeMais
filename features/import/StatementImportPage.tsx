@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useRef, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
 import { db } from '../../services/firebase';
@@ -101,9 +101,9 @@ export const StatementImportPage: React.FC = () => {
       });
 
       await batch.commit();
-      addNotification("Lançamentos importados com sucesso!", "success");
+      addNotification("LanÃ§amentos importados com sucesso!", "success");
       
-      // Limpa tudo após salvar
+      // Limpa tudo apÃ³s salvar
       clearResults();
       setFile(null);
       setTextInput('');
@@ -156,7 +156,7 @@ export const StatementImportPage: React.FC = () => {
         
         <p className="mt-2 text-xs text-slate-400 font-medium max-w-xs text-center leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
           <span className="block mb-1 font-bold text-slate-500">Dica:</span>
-          Você pode sair desta tela. O processamento continuará em segundo plano e avisaremos quando terminar.
+          VocÃª pode sair desta tela. O processamento continuarÃ¡ em segundo plano e avisaremos quando terminar.
         </p>
       </div>
     );
@@ -169,8 +169,8 @@ export const StatementImportPage: React.FC = () => {
           <header className="flex items-center gap-4">
             <Button variant="ghost" onClick={handleCancel} className="h-10 w-10 rounded-full p-0"><span className="material-symbols-outlined">close</span></Button>
             <div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Revisão</h2>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Confirme os dados extraídos</p>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">RevisÃ£o</h2>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Confirme os dados extraÃ­dos</p>
             </div>
           </header>
 
@@ -187,7 +187,7 @@ export const StatementImportPage: React.FC = () => {
                 <div className="h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-4">
                     <span className="material-symbols-outlined">account_balance</span>
                 </div>
-                <p className="text-sm text-slate-500 font-bold mb-4">Você ainda não tem contas cadastradas.</p>
+                <p className="text-sm text-slate-500 font-bold mb-4">VocÃª ainda nÃ£o tem contas cadastradas.</p>
                 <Button onClick={() => setIsAccountModalOpen(true)} variant="secondary" className="rounded-2xl font-bold px-8">
                   + Criar minha primeira conta
                 </Button>
@@ -201,7 +201,7 @@ export const StatementImportPage: React.FC = () => {
                       key={acc.id} 
                       onClick={() => setSelectedAccountId(acc.id)}
                       className={`flex flex-col items-center gap-2 min-w-[100px] p-4 rounded-[24px] border transition-all
-                        ${isSelected ? 'bg-slate-900 border-slate-900 text-white shadow-xl scale-105' : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'}`}
+                        ${isSelected ? 'bg-primary border-primary text-white shadow-xl scale-105' : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'}`}
                     >
                       <div className="bg-white rounded-full p-0.5 shadow-sm">
                         <BankLogo name={acc.name} color={acc.color} size="sm" />
@@ -272,7 +272,7 @@ export const StatementImportPage: React.FC = () => {
               disabled={selectedCount === 0 || !selectedAccountId}
               className="flex-[2] py-5 rounded-[24px] bg-success hover:bg-emerald-600 text-white font-black text-sm shadow-xl shadow-success/20"
             >
-              Confirmar Importação
+              Confirmar ImportaÃ§Ã£o
             </Button>
           </div>
           
@@ -295,7 +295,7 @@ export const StatementImportPage: React.FC = () => {
       <header className="flex items-center gap-4">
         <BackButton className="bg-white border border-slate-100 shadow-sm" />
         <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Importação Inteligente</h2>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">ImportaÃ§Ã£o Inteligente</h2>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">IA para Extratos, Fotos e Textos</p>
         </div>
       </header>
@@ -354,7 +354,7 @@ export const StatementImportPage: React.FC = () => {
               <textarea
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Cole aqui suas mensagens ou anotações...&#10;Ex:&#10;Gastei 50 no almoço ontem&#10;Recebi 2000 de salário&#10;Uber 15 reais hoje cedo"
+                placeholder="Cole aqui suas mensagens ou anotaÃ§Ãµes...&#10;Ex:&#10;Gastei 50 no almoÃ§o ontem&#10;Recebi 2000 de salÃ¡rio&#10;Uber 15 reais hoje cedo"
                 className="w-full h-[300px] rounded-[40px] border border-slate-200 p-8 text-sm font-medium text-slate-700 placeholder:text-slate-300 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 resize-none transition-all shadow-sm"
               />
               <div className="absolute bottom-6 right-6 flex items-center gap-2 pointer-events-none opacity-40">
@@ -367,9 +367,9 @@ export const StatementImportPage: React.FC = () => {
           <Button 
             onClick={handleStartProcessing} 
             disabled={(mode === 'file' && !file) || (mode === 'text' && !textInput.trim())} 
-            className="w-full py-5 rounded-[24px] bg-slate-900 hover:bg-slate-800 text-white font-black text-sm shadow-xl shadow-slate-200 transition-all hover:scale-[1.01] active:scale-[0.99]"
+            className="w-full py-5 rounded-[24px] bg-primary hover:bg-emerald-600 text-white font-black text-sm shadow-xl shadow-slate-200 transition-all hover:scale-[1.01] active:scale-[0.99]"
           >
-            Processar com Inteligência Artificial
+            Processar com InteligÃªncia Artificial
           </Button>
       </div>
     </div>

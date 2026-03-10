@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProcessing } from '../../contexts/ProcessingContext';
@@ -8,19 +8,19 @@ export const GlobalProcessingStatus: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Se não estiver processando e não tiver resultados pendentes (ou se já estivermos na página de importação), não mostra nada
+  // Se nÃ£o estiver processando e nÃ£o tiver resultados pendentes (ou se jÃ¡ estivermos na pÃ¡gina de importaÃ§Ã£o), nÃ£o mostra nada
   if ((!isProcessing && !hasResults) || location.pathname === '/import-statement') {
     return null;
   }
 
-  // Se tiver resultados pendentes, mostra um alerta para o usuário voltar e revisar
+  // Se tiver resultados pendentes, mostra um alerta para o usuÃ¡rio voltar e revisar
   if (!isProcessing && hasResults) {
     return (
       <div 
         onClick={() => navigate('/import-statement')}
         className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-[100] cursor-pointer animate-in slide-in-from-bottom-10 fade-in duration-500"
       >
-        <div className="bg-slate-900 text-white pl-4 pr-5 py-3 rounded-full shadow-2xl flex items-center gap-4 border border-white/10 hover:scale-105 transition-transform active:scale-95">
+        <div className="bg-primary text-white pl-4 pr-5 py-3 rounded-full shadow-2xl flex items-center gap-4 border border-white/10 hover:scale-105 transition-transform active:scale-95">
            <div className="relative">
               <span className="material-symbols-outlined text-2xl text-emerald-400">check_circle</span>
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
@@ -29,8 +29,8 @@ export const GlobalProcessingStatus: React.FC = () => {
               </span>
            </div>
            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Importação Concluída</p>
-              <p className="text-sm font-bold leading-none">Revisar lançamentos</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">ImportaÃ§Ã£o ConcluÃ­da</p>
+              <p className="text-sm font-bold leading-none">Revisar lanÃ§amentos</p>
            </div>
            <span className="material-symbols-outlined text-slate-400 text-sm">arrow_forward</span>
         </div>

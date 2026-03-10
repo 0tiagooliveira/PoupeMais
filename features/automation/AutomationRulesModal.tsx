@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
@@ -39,7 +39,7 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
   const [categorySearch, setCategorySearch] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Inicializa com dados da transação base se houver
+  // Inicializa com dados da transaÃ§Ã£o base se houver
   useEffect(() => {
     if (isOpen && baseTransaction) {
       setDescriptionContains(baseTransaction.description);
@@ -47,7 +47,7 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
       // setAmountMin((baseTransaction.amount * 0.9).toFixed(2));
       // setAmountMax((baseTransaction.amount * 1.1).toFixed(2));
       setTargetCategory(baseTransaction.category);
-      setRenameTo(baseTransaction.description); // Sugestão inicial
+      setRenameTo(baseTransaction.description); // SugestÃ£o inicial
     } else if (isOpen) {
       // Reset
       setDescriptionContains('');
@@ -77,7 +77,7 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
       return;
     }
     if (!targetCategory && !shouldRename && !shouldHide) {
-      addNotification("Selecione ao menos uma ação (categorizar, renomear ou ocultar).", "warning");
+      addNotification("Selecione ao menos uma aÃ§Ã£o (categorizar, renomear ou ocultar).", "warning");
       return;
     }
 
@@ -121,8 +121,8 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
   };
 
   const applyRuleToHistory = async (rule: Omit<AutomationRule, 'id'>) => {
-    // Busca as últimas 500 transações para aplicar a regra
-    // Firestore não tem 'contains', então buscamos tudo (ou por data) e filtramos no cliente
+    // Busca as Ãºltimas 500 transaÃ§Ãµes para aplicar a regra
+    // Firestore nÃ£o tem 'contains', entÃ£o buscamos tudo (ou por data) e filtramos no cliente
     const snapshot = await db.collection('users').doc(currentUser!.uid)
       .collection('transactions')
       .orderBy('date', 'desc')
@@ -135,7 +135,7 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
     snapshot.docs.forEach(doc => {
       const data = doc.data() as Transaction;
       
-      // Valida Condições
+      // Valida CondiÃ§Ãµes
       const matchDesc = data.description.toLowerCase().includes(rule.conditions.descriptionContains.toLowerCase());
       if (!matchDesc) return;
 
@@ -143,7 +143,7 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
       if (rule.conditions.amountMin && data.amount < parseFloat(rule.conditions.amountMin)) return;
       if (rule.conditions.amountMax && data.amount > parseFloat(rule.conditions.amountMax)) return;
 
-      // Aplica Ações
+      // Aplica AÃ§Ãµes
       const updates: any = {};
       if (rule.actions.categoryId) updates.category = rule.actions.categoryId;
       if (rule.actions.renameTo) updates.description = rule.actions.renameTo;
@@ -157,12 +157,12 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
 
     if (updatesCount > 0) {
       await batch.commit();
-      addNotification(`${updatesCount} transações antigas foram atualizadas.`, "info");
+      addNotification(`${updatesCount} transaÃ§Ãµes antigas foram atualizadas.`, "info");
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Nova Regra de Categorização">
+    <Modal isOpen={isOpen} onClose={onClose} title="Nova Regra de CategorizaÃ§Ã£o">
       <div className="flex flex-col gap-5 pt-2 relative max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
         
         {/* Category Selector Overlay */}
@@ -194,7 +194,7 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
         )}
 
         <div>
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Quando a transação...</label>
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Quando a transaÃ§Ã£o...</label>
           
           <div className="space-y-3">
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 hover:border-primary/30 transition-all group">
@@ -202,7 +202,7 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
                   <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm">
                      <span className="material-symbols-outlined text-lg">text_fields</span>
                   </div>
-                  <span className="text-xs font-bold text-slate-700">Descrição contém</span>
+                  <span className="text-xs font-bold text-slate-700">DescriÃ§Ã£o contÃ©m</span>
                </div>
                <input 
                  type="text" 
@@ -211,12 +211,12 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
                  onChange={e => setDescriptionContains(e.target.value)} 
                  className="w-full bg-transparent border-b border-slate-200 py-2 text-sm font-bold text-slate-800 outline-none focus:border-primary placeholder:text-slate-300"
                />
-               <p className="text-[9px] text-slate-400 mt-1 font-medium">Busca texto em qualquer parte da descrição</p>
+               <p className="text-[9px] text-slate-400 mt-1 font-medium">Busca texto em qualquer parte da descriÃ§Ã£o</p>
             </div>
 
             <div className="flex gap-3">
                <div className="flex-1 bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                  <label className="text-[9px] font-bold text-slate-400 mb-1 block">Valor Mín (Opcional)</label>
+                  <label className="text-[9px] font-bold text-slate-400 mb-1 block">Valor MÃ­n (Opcional)</label>
                   <input type="number" placeholder="0,00" value={amountMin} onChange={e => setAmountMin(e.target.value)} className="w-full bg-transparent text-sm font-bold text-slate-800 outline-none" />
                </div>
                <div className="flex-1 bg-slate-50 rounded-2xl p-3 border border-slate-100">
@@ -226,7 +226,7 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
             </div>
 
             <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 flex items-center justify-between">
-               <span className="text-xs font-bold text-slate-500 ml-1">Conta Específica</span>
+               <span className="text-xs font-bold text-slate-500 ml-1">Conta EspecÃ­fica</span>
                <select value={selectedAccountId} onChange={e => setSelectedAccountId(e.target.value)} className="bg-white border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-bold text-slate-700 outline-none max-w-[150px]">
                   <option value="all">Todas as contas</option>
                   {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
@@ -253,17 +253,17 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
         </div>
 
         <div>
-           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Ações Automáticas</label>
+           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">AÃ§Ãµes AutomÃ¡ticas</label>
            
            <div className={`flex flex-col p-4 rounded-2xl border transition-all mb-3 ${shouldRename ? 'bg-slate-50 border-slate-200' : 'border-slate-100 bg-white'}`}>
               <div className="flex items-center justify-between mb-2">
                  <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500"><span className="material-symbols-outlined text-lg">edit</span></div>
-                    <span className="text-xs font-bold text-slate-700">Renomear transação</span>
+                    <span className="text-xs font-bold text-slate-700">Renomear transaÃ§Ã£o</span>
                  </div>
                  <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={shouldRename} onChange={e => setShouldRename(e.target.checked)} className="sr-only peer" />
-                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-800"></div>
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                  </label>
               </div>
               {shouldRename && (
@@ -275,25 +275,25 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
               <div className="flex items-center gap-3">
                  <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500"><span className="material-symbols-outlined text-lg">visibility_off</span></div>
                  <div>
-                    <span className="text-xs font-bold text-slate-700 block">Ocultar transação</span>
-                    <span className="text-[9px] text-slate-400">Não exibir em relatórios</span>
+                    <span className="text-xs font-bold text-slate-700 block">Ocultar transaÃ§Ã£o</span>
+                    <span className="text-[9px] text-slate-400">NÃ£o exibir em relatÃ³rios</span>
                  </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                  <input type="checkbox" checked={shouldHide} onChange={e => setShouldHide(e.target.checked)} className="sr-only peer" />
-                 <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-800"></div>
+                 <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
               </label>
            </div>
         </div>
 
         <div className="flex items-center gap-2 py-2 px-1">
            <input type="checkbox" id="applyHistory" checked={applyToExisting} onChange={e => setApplyToExisting(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary" />
-           <label htmlFor="applyHistory" className="text-xs font-bold text-slate-500 cursor-pointer select-none">Aplicar esta regra a transações passadas</label>
+           <label htmlFor="applyHistory" className="text-xs font-bold text-slate-500 cursor-pointer select-none">Aplicar esta regra a transaÃ§Ãµes passadas</label>
         </div>
 
         <div className="pt-2 border-t border-slate-50 flex gap-3">
            <Button variant="ghost" onClick={onClose} className="flex-1 rounded-2xl font-bold h-12">Cancelar</Button>
-           <Button onClick={handleSaveRule} isLoading={loading} className="flex-1 rounded-2xl font-bold h-12 bg-slate-900 text-white shadow-xl hover:bg-slate-800">Salvar Regra</Button>
+           <Button onClick={handleSaveRule} isLoading={loading} className="flex-1 rounded-2xl font-bold h-12 bg-primary text-white shadow-xl hover:bg-emerald-600">Salvar Regra</Button>
         </div>
       </div>
     </Modal>

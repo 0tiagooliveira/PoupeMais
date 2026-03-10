@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTransactions } from '../../hooks/useTransactions';
@@ -32,7 +32,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [transactionForRule, setTransactionForRule] = useState<Transaction | null>(null);
   
-  // Inicialização inteligente dos filtros baseada na navegação (location.state)
+  // InicializaÃ§Ã£o inteligente dos filtros baseada na navegaÃ§Ã£o (location.state)
   const [searchQuery, setSearchQuery] = useState('');
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(() => {
@@ -49,7 +49,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  // Limpa o state do location após o uso inicial para não interferir em navegações futuras na mesma sessão
+  // Limpa o state do location apÃ³s o uso inicial para nÃ£o interferir em navegaÃ§Ãµes futuras na mesma sessÃ£o
   useEffect(() => {
     if (location.state) {
       window.history.replaceState({}, document.title);
@@ -77,8 +77,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
     if (t.type !== 'income') return false;
     const desc = t.description.toLowerCase();
     const cat = t.category.toLowerCase();
-    const isPayment = desc.includes('pagamento de cartão') || desc.includes('fatura') || cat.includes('pagamento de cartão');
-    const isRefund = desc.includes('estorno') || cat.includes('estorno') || desc.includes('reembolso') || desc.includes('crédito de');
+    const isPayment = desc.includes('pagamento de cartÃ£o') || desc.includes('fatura') || cat.includes('pagamento de cartÃ£o');
+    const isRefund = desc.includes('estorno') || cat.includes('estorno') || desc.includes('reembolso') || desc.includes('crÃ©dito de');
     return isPayment || isRefund;
   };
 
@@ -163,7 +163,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
   const cardGradientClass = useMemo(() => {
     if (typeFilter === 'income') return 'bg-gradient-to-br from-[#21C25E] to-[#169646]';
     if (typeFilter === 'expense') return 'bg-gradient-to-br from-[#FF4444] to-[#D63030]';
-    return 'bg-gradient-to-br from-slate-700 to-slate-900';
+    return 'bg-gradient-to-br from-primary to-emerald-800';
   }, [typeFilter]);
 
   const activeChipClass = useMemo(() => {
@@ -182,7 +182,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
                     <h2 className="text-xl font-bold tracking-tight text-slate-800 truncate max-w-[200px] sm:max-w-md">{displayTitle}</h2>
                 </div>
                 <p className="text-[10px] text-slate-400 font-bold tracking-tight uppercase">
-                  {selectedCategory ? `Filtro por Categoria` : selectedAccount ? `Instituição: ${selectedAccount.name}` : 'Histórico Consolidado'}
+                  {selectedCategory ? `Filtro por Categoria` : selectedAccount ? `InstituiÃ§Ã£o: ${selectedAccount.name}` : 'HistÃ³rico Consolidado'}
                 </p>
             </div>
         </div>
@@ -191,7 +191,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
             <button 
                 onClick={() => navigate('/import-statement')}
                 className="flex items-center gap-2 px-4 h-10 rounded-2xl bg-white text-slate-600 font-bold text-xs border border-slate-100 shadow-sm hover:bg-slate-50 transition-all active:scale-95"
-                title="Importação Inteligente"
+                title="ImportaÃ§Ã£o Inteligente"
             >
                 <span className="material-symbols-outlined text-lg">cloud_upload</span>
                 <span className="hidden sm:inline">Importar</span>
@@ -214,7 +214,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
           </div>
           <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
-                  <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mb-2">Balanço do Período Filtrado</p>
+                  <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mb-2">BalanÃ§o do PerÃ­odo Filtrado</p>
                   <div className="text-5xl font-black tracking-tighter">{formatCurrency(totalBalance)}</div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -238,13 +238,13 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
                 <input 
                     type="text" 
-                    placeholder="Buscar por descrição ou categoria..." 
+                    placeholder="Buscar por descriÃ§Ã£o ou categoria..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full rounded-[22px] border-none bg-white py-4 pl-12 pr-4 text-sm font-bold text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
             </div>
-            <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={`flex items-center justify-center gap-2 rounded-[22px] px-6 py-4 text-sm font-bold transition-all ${showAdvancedFilters ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-600 shadow-sm hover:bg-slate-50'}`}>
+            <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={`flex items-center justify-center gap-2 rounded-[22px] px-6 py-4 text-sm font-bold transition-all ${showAdvancedFilters ? 'bg-primary text-white shadow-lg' : 'bg-white text-slate-600 shadow-sm hover:bg-slate-50'}`}>
                 <span className="material-symbols-outlined text-xl">tune</span> Filtros {isFiltersActive && <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>}
             </button>
             <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="flex items-center justify-center gap-2 rounded-[22px] bg-white px-6 py-4 text-sm font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition-all active:scale-95">
@@ -258,7 +258,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar por Status</label>
                 <div className="flex gap-2">
                     {['all', 'completed', 'pending'].map((s) => (
-                        <button key={s} onClick={() => setStatusFilter(s as any)} className={`flex-1 rounded-xl py-2.5 text-xs font-bold border transition-all ${statusFilter === s ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50'}`}>
+                        <button key={s} onClick={() => setStatusFilter(s as any)} className={`flex-1 rounded-xl py-2.5 text-xs font-bold border transition-all ${statusFilter === s ? 'bg-primary border-primary text-white' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50'}`}>
                             {s === 'all' ? 'Todos' : s === 'completed' ? 'Pagos' : 'Pendentes'}
                         </button>
                     ))}
@@ -268,8 +268,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar por Tipo</label>
                 <div className="flex gap-2">
                     {['all', 'income', 'expense'].map((t) => (
-                        <button key={t} onClick={() => { setTypeFilter(t as any); setSelectedCategory(null); }} className={`flex-1 rounded-xl py-2.5 text-xs font-bold border transition-all ${typeFilter === t ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50'}`}>
-                            {t === 'all' ? 'Todos' : t === 'income' ? 'Entradas' : 'Saídas'}
+                        <button key={t} onClick={() => { setTypeFilter(t as any); setSelectedCategory(null); }} className={`flex-1 rounded-xl py-2.5 text-xs font-bold border transition-all ${typeFilter === t ? 'bg-primary border-primary text-white' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50'}`}>
+                            {t === 'all' ? 'Todos' : t === 'income' ? 'Entradas' : 'SaÃ­das'}
                         </button>
                     ))}
                 </div>
@@ -302,7 +302,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
             <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-slate-50 text-slate-200">
                 <span className="material-symbols-outlined text-5xl">search_off</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-800">Nenhum lançamento encontrado</h3>
+            <h3 className="text-xl font-bold text-slate-800">Nenhum lanÃ§amento encontrado</h3>
             <p className="mt-2 text-sm text-slate-400 font-medium max-w-xs mx-auto">Tente ajustar seus filtros ou termos de busca para encontrar o que procura.</p>
             {isFiltersActive && <Button onClick={clearFilters} variant="secondary" className="mt-8 rounded-2xl font-bold px-10 border-slate-200 text-slate-600">Limpar todos os filtros</Button>}
           </div>

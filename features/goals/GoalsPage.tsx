@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useGoals } from '../../hooks/useGoals';
 import { formatCurrency } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
@@ -22,12 +22,12 @@ export const GoalsPage: React.FC = () => {
   };
 
   const getEncouragementMessage = (percentage: number, daysRemaining: number) => {
-    if (percentage >= 100) return "Parab�ns! Voc� alcan�ou sua meta! ??";
-    if (percentage >= 75) return "Quase l�! Falta muito pouco! ??";
+    if (percentage >= 100) return "Parabï¿½ns! Vocï¿½ alcanï¿½ou sua meta! ??";
+    if (percentage >= 75) return "Quase lï¿½! Falta muito pouco! ??";
     if (percentage >= 50) return "Metade do caminho! Continue assim! ??";
-    if (percentage >= 25) return "Um �timo come�o! Mantenha o foco! ?";
+    if (percentage >= 25) return "Um ï¿½timo comeï¿½o! Mantenha o foco! ?";
     if (daysRemaining < 30) return "Reta final! Vamos acelerar esses aportes? ?????";
-    return "Toda grande jornada come�a com o primeiro passo! ??";
+    return "Toda grande jornada comeï¿½a com o primeiro passo! ??";
   };
 
   return (
@@ -73,7 +73,7 @@ export const GoalsPage: React.FC = () => {
                     <div>
                       <h3 className="text-lg font-bold text-slate-800 leading-tight">{goal.title}</h3>
                       <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">
-                        {isCompleted ? 'Concluído' : isLate ? `Atrasado ${Math.abs(daysRemaining)} dias` : `Faltam ${daysRemaining} dias`}
+                        {isCompleted ? 'ConcluÃ­do' : isLate ? `Atrasado ${Math.abs(daysRemaining)} dias` : `Faltam ${daysRemaining} dias`}
                       </p>
                     </div>
                   </div>
@@ -90,7 +90,7 @@ export const GoalsPage: React.FC = () => {
                       style={{ width: `${percentage}%` }}
                     ></div>
                   </div>
-                  <p className="text-[11px] font-bold text-slate-400 mt-2 text-right">{percentage.toFixed(1)}% alcan�ado</p>
+                  <p className="text-[11px] font-bold text-slate-400 mt-2 text-right">{percentage.toFixed(1)}% alcanï¿½ado</p>
                 </div>
 
                 <div className="bg-slate-50 rounded-xl p-3 mb-5 border border-slate-100">
@@ -102,7 +102,7 @@ export const GoalsPage: React.FC = () => {
                 {!isCompleted && (
                   <Button 
                     onClick={() => setContributionGoal(goal)} 
-                    className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl h-11 transition-all"
+                    className="w-full bg-primary hover:bg-emerald-600 text-white font-bold rounded-xl h-11 transition-all"
                   >
                     + Fazer Aporte
                   </Button>

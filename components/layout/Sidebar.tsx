@@ -70,7 +70,7 @@ export const Sidebar: React.FC = () => {
         </nav>
 
         <div className="mt-auto px-4">
-           <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 p-5 text-white shadow-xl relative overflow-hidden group cursor-pointer" onClick={() => navigate('/pricing')}>
+           <div className="rounded-2xl bg-gradient-to-br from-primary to-emerald-800 p-5 text-white shadow-xl relative overflow-hidden group cursor-pointer" onClick={() => navigate('/pricing')}>
               <div className="absolute top-0 right-0 p-3 opacity-10 transition-transform group-hover:scale-110">
                  <span className="material-symbols-outlined text-6xl">verified</span>
               </div>
