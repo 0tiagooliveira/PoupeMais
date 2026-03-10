@@ -63,17 +63,29 @@ export const PricingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Hero Section - UPDATED TO VIBRANT PRIMARY GREEN */}
-      <div className="bg-gradient-to-br from-primary via-[#2ed46f] to-emerald-700 rounded-[50px] p-10 md:p-16 text-white relative overflow-hidden shadow-[0_30px_60px_-12px_rgba(33,194,94,0.25)] border border-white/10">
-          <div className="relative z-10 max-w-2xl">
-            <h3 className="text-4xl md:text-5xl font-black tracking-tighter mb-6 leading-[1.1]">
-              Desbloqueie o poder da <span className="text-emerald-950/60 italic">Inteligência Artificial</span>.
+      {/* Hero Section */}
+      <div className="bg-emerald-950 rounded-[40px] p-8 md:p-12 relative overflow-hidden shadow-2xl border border-emerald-900/50">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+          
+          <div className="relative z-10 max-w-3xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-900/50 border border-emerald-800 mb-6 backdrop-blur-sm">
+              <span className="material-symbols-outlined text-primary text-sm">smart_toy</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Poup+ Vision & AI</span>
+            </div>
+            
+            <h3 className="text-4xl md:text-5xl font-black text-white tracking-tighter mb-5 leading-[1.1]">
+              Desbloqueie o poder da <br className="hidden md:block" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">Inteligência Artificial.</span>
             </h3>
-            <p className="text-emerald-950 font-bold text-base md:text-lg leading-relaxed mb-0 opacity-70">
-              O Poup+ PRO não apenas rastreia seus gastos, ele ensina você a economizar usando modelos de linguagem avançados treinados para o mercado brasileiro.
+            
+            <p className="text-emerald-100/80 text-base md:text-lg leading-relaxed mb-0 max-w-2xl font-medium">
+              O <strong className="text-white font-bold">Poup+ PRO</strong> não apenas rastreia seus gastos, ele ensina você a economizar usando modelos de linguagem avançados treinados para o mercado brasileiro.
             </p>
           </div>
-          <span className="material-symbols-outlined absolute -right-16 -bottom-16 text-white/10 text-[320px] rotate-12 pointer-events-none">auto_awesome</span>
+          
+          <span className="material-symbols-outlined absolute -right-12 -bottom-12 text-emerald-900/40 text-[280px] rotate-[-15deg] pointer-events-none">
+            model_training
+          </span>
       </div>
 
       {/* Pricing Cards */}
