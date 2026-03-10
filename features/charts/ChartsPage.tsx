@@ -596,7 +596,7 @@ export const ChartsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 pb-32 animate-in fade-in duration-500">
+    <div className="space-y-8 pb-32 animate-in fade-in duration-200">
       {/* 1. Contexto Anual (Design Novo) */}
       <div className="space-y-4">
          <div className="flex justify-between items-center px-2">

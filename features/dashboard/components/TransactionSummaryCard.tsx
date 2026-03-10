@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 import { Transaction } from '../../../types';
 import { formatCurrency } from '../../../utils/formatters';
@@ -24,7 +24,9 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
 }) => {
   const isIncome = type === 'income';
   const colorClass = isIncome ? 'text-success' : 'text-danger';
-  const bgClass = isIncome ? 'bg-success' : 'bg-danger';
+  const viewAllButtonClass = isIncome
+    ? 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200'
+    : 'bg-red-500 hover:bg-red-600 shadow-red-200';
   const themeBg = isIncome ? 'bg-success/10' : 'bg-danger/10';
   const headerIcon = isIncome ? 'payments' : 'shopping_cart';
   const title = isIncome ? 'Últimas receitas' : 'Últimas despesas';
@@ -110,22 +112,12 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
         )}
       </div>
 
-      {transactions.length > 0 ? (
-        <button 
-            onClick={onViewAll}
-            className={`w-full rounded-2xl py-3 text-xs font-bold text-white shadow-md transition-all active:scale-[0.98] ${bgClass} hover:opacity-90`}
-        >
-            Ver extrato
-        </button>
-      ) : (
-        <Button 
-            variant="secondary" 
-            onClick={onAdd}
-            className="w-full rounded-2xl py-3 text-xs font-bold text-slate-500 border-slate-100"
-        >
-            Adicionar novo
-        </Button>
-      )}
+      <button 
+          onClick={onViewAll}
+          className={`w-full rounded-2xl py-3 text-xs font-bold text-white shadow-md transition-all active:scale-[0.98] ${viewAllButtonClass}`}
+      >
+          Ver extrato
+      </button>
     </div>
   );
 };

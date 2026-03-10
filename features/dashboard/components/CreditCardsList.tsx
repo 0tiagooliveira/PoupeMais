@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Transaction } from '../../../types';
@@ -101,7 +101,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 gap-5">
           {cards.map((card) => {
             const stat = cardStats[card.id] || { currentInvoice: 0, usedLimit: 0, available: card.limit, percentage: 0 };
             const barColor = stat.percentage > 85 ? 'bg-danger' : stat.percentage > 60 ? 'bg-amber-400' : 'bg-success';
@@ -152,7 +152,7 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
                 <div className="mb-6 space-y-1.5">
                     <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-50">
                         <div 
-                            className={`h-full transition-all duration-1000 ease-out rounded-full shadow-sm ${barColor}`}
+                            className={`h-full transition-all duration-300 ease-out rounded-full shadow-sm ${barColor}`}
                             style={{ width: `${stat.percentage}%` }}
                         />
                     </div>

@@ -1,5 +1,5 @@
 ﻿
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTransactions } from '../../hooks/useTransactions';
 import { Transaction, TransactionType, TransactionStatus } from '../../types';
@@ -21,6 +21,7 @@ type SortOrder = 'desc' | 'asc';
 export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseTitle, filterType: initialFilterType }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const hasClearedRouteStateRef = useRef(false);
   const { accountId } = useParams<{ accountId: string }>();
   const [currentDate, setCurrentDate] = useState(new Date());
   const { transactions, loading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(currentDate);
@@ -49,12 +50,14 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  // Limpa o state do location apÃ³s o uso inicial para nÃ£o interferir em navegaÃ§Ãµes futuras na mesma sessÃ£o
+  // Limpa o state da rota apenas uma vez para evitar reprocessamento de filtros vindos de navegação.
   useEffect(() => {
-    if (location.state) {
-      window.history.replaceState({}, document.title);
-    }
-  }, []);
+    if (hasClearedRouteStateRef.current) return;
+    if (!location.state) return;
+
+    hasClearedRouteStateRef.current = true;
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   const selectedAccount = useMemo(() => {
     return accounts.find(a => a.id === accountId);
@@ -172,7 +175,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
   }, [typeFilter]);
 
   return (
-    <div className="space-y-6 pb-24 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-24 animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
@@ -206,7 +209,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
       </div>
 
       {/* Card de Resumo */}
-      <div className={`relative overflow-hidden rounded-[32px] p-8 text-white shadow-xl transition-all duration-500 ${cardGradientClass}`}>
+      <div className={`relative overflow-hidden rounded-[32px] p-8 text-white shadow-xl transition-all duration-200 ${cardGradientClass}`}>
           <div className="absolute -right-6 -bottom-6 opacity-10">
               <span className="material-symbols-outlined text-[160px] rotate-12">
                 {typeFilter === 'income' ? 'trending_up' : typeFilter === 'expense' ? 'trending_down' : 'receipt_long'}

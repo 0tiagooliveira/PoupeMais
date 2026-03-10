@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
@@ -165,7 +165,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                         <circle 
                             cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="4" 
                             strokeDasharray={`${uploadProgress}, 100`}
-                            className="text-primary transition-all duration-500 stroke-round"
+                            className="text-primary transition-all duration-200 stroke-round"
                         />
                     </svg>
                     <span className="text-[12px] font-black text-primary">{uploadProgress}%</span>

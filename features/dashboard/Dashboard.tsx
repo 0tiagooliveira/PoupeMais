@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleGenAI } from "@google/genai";
@@ -209,7 +209,7 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8 pb-24 w-full">
-      <div className="flex items-center justify-between bg-white border border-slate-50 p-4 rounded-[28px] shadow-sm animate-in fade-in slide-in-from-top-4 duration-700">
+      <div className="flex items-center justify-between bg-white border border-slate-50 p-4 rounded-[28px] shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
         <div className="flex items-center gap-4">
            <button 
              onClick={() => setIsProfileActionsOpen(true)}
@@ -228,7 +228,7 @@ export const Dashboard: React.FC = () => {
         </button>
       </div>
 
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-1000 stagger-1">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-300 stagger-1">
         <div className="flex justify-center"><MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-slate-100" /></div>
         <BalanceCard balance={globalBalance} />
         <div className="grid grid-cols-2 gap-3">
@@ -301,7 +301,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
       
-<div className="flex flex-col gap-6 pt-2 animate-in fade-in slide-in-from-bottom-12 duration-1000 stagger-2">
+<div className="flex flex-col gap-6 pt-2 animate-in fade-in slide-in-from-bottom-12 duration-300 stagger-2">
         
         {/* Contas e Cartões Ocupando a Largura Toda em suas Linhas */}
         <AccountsList 

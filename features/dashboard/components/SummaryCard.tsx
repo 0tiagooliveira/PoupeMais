@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Card } from '../../../components/ui/Card';
 import { formatCurrency } from '../../../utils/formatters';
 
@@ -40,7 +40,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ income, expenses }) =>
         </div>
         <div className="mt-2 h-2 w-full rounded-full bg-gray-100 overflow-hidden">
            <div 
-             className="h-full bg-success transition-all duration-500"
+             className="h-full bg-success transition-all duration-200"
              style={{ width: `${Math.max(0, Math.min(100, savingsRate))}%` }}
            />
         </div>

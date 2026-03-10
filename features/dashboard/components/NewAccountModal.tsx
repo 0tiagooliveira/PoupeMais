@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
@@ -80,7 +80,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
       {/* Visual Preview */}
       <div className="mb-8 flex flex-col items-center px-1">
         <div 
-          className="w-full rounded-[36px] p-6 shadow-2xl transition-all duration-500 flex items-center justify-between overflow-hidden relative border border-white/20"
+          className="w-full rounded-[36px] p-6 shadow-2xl transition-all duration-200 flex items-center justify-between overflow-hidden relative border border-white/20"
           style={{ 
             background: `linear-gradient(135deg, ${color} 0%, ${color}DD 100%)`,
             color: (color === '#fcf800' || color === '#FC0') ? '#1e293b' : '#fff'

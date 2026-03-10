@@ -131,7 +131,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
                       </div>
                     </div>
                     <div className="h-1.5 w-full rounded-full bg-slate-50 overflow-hidden border border-slate-100/50">
-                      <div className="h-full rounded-full transition-all duration-700 shadow-sm" style={{ width: `${percentage}%`, backgroundColor: cat.color }} />
+                      <div className="h-full rounded-full transition-all duration-300 shadow-sm" style={{ width: `${percentage}%`, backgroundColor: cat.color }} />
                     </div>
                   </div>
                 </div>

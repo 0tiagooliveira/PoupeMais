@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
@@ -34,11 +34,11 @@ export const AddContributionModal: React.FC<AddContributionModalProps> = ({ isOp
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={goal ? `Aporte: ${goal.title}` : 'Novo Aporte'}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <p className="text-sm text-slate-500 mb-4">Adicione dinheiro � sua meta para acompanhar o progresso!</p>
+        <p className="text-sm text-slate-500 mb-4">Adicione dinheiro a sua meta para acompanhar o progresso.</p>
         <Input label="Valor do Aporte (R$)" type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" required />
         
         <div className="flex gap-4 pt-4">
-          <Button type="button" variant="outline" onClick={onClose} className="flex-1" disabled={loading}>
+          <Button type="button" variant="secondary" onClick={onClose} className="flex-1" disabled={loading}>
             Cancelar
           </Button>
           <Button type="submit" variant="primary" className="flex-1" disabled={loading}>

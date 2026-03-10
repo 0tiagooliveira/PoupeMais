@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Card } from '../../../components/ui/Card';
 import { formatCurrency } from '../../../utils/formatters';
 
@@ -36,7 +36,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({ categories, totalExp
               </div>
               <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
                 <div 
-                  className="h-full rounded-full transition-all duration-500"
+                  className="h-full rounded-full transition-all duration-200"
                   style={{ 
                     width: `${percentage}%`,
                     backgroundColor: cat.color 

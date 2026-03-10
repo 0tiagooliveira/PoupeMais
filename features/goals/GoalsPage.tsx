@@ -22,12 +22,12 @@ export const GoalsPage: React.FC = () => {
   };
 
   const getEncouragementMessage = (percentage: number, daysRemaining: number) => {
-    if (percentage >= 100) return "Parabï¿½ns! Vocï¿½ alcanï¿½ou sua meta! ??";
-    if (percentage >= 75) return "Quase lï¿½! Falta muito pouco! ??";
+    if (percentage >= 100) return "Parabens! Voce alcancou sua meta!";
+    if (percentage >= 75) return "Quase la! Falta muito pouco!";
     if (percentage >= 50) return "Metade do caminho! Continue assim! ??";
-    if (percentage >= 25) return "Um ï¿½timo comeï¿½o! Mantenha o foco! ?";
+    if (percentage >= 25) return "Um otimo comeco! Mantenha o foco!";
     if (daysRemaining < 30) return "Reta final! Vamos acelerar esses aportes? ?????";
-    return "Toda grande jornada comeï¿½a com o primeiro passo! ??";
+    return "Toda grande jornada comeca com o primeiro passo!";
   };
 
   return (
@@ -73,7 +73,7 @@ export const GoalsPage: React.FC = () => {
                     <div>
                       <h3 className="text-lg font-bold text-slate-800 leading-tight">{goal.title}</h3>
                       <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">
-                        {isCompleted ? 'ConcluÃ­do' : isLate ? `Atrasado ${Math.abs(daysRemaining)} dias` : `Faltam ${daysRemaining} dias`}
+                        {isCompleted ? 'Concluido' : isLate ? `Atrasado ${Math.abs(daysRemaining)} dias` : `Faltam ${daysRemaining} dias`}
                       </p>
                     </div>
                   </div>
@@ -86,11 +86,11 @@ export const GoalsPage: React.FC = () => {
                   </div>
                   <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
                     <div 
-                      className={`h-full rounded-full transition-all duration-1000 ${isCompleted ? 'bg-success' : 'bg-primary'}`} 
+                      className={`h-full rounded-full transition-all duration-300 ${isCompleted ? 'bg-success' : 'bg-primary'}`} 
                       style={{ width: `${percentage}%` }}
                     ></div>
                   </div>
-                  <p className="text-[11px] font-bold text-slate-400 mt-2 text-right">{percentage.toFixed(1)}% alcanï¿½ado</p>
+                  <p className="text-[11px] font-bold text-slate-400 mt-2 text-right">{percentage.toFixed(1)}% alcancado</p>
                 </div>
 
                 <div className="bg-slate-50 rounded-xl p-3 mb-5 border border-slate-100">

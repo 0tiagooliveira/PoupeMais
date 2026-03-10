@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCreditCards } from '../../hooks/useCreditCards';
 import { formatCurrency } from '../../utils/formatters';
@@ -244,7 +244,7 @@ export const CreditCardsPage: React.FC = () => {
   const activeInvoice = invoicesData[selectedInvoiceIndex];
 
   return (
-    <div className="space-y-6 pb-24 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-24 animate-in fade-in duration-200">
       <header className="flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
           <BackButton className="bg-white shadow-sm border border-slate-100" />
@@ -321,7 +321,7 @@ export const CreditCardsPage: React.FC = () => {
         </div>
       ) : (
         /* CONSOLIDATED VIEW - IDENTICAL TO SCREENSHOTS */
-        <div className="space-y-10 animate-in slide-in-from-bottom-8 duration-700">
+        <div className="space-y-10 animate-in slide-in-from-bottom-8 duration-300">
           {/* Gráfico 1: Visão Consolidada - Faturas Mensais */}
           <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm overflow-hidden">
             <header className="mb-6">

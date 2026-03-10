@@ -1,4 +1,4 @@
-
+﻿
 import { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
 import { db } from '../services/firebase';
@@ -13,6 +13,8 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
 
   // Função para remover campos undefined que o Firebase rejeita
   const sanitize = (obj: any) => {
@@ -34,18 +36,18 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
 
     if (viewMode === 'year') {
       // Começo do ano (Jan 1)
-      startQueryDate = new Date(currentDate.getFullYear(), 0, 1);
+      startQueryDate = new Date(currentYear, 0, 1);
       startQueryDate.setHours(0, 0, 0, 0);
       
       // Fim do ano (Dec 31)
-      endQueryDate = new Date(currentDate.getFullYear(), 11, 31);
+      endQueryDate = new Date(currentYear, 11, 31);
       endQueryDate.setHours(23, 59, 59, 999);
     } else {
       // Lógica original mensal
-      startQueryDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      startQueryDate = new Date(currentYear, currentMonth, 1);
       startQueryDate.setHours(0, 0, 0, 0);
 
-      endQueryDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      endQueryDate = new Date(currentYear, currentMonth + 1, 0);
       endQueryDate.setHours(23, 59, 59, 999);
     }
 
@@ -72,10 +74,10 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
       const filteredData = rawData.filter(t => {
         const tDate = new Date(t.date);
         if (viewMode === 'year') {
-           return tDate.getFullYear() === currentDate.getFullYear();
+          return tDate.getFullYear() === currentYear;
         } else {
-           return tDate.getMonth() === currentDate.getMonth() && 
-                  tDate.getFullYear() === currentDate.getFullYear();
+          return tDate.getMonth() === currentMonth && 
+              tDate.getFullYear() === currentYear;
         }
       });
 
@@ -87,7 +89,7 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
     });
 
     return unsubscribe;
-  }, [currentUser, currentDate, viewMode]);
+  }, [currentUser, currentMonth, currentYear, viewMode]);
 
   const calculateFutureDate = (baseDate: Date, frequency: TransactionFrequency, index: number) => {
     const newDate = new Date(baseDate);

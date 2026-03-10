@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -8,7 +8,7 @@ export interface UserProfile extends firebase.User {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  isPro?: boolean; // Campo para identificar se o usuário é PRO
+  isPro?: boolean; // Campo para identificar se o usuÃ¡rio Ã© PRO
 }
 
 export interface AuthContextType {
@@ -37,7 +37,7 @@ export interface Transaction {
   status: TransactionStatus;
   isFixed: boolean;
   isRecurring: boolean;
-  isIgnored?: boolean; // Nova propriedade para ignorar transação nos cálculos
+  isIgnored?: boolean; // Nova propriedade para ignorar transaÃ§Ã£o nos cÃ¡lculos
   frequency?: TransactionFrequency;
   installmentNumber?: number; 
   totalInstallments?: number; 
@@ -129,3 +129,22 @@ export interface DetectedTransaction {
 }
 
 export type InputMode = 'file' | 'text';
+
+export interface GoalContribution {
+  id: string;
+  amount: number;
+  date: Date | string;
+}
+
+export interface FinancialGoal {
+  id: string;
+  userId: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: Date | string;
+  createdAt: Date | string;
+  contributions?: GoalContribution[];
+  status?: 'active' | 'completed';
+}
+

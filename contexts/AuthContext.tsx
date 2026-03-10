@@ -1,4 +1,4 @@
-
+﻿
 import React, { createContext, useEffect, useState, useContext } from 'react';
 import { auth } from '../services/firebase';
 import { AuthContextType, UserProfile } from '../types';

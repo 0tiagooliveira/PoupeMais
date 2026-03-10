@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,6 +37,10 @@ export const useGoals = () => {
         goalsData.sort((a, b) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime());
         
         setGoals(goalsData);
+        setLoading(false);
+      }, (error) => {
+        console.error('Error loading goals:', error);
+        setGoals([]);
         setLoading(false);
       });
 

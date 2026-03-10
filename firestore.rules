@@ -20,6 +20,12 @@ service cloud.firestore {
       }
     }
 
+    // Compatibilidade para metas salvas em coleção raiz
+    match /goals/{goalId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
     // Bloqueio Global (Boa prática de segurança: negue tudo por padrão para outros caminhos)
     match /{document=**} {
       allow read, write: if false;

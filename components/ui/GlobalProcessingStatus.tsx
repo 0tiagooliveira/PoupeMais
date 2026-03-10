@@ -18,7 +18,7 @@ export const GlobalProcessingStatus: React.FC = () => {
     return (
       <div 
         onClick={() => navigate('/import-statement')}
-        className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-[100] cursor-pointer animate-in slide-in-from-bottom-10 fade-in duration-500"
+        className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-[100] cursor-pointer animate-in slide-in-from-bottom-10 fade-in duration-200"
       >
         <div className="bg-primary text-white pl-4 pr-5 py-3 rounded-full shadow-2xl flex items-center gap-4 border border-white/10 hover:scale-105 transition-transform active:scale-95">
            <div className="relative">
@@ -40,7 +40,7 @@ export const GlobalProcessingStatus: React.FC = () => {
 
   // Se estiver processando, mostra a barra de progresso flutuante
   return (
-    <div className="fixed top-20 right-4 z-[99] animate-in slide-in-from-right fade-in duration-500 max-w-[280px]">
+    <div className="fixed top-20 right-4 z-[99] animate-in slide-in-from-right fade-in duration-200 max-w-[280px]">
       <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-4 shadow-xl border border-primary/20 flex flex-col gap-3 relative overflow-hidden">
          {/* Background Pulse */}
          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-emerald-400 to-primary animate-[loading_2s_linear_infinite]"></div>

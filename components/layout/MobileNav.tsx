@@ -24,6 +24,7 @@ export const MobileNav: React.FC = () => {
   // Links do menu secundÃ¡rio (modal)
   const menuLinks = [
     { to: '/ai-analysis', icon: 'savings', label: 'Poup IA', desc: 'InteligÃªncia Artificial', pro: true },
+    { to: '/ai-consultoria', icon: 'chat', label: 'Consultoria CFO', desc: 'Conversa com o mentor', pro: true },
     { to: '/charts', icon: 'bar_chart', label: 'AnÃ¡lise', desc: 'GrÃ¡ficos e relatÃ³rios' },
     { to: '/goals', icon: 'flag', label: 'Metas', desc: 'Acompanhe objetivos' },
     { to: '/credit-cards', icon: 'credit_card', label: 'CartÃµes', desc: 'Faturas e limites' },

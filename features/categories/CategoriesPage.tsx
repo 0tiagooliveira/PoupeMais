@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCategories } from '../../hooks/useCategories';
 import { BackButton } from '../../components/ui/BackButton';
@@ -91,7 +91,7 @@ export const CategoriesPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-2xl pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mx-auto max-w-2xl pb-24 animate-in fade-in slide-in-from-bottom-4 duration-200">
       <div className="mb-8 flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
           <BackButton />

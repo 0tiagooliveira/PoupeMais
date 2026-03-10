@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,6 +13,7 @@ export const Sidebar: React.FC = () => {
     { to: '/', icon: 'dashboard', label: 'Dashboard' },
     { to: '/transactions', icon: 'receipt_long', label: 'Transações' },       
     { to: '/ai-analysis', icon: 'savings', label: 'Poup+ IA', pro: true },      
+    { to: '/ai-consultoria', icon: 'chat', label: 'Consultoria CFO', pro: true },
     { to: '/goals', icon: 'flag', label: 'Metas' },
     { to: '/credit-cards', icon: 'credit_card', label: 'Cartões' },
     { to: '/charts', icon: 'bar_chart', label: 'Análise' },

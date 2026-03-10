@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -14,9 +14,11 @@ import { SettingsPage } from './features/settings/SettingsPage';
 import { CategoriesPage } from './features/categories/CategoriesPage';
 import { CreditCardsPage } from './features/credit-cards/CreditCardsPage';
 import { AIAnalysisPage } from './features/ai/AIAnalysisPage';
+import { AIConsultoriaPage } from './features/ai/AIConsultoriaPage';
 import { PricingPage } from './features/pricing/PricingPage';
 import { StatementImportPage } from './features/import/StatementImportPage';
-import { GoalsPage } from './features/goals/GoalsPage';import { Layout } from './components/layout/Layout';
+import { GoalsPage } from './features/goals/GoalsPage';
+import { Layout } from './components/layout/Layout';
 
 const App: React.FC = () => {  return (
     <AuthProvider>
@@ -36,6 +38,7 @@ const App: React.FC = () => {  return (
                     <Route path="/expenses" element={<TransactionsPage title="Despesas" filterType="expense" />} />
                     <Route path="/charts" element={<ChartsPage />} />
                     <Route path="/ai-analysis" element={<AIAnalysisPage />} />
+                    <Route path="/ai-consultoria" element={<AIConsultoriaPage />} />
                     <Route path="/categories" element={<CategoriesPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/credit-cards" element={<CreditCardsPage />} />

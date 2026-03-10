@@ -25,59 +25,59 @@ interface NewTransactionModalProps {
 }
 
 export const incomeCategories = [
-  { name: 'SalÃ¡rio', icon: 'payments', color: '#21C25E' },
+  { name: 'Salário', icon: 'payments', color: '#21C25E' },
   { name: 'Freelance', icon: 'computer', color: '#0EA5E9' },
-  { name: 'BÃ´nus', icon: 'stars', color: '#F59E0B' },
-  { name: 'ComissÃµes', icon: 'trending_up', color: '#8B5CF6' },
+  { name: 'Bônus', icon: 'stars', color: '#F59E0B' },
+  { name: 'Comissões', icon: 'trending_up', color: '#8B5CF6' },
   { name: 'Aluguel recebido', icon: 'real_estate_agent', color: '#6366F1' },
   { name: 'Investimentos', icon: 'show_chart', color: '#14B8A6' },
   { name: 'Dividendos', icon: 'pie_chart', color: '#22C55E' },
   { name: 'Juros recebidos', icon: 'percent', color: '#84CC16' },
   { name: 'Cashback', icon: 'currency_exchange', color: '#EC4899' },
   { name: 'Venda de produtos', icon: 'storefront', color: '#F97316' },
-  { name: 'Venda de serviÃ§os', icon: 'design_services', color: '#06B6D4' },
+  { name: 'Venda de serviços', icon: 'design_services', color: '#06B6D4' },
   { name: 'Reembolso', icon: 'undo', color: '#64748B' },
-  { name: 'RestituiÃ§Ã£o', icon: 'account_balance', color: '#3B82F6' },
-  { name: 'PremiaÃ§Ãµes', icon: 'emoji_events', color: '#EAB308' },
-  { name: 'HeranÃ§a', icon: 'diversity_3', color: '#A855F7' },
+  { name: 'Restituição', icon: 'account_balance', color: '#3B82F6' },
+  { name: 'Premiações', icon: 'emoji_events', color: '#EAB308' },
+  { name: 'Herança', icon: 'diversity_3', color: '#A855F7' },
   { name: 'Aposentadoria', icon: 'elderly', color: '#475569' },
-  { name: 'PensÃ£o', icon: 'child_friendly', color: '#FB7185' },
-  { name: 'DoaÃ§Ãµes', icon: 'volunteer_activism', color: '#F43F5E' },
+  { name: 'Pensão', icon: 'child_friendly', color: '#FB7185' },
+  { name: 'Doações', icon: 'volunteer_activism', color: '#F43F5E' },
   { name: 'Loteria', icon: 'casino', color: '#21C25E' },
-  { name: 'TransferÃªncia', icon: 'sync_alt', color: '#94A3B8' },
-  { name: 'DÃ©cimo terceiro', icon: 'calendar_month', color: '#059669' },
+  { name: 'Transferência', icon: 'sync_alt', color: '#94A3B8' },
+  { name: 'Décimo terceiro', icon: 'calendar_month', color: '#059669' },
   { name: 'Resgate', icon: 'move_to_inbox', color: '#0D9488' },
   { name: 'Lucros', icon: 'query_stats', color: '#4ADE80' },
   { name: 'Outros', icon: 'more_horiz', color: '#CBD5E1' }
 ];
 
 export const expenseCategories = [
-  { name: 'AlimentaÃ§Ã£o', icon: 'restaurant', color: '#FF4444' },
+  { name: 'Alimentação', icon: 'restaurant', color: '#FF4444' },
   { name: 'Transporte', icon: 'directions_car', color: '#3B82F6' },
   { name: 'Moradia', icon: 'home', color: '#6366F1' },
   { name: 'Mercado', icon: 'shopping_cart', color: '#F59E0B' },
   { name: 'Compras', icon: 'shopping_bag', color: '#EC4899' },
-  { name: 'SaÃºde', icon: 'medical_services', color: '#14B8A6' },
-  { name: 'EducaÃ§Ã£o', icon: 'school', color: '#8B5CF6' },
+  { name: 'Saúde', icon: 'medical_services', color: '#14B8A6' },
+  { name: 'Educação', icon: 'school', color: '#8B5CF6' },
   { name: 'Lazer', icon: 'sports_esports', color: '#F97316' },
   { name: 'Viagem', icon: 'flight', color: '#0EA5E9' },
   { name: 'Assinaturas', icon: 'subscriptions', color: '#D946EF' },
-  { name: 'CartÃ£o de crÃ©dito', icon: 'credit_card', color: '#475569' },
+  { name: 'Cartão de crédito', icon: 'credit_card', color: '#475569' },
   { name: 'Impostos', icon: 'gavel', color: '#B91C1C' },
   { name: 'Presentes', icon: 'card_giftcard', color: '#EAB308' },
   { name: 'Pets', icon: 'pets', color: '#A855F7' },
-  { name: 'ManutenÃ§Ã£o', icon: 'build', color: '#64748B' },
+  { name: 'Manutenção', icon: 'build', color: '#64748B' },
   { name: 'Telefonia', icon: 'smartphone', color: '#2563EB' },
   { name: 'Energia', icon: 'bolt', color: '#FBBF24' },
-  { name: 'Ãgua', icon: 'water_drop', color: '#06B6D4' },
-  { name: 'GÃ¡s', icon: 'propane', color: '#FB923C' },
+  { name: 'Água', icon: 'water_drop', color: '#06B6D4' },
+  { name: 'Gás', icon: 'propane', color: '#FB923C' },
   { name: 'Bem-estar', icon: 'spa', color: '#21C25E' },
-  { name: 'EmprÃ©stimos', icon: 'handshake', color: '#991B1B' },
-  { name: 'PoupanÃ§a', icon: 'savings', color: '#21C25E' },
-  { name: 'VestiÃ¡rio', icon: 'checkroom', color: '#DB2777' },
+  { name: 'Empréstimos', icon: 'handshake', color: '#991B1B' },
+  { name: 'Poupança', icon: 'savings', color: '#21C25E' },
+  { name: 'Vestiário', icon: 'checkroom', color: '#DB2777' },
   { name: 'Beleza', icon: 'face', color: '#F472B6' },
   { name: 'Carro', icon: 'local_gas_station', color: '#1E40AF' },
-  { name: 'ServiÃ§os', icon: 'home_repair_service', color: '#94A3B8' },
+  { name: 'Serviços', icon: 'home_repair_service', color: '#94A3B8' },
   { name: 'Outros', icon: 'more_horiz', color: '#94A3B8' }
 ];
 
@@ -157,7 +157,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !description || !accountId || !category) {
-      addNotification('Preencha valor, descriÃ§Ã£o, conta e categoria.', 'warning');
+      addNotification('Preencha valor, descrição, conta e categoria.', 'warning');
       return;
     }
 
@@ -177,7 +177,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
         repeatCount: isRecurring ? parseInt(repeatCount) : undefined,
         isIgnored
       });
-      addNotification(transactionToEdit ? 'LanÃ§amento atualizado!' : 'LanÃ§amento adicionado!', 'success');
+      addNotification(transactionToEdit ? 'Lançamento atualizado!' : 'Lançamento adicionado!', 'success');
       onClose();
     } catch (error) {
       addNotification('Erro ao salvar.', 'error');
@@ -191,7 +191,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
     setLoading(true);
     try {
       await onDelete(transactionToEdit.id);
-      addNotification('LanÃ§amento removido.', 'info');
+      addNotification('Lançamento removido.', 'info');
       setIsDeleteModalOpen(false);
       onClose();
     } catch (error) {
@@ -220,20 +220,20 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
       });
 
       // Try reading process.env first, but VITE_GEMINI_API_KEY from import.meta.env might be safer if vite behaves differently
-      const apiKey = typeof process !== 'undefined' && process.env.API_KEY ? process.env.API_KEY : import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
+      const apiKey = typeof process !== 'undefined' && process.env.API_KEY ? process.env.API_KEY : (import.meta as any).env.VITE_GEMINI_API_KEY || (import.meta as any).env.GEMINI_API_KEY;
       
       const ai = new GoogleGenAI({ apiKey: apiKey });
-      const prompt = `VocÃª Ã© um assistente financeiro de OCR.
-Abaixo estÃ¡ a imagem de um recibo, cupom, boleto fiscal ou fatura.
-Extraia as informaÃ§Ãµes e retorne EXATAMENTE este objeto JSON:
+      const prompt = `Você é um assistente financeiro de OCR.
+Abaixo está a imagem de um recibo, cupom, boleto fiscal ou fatura.
+Extraia as informações e retorne EXATAMENTE este objeto JSON:
 {
-  "amount": <number> (apenas nÃºmeros, use ponto para decimais, o valor total. Ex: 145.90),
-  "description": <string> (nome do estabelecimento comercial ou resumida, mÃ¡x 20 chars),
-  "date": <string> (data no formato YYYY-MM-DD. Se nÃ£o identificar, retorne nulo),
-  "type": "expense" (99% das vezes) ou "income" (se for devoluÃ§Ã£o ou recebimento claro),
-  "category": <string> (Ache a categoria mais adequada a partir destas: ${expenseCategories.map(c => c.name).join(', ')}. Caso nÃ£o encontre, retorne "Outros")
+  "amount": <number> (apenas números, use ponto para decimais, o valor total. Ex: 145.90),
+  "description": <string> (nome do estabelecimento comercial ou resumida, máx 20 chars),
+  "date": <string> (data no formato YYYY-MM-DD. Se não identificar, retorne nulo),
+  "type": "expense" (99% das vezes) ou "income" (se for devolução ou recebimento claro),
+  "category": <string> (Ache a categoria mais adequada a partir destas: ${expenseCategories.map(c => c.name).join(', ')}. Caso não encontre, retorne "Outros")
 }
-Apenas o JSON vÃ¡lido, sem NADA a mais (nem markdown, nem formataÃ§Ã£o). Se o recibo estiver ilegÃ­vel, tente o seu melhor.`;
+Apenas o JSON válido, sem NADA a mais (nem markdown, nem formatação). Se o recibo estiver ilegível, tente o seu melhor.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -282,7 +282,7 @@ Apenas o JSON vÃ¡lido, sem NADA a mais (nem markdown, nem formataÃ§Ã£o). S
   const themeBorder = type === 'expense' ? 'border-red-200' : 'border-emerald-200';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={transactionToEdit ? 'Editar LanÃ§amento' : 'Novo LanÃ§amento'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={transactionToEdit ? 'Editar Lançamento' : 'Novo Lançamento'}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 pt-2 relative">
         {isCategorySelectorOpen && (
           <div className="absolute inset-0 z-20 bg-surface flex flex-col animate-in slide-in-from-right duration-300">
@@ -336,7 +336,7 @@ Apenas o JSON vÃ¡lido, sem NADA a mais (nem markdown, nem formataÃ§Ã£o). S
         )}
 
         <div className="text-center">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Valor da transaÃ§Ã£o</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Valor da transação</label>
             <div className="relative inline-flex items-center justify-center">
                 <span className={`text-3xl font-bold mr-2 ${themeColor} opacity-60`}>R$</span>
                 <input type="number" step="0.01" placeholder="0,00" value={amount} onChange={e => setAmount(e.target.value)} required autoFocus={!transactionToEdit} className={`w-full max-w-[240px] bg-transparent text-5xl font-black tracking-tighter outline-none text-center placeholder:text-slate-200 ${themeColor}`} />
@@ -345,7 +345,7 @@ Apenas o JSON vÃ¡lido, sem NADA a mais (nem markdown, nem formataÃ§Ã£o). S
 
         <div className="relative">
              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none"><span className="material-symbols-outlined text-slate-400">edit</span></div>
-             <input type="text" placeholder="DescriÃ§Ã£o (ex: Mercado, SalÃ¡rio)" value={description} onChange={e => setDescription(e.target.value)} required className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl font-bold text-slate-700 outline-none border border-transparent focus:bg-white focus:border-slate-200 focus:shadow-sm transition-all placeholder:text-slate-400" />
+             <input type="text" placeholder="Descrição (ex: Mercado, Salário)" value={description} onChange={e => setDescription(e.target.value)} required className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl font-bold text-slate-700 outline-none border border-transparent focus:bg-white focus:border-slate-200 focus:shadow-sm transition-all placeholder:text-slate-400" />
         </div>
 
         <div>
@@ -368,7 +368,7 @@ Apenas o JSON vÃ¡lido, sem NADA a mais (nem markdown, nem formataÃ§Ã£o). S
 
         <div className="space-y-4">
              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block px-1">Conta / CartÃ£o</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block px-1">Conta / Cartão</label>
                 <div className="flex gap-3 overflow-x-auto pb-2 px-1 no-scrollbar">
                     {accounts.map(acc => {
                         const isSelected = accountId === acc.id;
@@ -397,7 +397,7 @@ Apenas o JSON vÃ¡lido, sem NADA a mais (nem markdown, nem formataÃ§Ã£o). S
              <div className={`flex items-center justify-between p-3 rounded-2xl border ${isIgnored ? 'border-slate-200 bg-slate-50' : 'border-transparent hover:bg-slate-50'} transition-all`}>
                 <div className="flex items-center gap-3">
                     <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isIgnored ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'}`}><span className="material-symbols-outlined text-lg">visibility_off</span></div>
-                    <div><span className="text-xs font-bold text-slate-700 block">Ignorar lanÃ§amento</span><span className="text-[10px] text-slate-400 block">NÃ£o contabilizar em saldos ou relatÃ³rios</span></div>
+                    <div><span className="text-xs font-bold text-slate-700 block">Ignorar lançamento</span><span className="text-[10px] text-slate-400 block">Não contabilizar em saldos ou relatórios</span></div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={isIgnored} onChange={e => setIsIgnored(e.target.checked)} className="sr-only peer" />
@@ -413,7 +413,7 @@ Apenas o JSON vÃ¡lido, sem NADA a mais (nem markdown, nem formataÃ§Ã£o). S
                 >
                     <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-white text-amber-500 shadow-sm group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-lg">auto_fix_high</span></div>
-                        <div><span className="text-xs font-bold text-slate-700 block">Regra Inteligente</span><span className="text-[10px] text-slate-400 block">Automatizar lanÃ§amentos futuros</span></div>
+                        <div><span className="text-xs font-bold text-slate-700 block">Regra Inteligente</span><span className="text-[10px] text-slate-400 block">Automatizar lançamentos futuros</span></div>
                     </div>
                     <span className="material-symbols-outlined text-amber-300 group-hover:text-amber-500">chevron_right</span>
                 </button>
@@ -423,7 +423,7 @@ Apenas o JSON vÃ¡lido, sem NADA a mais (nem markdown, nem formataÃ§Ã£o). S
                 <div className="flex items-center justify-between p-3">
                     <div className="flex items-center gap-3">
                         <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isRecurring ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}><span className="material-symbols-outlined text-lg">update</span></div>
-                        <div><span className="text-xs font-bold text-slate-700 block">Repetir lanÃ§amento</span></div>
+                        <div><span className="text-xs font-bold text-slate-700 block">Repetir lançamento</span></div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)} className="sr-only peer" />
@@ -451,10 +451,10 @@ Apenas o JSON vÃ¡lido, sem NADA a mais (nem markdown, nem formataÃ§Ã£o). S
           {transactionToEdit && (
              <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-slate-100 text-slate-400 hover:text-danger hover:bg-red-50 transition-all"><span className="material-symbols-outlined">delete</span></button>
           )}
-          <Button type="submit" isLoading={loading} className={`flex-1 rounded-2xl font-bold h-12 text-white shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all ${type === 'expense' ? 'bg-danger shadow-red-200' : 'bg-success shadow-emerald-200'}`}>{transactionToEdit ? 'Salvar AlteraÃ§Ãµes' : 'Confirmar LanÃ§amento'}</Button>
+          <Button type="submit" isLoading={loading} className={`flex-1 rounded-2xl font-bold h-12 text-white shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all ${type === 'expense' ? 'bg-danger shadow-red-200' : 'bg-success shadow-emerald-200'}`}>{transactionToEdit ? 'Salvar Alterações' : 'Confirmar Lançamento'}</Button>
         </div>
       </form>
-      <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="Excluir LanÃ§amento" message="Tem certeza que deseja remover este lanÃ§amento? O saldo da conta serÃ¡ atualizado." confirmText="Sim, excluir" variant="danger" isLoading={loading} />
+      <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="Excluir Lançamento" message="Tem certeza que deseja remover este lançamento? O saldo da conta será atualizado." confirmText="Sim, excluir" variant="danger" isLoading={loading} />
     </Modal>
   );
 };

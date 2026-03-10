@@ -128,7 +128,7 @@ export const StatementImportPage: React.FC = () => {
   // VIEW: PROCESSING STATE
   if (isProcessing) {
     return (
-      <div className="mx-auto max-w-3xl min-h-[60vh] flex flex-col items-center justify-center p-8 animate-in fade-in duration-700">
+      <div className="mx-auto max-w-3xl min-h-[60vh] flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
         <div className="relative mb-10">
            <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping"></div>
            <div className="absolute inset-0 rounded-full bg-primary/10 animate-[pulse_2s_infinite]"></div>
@@ -165,7 +165,7 @@ export const StatementImportPage: React.FC = () => {
   // VIEW: REVIEW STATE (Step 2)
   if (hasResults) {
     return (
-        <div className="mx-auto max-w-3xl space-y-8 pb-32 animate-in fade-in duration-500">
+        <div className="mx-auto max-w-3xl space-y-8 pb-32 animate-in fade-in duration-200">
           <header className="flex items-center gap-4">
             <Button variant="ghost" onClick={handleCancel} className="h-10 w-10 rounded-full p-0"><span className="material-symbols-outlined">close</span></Button>
             <div>
@@ -291,7 +291,7 @@ export const StatementImportPage: React.FC = () => {
 
   // VIEW: INPUT STATE (Step 1)
   return (
-    <div className="mx-auto max-w-3xl space-y-8 pb-32 animate-in fade-in duration-500">
+    <div className="mx-auto max-w-3xl space-y-8 pb-32 animate-in fade-in duration-200">
       <header className="flex items-center gap-4">
         <BackButton className="bg-white border border-slate-100 shadow-sm" />
         <div>

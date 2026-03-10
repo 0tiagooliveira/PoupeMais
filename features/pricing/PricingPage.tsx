@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
@@ -51,7 +51,7 @@ export const PricingPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-10 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-10 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-300">
       {/* Header */}
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between px-1">
         <div className="flex items-center gap-4">
@@ -93,7 +93,7 @@ export const PricingPage: React.FC = () => {
         {plans.map((plan, idx) => (
           <div 
             key={idx}
-            className={`relative flex flex-col rounded-[40px] p-8 transition-all duration-500 hover:scale-[1.02] ${
+            className={`relative flex flex-col rounded-[40px] p-8 transition-all duration-200 hover:scale-[1.02] ${
               plan.highlight 
                 ? 'bg-white border-2 border-primary shadow-2xl ring-4 ring-primary/5' 
                 : 'bg-white border border-slate-100 shadow-sm'

@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
@@ -91,7 +91,7 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
       {/* Card Preview */}
       <div className="mb-6 flex justify-center px-1">
         <div 
-          className="relative h-36 w-full max-w-[280px] rounded-[24px] p-5 text-white shadow-xl transition-all duration-500 overflow-hidden border border-white/5"
+          className="relative h-36 w-full max-w-[280px] rounded-[24px] p-5 text-white shadow-xl transition-all duration-200 overflow-hidden border border-white/5"
           style={{ 
             backgroundColor: color,
             backgroundImage: 'linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.05) 100%)'

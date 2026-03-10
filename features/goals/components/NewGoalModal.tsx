@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+ï»¿import React, { useState } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
@@ -45,10 +45,10 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({ isOpen, onClose, onS
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Qual o seu objetivo?" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Viagem para Europa" required />
         <Input label="Valor da Meta (R$)" type="number" step="0.01" min="0" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} placeholder="0,00" required />
-        <Input label="Até quando?" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} required />
+        <Input label="Ate quando?" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} required />
         
         <div className="flex gap-4 pt-4">
-          <Button type="button" variant="outline" onClick={onClose} className="flex-1" disabled={loading}>
+          <Button type="button" variant="secondary" onClick={onClose} className="flex-1" disabled={loading}>
             Cancelar
           </Button>
           <Button type="submit" variant="primary" className="flex-1" disabled={loading}>
