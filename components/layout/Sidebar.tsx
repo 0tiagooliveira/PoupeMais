@@ -22,9 +22,9 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="hidden w-72 flex-col border-r border-slate-100 bg-white md:flex">
-      <div className="flex h-full flex-col px-5 py-8">
-        <div className="mb-10 px-4">
+    <aside className="hidden w-80 flex-col border-r border-slate-100 bg-white xl:flex">
+      <div className="flex h-full flex-col px-6 py-8">
+        <div className="mb-10 px-3">
            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
              <img 
                src={HORIZONTAL_LOGO_SRC}
@@ -39,13 +39,13 @@ export const Sidebar: React.FC = () => {
            </Link>
         </div>
 
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-2.5">
           {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
               className={({ isActive }) =>
-                `group flex items-center gap-4 rounded-2xl px-4 py-3.5 text-[15px] font-semibold tracking-tight nav-transition relative ${
+                `group relative flex items-center gap-4 rounded-2xl px-4 py-4 text-base font-bold tracking-tight nav-transition ${
                   isActive
                     ? 'text-primary'
                     : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
@@ -55,14 +55,14 @@ export const Sidebar: React.FC = () => {
               {({ isActive }) => (
                 <>
                   {isActive && (
-                    <div className="absolute left-0 h-5 w-1 rounded-full bg-primary" />
+                    <div className="absolute left-0 h-6 w-1 rounded-full bg-primary" />
                   )}
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${isActive ? 'bg-success/10 text-success' : 'text-slate-400 group-hover:text-slate-600'}`}>
-                    <span className="material-symbols-outlined text-[22px]">{link.icon}</span>
+                  <div className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all ${isActive ? 'bg-success/10 text-success' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                    <span className="material-symbols-outlined text-[24px]">{link.icon}</span>
                   </div>
-                  <span className="truncate text-[15px]">{link.label}</span>
+                  <span className="truncate text-base">{link.label}</span>
                   {link.pro && !currentUser?.isPro && (
-                    <span className="ml-auto rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-600">PRO</span>
+                    <span className="ml-auto rounded bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase text-amber-600">PRO</span>
                   )}
                 </>
               )}

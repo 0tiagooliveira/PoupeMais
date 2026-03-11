@@ -15,21 +15,21 @@ export const MobileNav: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // Links da esquerda (antes do botÃ£o +)
+  // Links da esquerda (antes do botao +)
   const mainLinks = [
-    { to: '/', icon: 'home', label: 'InÃ­cio' },
+    { to: '/', icon: 'home', label: 'Inicio' },
     { to: '/transactions', icon: 'sync_alt', label: 'Extrato' },
   ];
 
-  // Links do menu secundÃ¡rio (modal)
+  // Links do menu secundario (modal)
   const menuLinks = [
-    { to: '/ai-analysis', icon: 'savings', label: 'Poup IA', desc: 'InteligÃªncia Artificial', pro: true },
+    { to: '/ai-analysis', icon: 'savings', label: 'Poup IA', desc: 'Inteligencia Artificial', pro: true },
     { to: '/ai-consultoria', icon: 'chat', label: 'Consultoria Poup +', desc: 'Conversa com a IA financeira', pro: true },
-    { to: '/charts', icon: 'bar_chart', label: 'AnÃ¡lise', desc: 'GrÃ¡ficos e relatÃ³rios' },
+    { to: '/charts', icon: 'bar_chart', label: 'Analise', desc: 'Graficos e relatorios' },
     { to: '/goals', icon: 'flag', label: 'Metas', desc: 'Acompanhe objetivos' },
-    { to: '/credit-cards', icon: 'credit_card', label: 'CartÃµes', desc: 'Faturas e limites' },
-    { to: '/pricing', icon: 'verified', label: 'Plano PRO', desc: 'BenefÃ­cios exclusivos', pro: true },
-    { to: '/settings', icon: 'settings', label: 'Ajustes', desc: 'Perfil e configuraÃ§Ãµes' },
+    { to: '/credit-cards', icon: 'credit_card', label: 'Cartoes', desc: 'Faturas e limites' },
+    { to: '/pricing', icon: 'verified', label: 'Plano PRO', desc: 'Beneficios exclusivos', pro: true },
+    { to: '/settings', icon: 'settings', label: 'Ajustes', desc: 'Perfil e configuracoes' },
   ];
 
   return (
@@ -65,9 +65,9 @@ export const MobileNav: React.FC = () => {
             </button>
           </div>
 
-          {/* Link direto para Categorias na direita */}
+          {/* Link direto para Poup IA na direita */}
           <NavLink
-            to="/categories"
+            to="/ai-analysis"
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center justify-center gap-1 nav-transition ${
                 isActive ? 'text-success' : 'text-slate-400'
@@ -76,8 +76,8 @@ export const MobileNav: React.FC = () => {
           >
             {({ isActive }) => (
               <>
-                <span className={`material-symbols-outlined text-[22px] ${isActive ? 'icon-fill' : 'icon-outline'}`}>category</span>
-                <span className="text-[9px] font-bold tracking-tight uppercase">Categorias</span>
+                <span className={`material-symbols-outlined text-[22px] ${isActive ? 'icon-fill' : 'icon-outline'}`}>savings</span>
+                <span className="text-[9px] font-bold tracking-tight uppercase">Poup IA</span>
               </>
             )}
           </NavLink>
@@ -100,23 +100,23 @@ export const MobileNav: React.FC = () => {
         accounts={accounts}
       />
 
-      <Modal isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} title="NavegaÃ§Ã£o">
+      <Modal isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} title="Navegacao">
         <div className="grid grid-cols-1 gap-3 py-2">
            {menuLinks.map((link) => (
              <button
                key={link.to}
                onClick={() => { navigate(link.to); setIsMenuOpen(false); }}
-               className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 border border-transparent hover:border-slate-100 hover:bg-slate-50 transition-all active:scale-[0.98]"
+               className="flex items-center gap-4 rounded-2xl border border-transparent bg-slate-50/50 p-4 transition-all hover:border-slate-100 hover:bg-slate-50 active:scale-[0.98]"
              >
-               <div className={`h-10 w-10 rounded-xl flex items-center justify-center bg-white shadow-sm ${link.pro && !currentUser?.isPro ? 'text-amber-500' : 'text-slate-500'}`}>
-                 <span className="material-symbols-outlined">{link.icon}</span>
+               <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm ${link.pro && !currentUser?.isPro ? 'text-amber-500' : 'text-slate-500'}`}>
+                 <span className="material-symbols-outlined text-[22px]">{link.icon}</span>
                </div>
                <div className="text-left flex-1">
                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-bold text-slate-800">{link.label}</p>
+                    <p className="text-base font-black text-slate-800">{link.label}</p>
                     {link.pro && !currentUser?.isPro && <span className="text-[8px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded uppercase">PRO</span>}
                  </div>
-                 <p className="text-[10px] font-medium text-slate-400">{link.desc}</p>
+                 <p className="text-xs font-semibold text-slate-500">{link.desc}</p>
                </div>
                <span className="material-symbols-outlined text-slate-300">chevron_right</span>
              </button>
