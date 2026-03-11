@@ -225,7 +225,7 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 pb-24 w-full">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6 pb-20 md:space-y-8 md:pb-24">
       <div className="flex items-center justify-between bg-white border border-slate-50 p-4 rounded-[28px] shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
         <div className="flex items-center gap-4">
            <button 
@@ -245,7 +245,7 @@ export const Dashboard: React.FC = () => {
         </button>
       </div>
 
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-300 stagger-1">
+      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-300 stagger-1 md:space-y-6">
         <div className="flex justify-center"><MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-slate-100" /></div>
 
         <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
@@ -290,18 +290,18 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <BalanceCard balance={globalBalance} />
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
             <StatCard type="income" value={totalIncome} onClick={() => handleStatClick('income')} />
             <StatCard type="expense" value={totalExpenses} onClick={() => handleStatClick('expense')} />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Saldo do mês</p>
             <p className={`mt-3 text-[1.9rem] font-black tracking-tight ${dashboardMetrics.net >= 0 ? 'text-primary' : 'text-danger'}`}>
               {formatCurrency(dashboardMetrics.net)}
             </p>
-            <p className="mt-2 text-xs font-semibold text-slate-500">Resultado entre receitas e despesas do periodo atual.</p>
+            <p className="mt-2 hidden text-xs font-semibold text-slate-500 lg:block">Resultado entre receitas e despesas do periodo atual.</p>
           </div>
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
@@ -309,7 +309,7 @@ export const Dashboard: React.FC = () => {
             <p className={`mt-3 text-[1.9rem] font-black tracking-tight ${dashboardMetrics.savingsRate >= 0 ? 'text-primary' : 'text-danger'}`}>
               {dashboardMetrics.savingsRate.toFixed(1)}%
             </p>
-            <p className="mt-2 text-xs font-semibold text-slate-500">Quanto da sua receita sobrou depois dos gastos.</p>
+            <p className="mt-2 hidden text-xs font-semibold text-slate-500 lg:block">Quanto da sua receita sobrou depois dos gastos.</p>
           </div>
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
@@ -333,7 +333,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+        <div className="hidden grid-cols-1 gap-4 xl:grid xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -383,18 +383,18 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* AI Insight & OCR Scanner Widgets */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3 md:gap-4">
             <button 
             onClick={() => navigate('/ai-analysis')}
-            className="w-full bg-white p-5 rounded-[28px] shadow-sm border border-slate-100 flex items-center gap-5 transition-all hover:shadow-md hover:border-primary/20 group text-left relative overflow-hidden"
+          className="w-full bg-white p-4 rounded-[24px] shadow-sm border border-slate-100 flex items-center gap-3 transition-all hover:shadow-md hover:border-primary/20 group text-left relative overflow-hidden md:gap-5 md:p-5 md:rounded-[28px]"
             >
                 {/* Decorativo de fundo sutil */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/5 to-transparent rounded-bl-[100px] pointer-events-none transition-transform group-hover:scale-110"></div>
 
                 {/* Icone Avatar */}
                 <div className="relative shrink-0">
-                    <div className="h-14 w-14 rounded-[20px] bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                        <span className={`material-symbols-outlined text-2xl text-primary ${loadingInsight ? 'animate-spin' : ''}`}>
+                    <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform md:h-14 md:w-14 md:rounded-[20px]">
+                      <span className={`material-symbols-outlined text-xl text-primary md:text-2xl ${loadingInsight ? 'animate-spin' : ''}`}>
                             {loadingInsight ? 'smart_toy' : 'savings'}
                         </span>
                     </div>
@@ -403,9 +403,9 @@ export const Dashboard: React.FC = () => {
                 {/* Texto */}
                 <div className="flex-1 min-w-0 z-10 pr-2">
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Poup+ Intelligence</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 md:text-[10px]">Poup+ IA</span>
                     </div>
-                    <p className="text-sm font-bold text-slate-700 leading-snug line-clamp-2">
+                      <p className="text-xs font-bold text-slate-700 leading-snug line-clamp-2 md:text-sm">
                         {loadingInsight 
                             ? "Analisando..." 
                             : (dailyInsight || "Consultoria ativa")}
@@ -415,20 +415,20 @@ export const Dashboard: React.FC = () => {
 
             <button 
             onClick={openTransactionModalForOcr}
-            className="w-full bg-emerald-50 p-5 rounded-[28px] shadow-sm border border-emerald-100/50 flex items-center gap-5 transition-all hover:shadow-md hover:border-emerald-300 group text-left relative overflow-hidden"
+            className="w-full bg-emerald-50 p-4 rounded-[24px] shadow-sm border border-emerald-100/50 flex items-center gap-3 transition-all hover:shadow-md hover:border-emerald-300 group text-left relative overflow-hidden md:gap-5 md:p-5 md:rounded-[28px]"
             >
                 {/* Decorativo de fundo sutil */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-bl-[100px] pointer-events-none transition-transform group-hover:scale-110"></div>
 
                 {/* Icone Avatar */}
                 <div className="relative shrink-0">
-                    <div className="h-14 w-14 rounded-[20px] bg-gradient-to-br from-emerald-100 to-white border border-emerald-200 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                        <span className="material-symbols-outlined text-2xl text-emerald-600">
+                    <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-emerald-100 to-white border border-emerald-200 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform md:h-14 md:w-14 md:rounded-[20px]">
+                      <span className="material-symbols-outlined text-xl text-emerald-600 md:text-2xl">
                             document_scanner
                         </span>
                     </div>
                     {/* Badge Novo */}
-                    <div className="absolute -top-2 -right-3 px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[8px] font-black uppercase tracking-widest shadow-sm">
+                    <div className="absolute -top-2 -right-3 hidden px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[8px] font-black uppercase tracking-widest shadow-sm md:block">
                         Novo
                     </div>
                 </div>
@@ -436,10 +436,10 @@ export const Dashboard: React.FC = () => {
                 {/* Texto */}
                 <div className="flex-1 min-w-0 z-10 pr-2">
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Poup+ Vision</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 md:text-[10px]">Scanner IA</span>
                     </div>
                     
-                    <p className="text-sm font-bold text-emerald-900 leading-snug line-clamp-2">
+                      <p className="text-xs font-bold text-emerald-900 leading-snug line-clamp-2 md:text-sm">
                         Escanear recibo ou nota com IA
                     </p>
                 </div>

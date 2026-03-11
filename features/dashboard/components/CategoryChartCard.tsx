@@ -20,7 +20,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
   const accentBorder = isIncome ? 'border-emerald-200' : 'border-rose-200';
   const accentText = isIncome ? 'text-emerald-700' : 'text-rose-700';
   const headlineText = isIncome ? 'text-success' : 'text-danger';
-  const topCategories = useMemo(() => categories.slice(0, 6), [categories]);
+  const topCategories = useMemo(() => categories.slice(0, 4), [categories]);
   const primaryCategory = topCategories[0] ?? null;
   const activeCategory = topCategories.find((category) => category.id === activeId) ?? primaryCategory;
   const concentration = total > 0 && primaryCategory ? (primaryCategory.amount / total) * 100 : 0;
@@ -60,9 +60,9 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
         </div>
       </div>
 
-      <div className="grid gap-6 px-6 py-6 xl:grid-cols-[minmax(0,1fr)_240px]">
+      <div className="grid gap-4 px-4 py-4 md:gap-6 md:px-6 md:py-6 xl:grid-cols-[minmax(0,1fr)_240px]">
         <div className="space-y-4">
-          <div className={`rounded-[28px] border p-5 ${accentBorder} ${accentBg}`}>
+          <div className={`rounded-[24px] border p-4 md:rounded-[28px] md:p-5 ${accentBorder} ${accentBg}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Volume total</p>
@@ -95,7 +95,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
               </div>
             </div>
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 hidden gap-2 sm:grid sm:grid-cols-2">
               {summarySegments.slice(0, 4).map((segment) => (
                 <div key={segment.id} className="flex items-center gap-2 text-xs font-bold text-slate-600">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
@@ -112,7 +112,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
               <p className="text-[11px] font-black uppercase tracking-[0.2em]">Sem lancamentos neste periodo</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {topCategories.map((cat, index) => {
                 const percentage = total > 0 ? (cat.amount / total) * 100 : 0;
                 const isActive = activeCategory?.id === cat.id;
@@ -124,31 +124,31 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
                     onClick={() => onCategoryClick?.(cat)}
                     onMouseEnter={() => setActiveId(cat.id)}
                     onFocus={() => setActiveId(cat.id)}
-                    className={`w-full rounded-[24px] border px-4 py-4 text-left transition-all ${isActive ? 'border-slate-300 bg-slate-50 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50'}`}
+                    className={`w-full rounded-[20px] border px-3 py-3 text-left transition-all md:rounded-[24px] md:px-4 md:py-4 ${isActive ? 'border-slate-300 bg-slate-50 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50'}`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <div
-                          className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl shadow-sm"
+                          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl shadow-sm md:h-12 md:w-12 md:rounded-2xl"
                           style={{ backgroundColor: `${cat.color}18`, color: cat.color }}
                         >
                           <span className="material-symbols-outlined text-lg">{cat.icon}</span>
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.15em] text-slate-400 md:text-[10px]">
                               Top {index + 1}
                             </span>
-                            <p className="truncate text-sm font-black text-slate-800">{cat.name}</p>
+                            <p className="truncate text-xs font-black text-slate-800 md:text-sm">{cat.name}</p>
                           </div>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                          <p className="mt-1 text-[11px] font-semibold text-slate-500 md:text-xs">
                             {percentage.toFixed(1)}% de participacao no periodo
                           </p>
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <span className="block text-base font-black text-slate-900">{formatCurrency(cat.amount)}</span>
+                        <span className="block text-sm font-black text-slate-900 md:text-base">{formatCurrency(cat.amount)}</span>
                         <span className="text-[11px] font-bold text-slate-400">{percentage.toFixed(1)}%</span>
                       </div>
                     </div>
@@ -166,7 +166,7 @@ export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, typ
           )}
         </div>
 
-        <div className="space-y-4">
+        <div className="hidden space-y-4 xl:block">
           <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Em foco</p>
             <p className="mt-3 text-lg font-black leading-tight text-slate-900">
