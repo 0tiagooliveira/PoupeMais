@@ -30,7 +30,7 @@ export const GlobalProcessingStatus: React.FC = () => {
            </div>
            <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">ImportaÃ§Ã£o ConcluÃ­da</p>
-              <p className="text-sm font-bold leading-none">Revisar lanÃ§amentos</p>
+              <p className="text-sm font-bold leading-none">Revisar lancamentos</p>
            </div>
            <span className="material-symbols-outlined text-slate-400 text-sm">arrow_forward</span>
         </div>

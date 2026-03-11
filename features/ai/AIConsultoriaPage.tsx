@@ -53,6 +53,59 @@ const PRESET_QUESTIONS = [
   { id: 'fixed', text: 'Gastos fixos estão altos?', icon: 'home_repair_service' },
 ];
 
+const TEXT_MODELS = ['gemini-3-flash-preview', 'gemini-2.0-flash'];
+const GEMINI_TTS_VOICE = 'Sulafat';
+
+const getGeminiApiKey = () => {
+  const meta = import.meta as any;
+  return (meta?.env?.VITE_GEMINI_API_KEY || meta?.env?.GEMINI_API_KEY || process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
+};
+
+const getGeminiErrorMessage = (error: unknown, fallbackMessage: string) => {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  if (/API_KEY_INVALID|API key not valid|invalid api key/i.test(raw)) {
+    return 'Chave Gemini invalida. Configure VITE_GEMINI_API_KEY com uma chave valida no .env.';
+  }
+  if (/quota|RESOURCE_EXHAUSTED|429/i.test(raw)) {
+    return 'Limite da API Gemini atingido. Tente novamente em alguns minutos.';
+  }
+  return fallbackMessage;
+};
+
+const buildFallbackConsultoriaReply = (question: string, income: number, expense: number, topExpenses: { name: string; amount: number }[]) => {
+  const balance = income - expense;
+  const top1 = topExpenses[0];
+  const top2 = topExpenses[1];
+  const ratio = income > 0 ? (expense / income) * 100 : 100;
+  const shortQuestion = question.trim().slice(0, 120);
+
+  const lines = [
+    `Modo assistido Poup+ IA: ainda nao consegui acessar o motor online, mas ja te adianto um plano pratico sobre "${shortQuestion}".`,
+    `No periodo, suas entradas somam ${formatCurrency(income)} e as saidas ${formatCurrency(expense)}.`
+  ];
+
+  if (balance >= 0) {
+    lines.push(`Seu saldo esta positivo em ${formatCurrency(balance)}. Direcione parte desse valor para uma meta automatica semanal.`);
+  } else {
+    lines.push(`Seu saldo esta negativo em ${formatCurrency(Math.abs(balance))}. Prioridade: cortar gastos variaveis ja nesta semana.`);
+  }
+
+  if (top1) {
+    lines.push(`Maior foco de ajuste: ${top1.name} (${formatCurrency(top1.amount)}).`);
+  }
+  if (top2) {
+    lines.push(`Segundo foco: ${top2.name} (${formatCurrency(top2.amount)}).`);
+  }
+
+  if (income <= 0 || ratio > 85) {
+    lines.push('Seu nivel de comprometimento da renda esta alto. Tente reduzir 10% dos gastos flexiveis por 30 dias.');
+  } else {
+    lines.push('Voce tem espaco para acelerar aportes. Regra simples: reservar 20% de toda entrada extra.');
+  }
+
+  return lines.join(' ');
+};
+
 export const AIConsultoriaPage: React.FC = () => {
   const { currentUser } = useAuth();
   const { addNotification } = useNotification();
@@ -141,20 +194,39 @@ export const AIConsultoriaPage: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAsking]);
 
+  const ensureAudioContextReady = async () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+      } catch {
+        // Alguns navegadores podem bloquear resume fora de gesto valido.
+      }
+    }
+  };
+
   const generateAndPlayAudio = async (textToRead: string) => {
     if (isSpeaking || !textToRead) return;
     setIsSpeaking(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        addNotification('Chave Gemini nao configurada para leitura em voz.', 'error');
+        setIsSpeaking(false);
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-preview-tts',
-        contents: [{ parts: [{ text: textToRead }] }],
+        contents: [{ parts: [{ text: `Leia em portugues do Brasil com voz humana, natural e acolhedora, em ritmo moderado. Texto: ${textToRead}` }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
+              prebuiltVoiceConfig: { voiceName: GEMINI_TTS_VOICE },
             },
           },
         },
@@ -182,20 +254,34 @@ export const AIConsultoriaPage: React.FC = () => {
       }
     } catch (e) {
       console.error('Erro ao gerar áudio', e);
+      addNotification(getGeminiErrorMessage(e, 'Erro ao gerar audio da IA.'), 'error');
       setIsSpeaking(false);
     }
   };
 
   const handleAskQuestion = async (text: string) => {
     const question = text || inputMessage;
-    if (!question.trim() || isAsking || !isPro) return;
+    if (!question.trim() || isAsking) return;
+    if (!isPro) {
+      addNotification('A Consultoria Poup + completa exige plano PRO.', 'info');
+      return;
+    }
 
     setMessages((prev) => [...prev, { role: 'user', content: question, timestamp: new Date() }]);
     setInputMessage('');
+    await ensureAudioContextReady();
     setIsAsking(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        const fallbackReply = buildFallbackConsultoriaReply(question, periodStats.income, periodStats.expense, periodStats.topExpenses);
+        setMessages((prev) => [...prev, { role: 'assistant', content: fallbackReply, timestamp: new Date() }]);
+        addNotification('Chave Gemini nao configurada. Resposta assistida localmente.', 'info');
+        setIsAsking(false);
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const context = {
         periodo: periodStats.label,
         totalGanhos: formatCurrency(periodStats.income),
@@ -204,27 +290,42 @@ export const AIConsultoriaPage: React.FC = () => {
         maioresGastos: periodStats.topExpenses.slice(0, 3).map((c) => `${c.name}: ${formatCurrency(c.amount)}`),
       };
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [
-          {
-            parts: [
+      let response: any = null;
+      let lastError: unknown = null;
+      for (const model of TEXT_MODELS) {
+        try {
+          response = await ai.models.generateContent({
+            model,
+            contents: [
               {
-                text: `CONTEXTO FINANCEIRO DO USUARIO: ${JSON.stringify(context)}. PERGUNTA: "${question}". Responda como o Mentor CFO do Poup+, de forma pratica, curta e incentivadora em portugues.`,
+                parts: [
+                  {
+                    text: `CONTEXTO FINANCEIRO DO USUARIO: ${JSON.stringify(context)}. PERGUNTA: "${question}". Responda como o Mentor da Consultoria Poup +, de forma pratica, curta e incentivadora em portugues.`,
+                  },
+                ],
               },
             ],
-          },
-        ],
-        config: {
-          systemInstruction: 'Voce e o Mentor CFO do Poup+. Sua linguagem e sofisticada mas acessivel. Seja breve.',
-        },
-      });
+            config: {
+              systemInstruction: 'Voce e o Mentor da Consultoria Poup +. Sua linguagem e sofisticada mas acessivel. Seja breve.',
+            },
+          });
+          break;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      if (!response) {
+        throw lastError ?? new Error('Falha ao gerar resposta com modelos de texto.');
+      }
 
       const reply = response.text || 'Nao consegui processar sua duvida agora.';
       setMessages((prev) => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
       generateAndPlayAudio(reply);
     } catch (e) {
-      addNotification('Erro na consultoria.', 'error');
+      console.error('Erro na consultoria', e);
+      const fallbackReply = buildFallbackConsultoriaReply(question, periodStats.income, periodStats.expense, periodStats.topExpenses);
+      setMessages((prev) => [...prev, { role: 'assistant', content: fallbackReply, timestamp: new Date() }]);
+      addNotification(getGeminiErrorMessage(e, 'Erro na consultoria. Resposta assistida exibida.'), 'error');
     } finally {
       setIsAsking(false);
     }
@@ -240,7 +341,7 @@ export const AIConsultoriaPage: React.FC = () => {
 
     const timer = setTimeout(() => {
       handleAskQuestion(
-        `Analise este item especifico: ${label}. Contexto: valor ${formatCurrency(value)}, tipo ${type}. De um conselho de CFO sobre isso.`,
+        `Analise este item especifico: ${label}. Contexto: valor ${formatCurrency(value)}, tipo ${type}. De um conselho da Consultoria Poup + sobre isso.`,
       );
     }, 500);
 
@@ -262,7 +363,7 @@ export const AIConsultoriaPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <BackButton className="bg-slate-50 border border-slate-100 shadow-none" />
           <div>
-            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Consultoria CFO</h2>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Consultoria Poup +</h2>
             <p className="text-[11px] font-bold text-slate-500">Conversa dedicada para duvidas e estrategia financeira.</p>
           </div>
         </div>
@@ -319,11 +420,12 @@ export const AIConsultoriaPage: React.FC = () => {
           {PRESET_QUESTIONS.map((q) => (
             <button
               key={q.id}
+              type="button"
               onClick={() => handleAskQuestion(q.text)}
-              disabled={isAsking || !isPro}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-100 hover:border-primary hover:bg-white transition-all text-xs font-black text-primary active:scale-95 disabled:opacity-50"
+              disabled={isAsking}
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 hover:border-primary hover:bg-emerald-100 transition-all text-xs font-black text-emerald-700 active:scale-95 disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-lg">{q.icon}</span>
+              <span className="material-symbols-outlined text-lg text-primary">{q.icon}</span>
               {q.text}
             </button>
           ))}
@@ -335,12 +437,12 @@ export const AIConsultoriaPage: React.FC = () => {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAskQuestion(inputMessage)}
-            placeholder="Pergunte qualquer coisa ao CFO..."
+            placeholder="Pergunte qualquer coisa para a Consultoria Poup +..."
             className="w-full bg-slate-50 rounded-2xl py-4 pl-5 pr-14 text-sm font-bold text-slate-800 outline-none border border-slate-100 focus:bg-white focus:border-primary/30 focus:shadow-sm transition-all"
           />
           <button
             onClick={() => handleAskQuestion(inputMessage)}
-            disabled={isAsking || !inputMessage.trim() || !isPro}
+            disabled={isAsking || !inputMessage.trim()}
             className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl bg-primary text-white flex items-center justify-center active:scale-90 disabled:opacity-50 transition-all hover:bg-emerald-600"
           >
             <span className="material-symbols-outlined text-xl">send</span>

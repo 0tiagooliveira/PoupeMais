@@ -1,5 +1,5 @@
 ﻿
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { formatCurrency } from '../../../utils/formatters';
 import { CategoryData } from '../../../types';
@@ -13,150 +13,198 @@ interface CategoryChartCardProps {
 }
 
 export const CategoryChartCard: React.FC<CategoryChartCardProps> = ({ title, type, categories, total, onCategoryClick }) => {
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [activeId, setActiveId] = useState<string | null>(categories[0]?.id ?? null);
 
   const isIncome = type === 'income';
-  const textColor = isIncome ? 'text-success' : 'text-danger';
-  
-  const size = 160;
-  const strokeWidth = 20;
-  const center = size / 2;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-
-  let currentOffset = 0;
-
-  const handleInteraction = (e: React.MouseEvent | React.TouchEvent, id: string) => {
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    
-    setHoveredId(id);
-    setTooltipPos({ x: clientX, y: clientY });
-  };
-
-  const hoveredCat = useMemo(() => 
-    categories.find(c => c.id === hoveredId), 
-  [categories, hoveredId]);
+  const accentBg = isIncome ? 'bg-emerald-50' : 'bg-rose-50';
+  const accentBorder = isIncome ? 'border-emerald-200' : 'border-rose-200';
+  const accentText = isIncome ? 'text-emerald-700' : 'text-rose-700';
+  const headlineText = isIncome ? 'text-success' : 'text-danger';
+  const topCategories = useMemo(() => categories.slice(0, 6), [categories]);
+  const primaryCategory = topCategories[0] ?? null;
+  const activeCategory = topCategories.find((category) => category.id === activeId) ?? primaryCategory;
+  const concentration = total > 0 && primaryCategory ? (primaryCategory.amount / total) * 100 : 0;
+  const remainder = Math.max(total - topCategories.slice(0, 3).reduce((sum, category) => sum + category.amount, 0), 0);
+  const summarySegments = [
+    ...topCategories.slice(0, 3).map((category) => ({
+      id: category.id,
+      name: category.name,
+      amount: category.amount,
+      color: category.color,
+      percentage: total > 0 ? (category.amount / total) * 100 : 0,
+    })),
+    ...(remainder > 0 ? [{
+      id: 'others',
+      name: 'Outras',
+      amount: remainder,
+      color: '#CBD5E1',
+      percentage: total > 0 ? (remainder / total) * 100 : 0,
+    }] : []),
+  ];
 
   return (
-    <Card className="!p-6 border-none shadow-sm relative group overflow-hidden">
-      <h3 className={`mb-6 text-lg font-black tracking-tight truncate ${type === 'expense' ? 'text-rose-500' : 'text-slate-700'}`}>
-        {title}
-      </h3>
-      
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-        <div className="relative flex-shrink-0">
-          <svg 
-            width={size} height={size} 
-            className="transform -rotate-90 overflow-visible"
-          >
-            <circle cx={center} cy={center} r={radius} fill="none" stroke="#f8fafc" strokeWidth={strokeWidth} />
-            
-            {total > 0 && categories.map((cat) => {
-              const percentage = Math.max(0, cat.amount / total);
-              const strokeDasharray = `${percentage * circumference} ${circumference}`;
-              const strokeDashoffset = -currentOffset;
-              currentOffset += percentage * circumference;
-              
-              if (percentage < 0.005) return null;
-              const isHovered = hoveredId === cat.id;
-
-              return (
-                <circle
-                  key={cat.id}
-                  cx={center}
-                  cy={center}
-                  r={radius}
-                  fill="none"
-                  stroke={cat.color}
-                  strokeWidth={isHovered ? strokeWidth + 4 : strokeWidth}
-                  strokeDasharray={strokeDasharray}
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                  onMouseEnter={(e) => handleInteraction(e, cat.id)}
-                  onMouseMove={(e) => handleInteraction(e, cat.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  onClick={() => onCategoryClick?.(cat)}
-                  className="transition-all duration-300 ease-out cursor-pointer origin-center"
-                  style={{ 
-                    opacity: hoveredId ? (isHovered ? 1 : 0.3) : 1,
-                    filter: isHovered ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' : 'none'
-                  }}
-                />
-              );
-            })}
-          </svg>
-          
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-            <span className={`text-lg sm:text-xl font-black leading-none tracking-tighter ${textColor}`}>
-              {formatCurrency(total).replace(',00', '')}
-            </span>
-            <span className="mt-1 text-[9px] font-black text-slate-300 uppercase tracking-widest">Total</span>
+    <Card className="relative overflow-hidden rounded-[32px] border border-slate-200 !p-0 shadow-sm">
+      <div className="border-b border-slate-200 px-6 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className={`text-xl font-black tracking-tight ${type === 'expense' ? 'text-slate-900' : 'text-slate-800'}`}>
+              {title}
+            </h3>
+            <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+              {categories.length} categorias no periodo
+            </p>
           </div>
-        </div>
-
-        <div className="flex-1 w-full min-w-0 space-y-3">
-          {categories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-slate-300">
-               <span className="material-symbols-outlined text-4xl opacity-20 mb-2">pie_chart</span>
-               <p className="text-[10px] font-black uppercase tracking-widest">Sem lanÃ§amentos</p>
-            </div>
-          ) : (
-            categories.slice(0, 5).map((cat) => {
-              const percentage = total > 0 ? (cat.amount / total) * 100 : 0;
-              const isHovered = hoveredId === cat.id;
-              
-              return (
-                <div 
-                  key={cat.id} 
-                  onClick={() => onCategoryClick?.(cat)}
-                  className={`flex items-center gap-3 transition-all duration-300 cursor-pointer p-1 rounded-xl hover:bg-slate-50 ${hoveredId && !isHovered ? 'opacity-30 blur-[0.5px]' : 'opacity-100'}`}
-                  onMouseEnter={() => setHoveredId(cat.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                >
-                  <div 
-                    className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:rotate-6"
-                    style={{ backgroundColor: `${cat.color}15`, color: cat.color }}
-                  >
-                    <span className="material-symbols-outlined text-base sm:text-lg">{cat.icon}</span>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-end mb-1">
-                      <span className="text-xs font-bold text-slate-700 truncate mr-2">{cat.name}</span>
-                      <div className="text-right flex-shrink-0">
-                        <span className="text-[10px] sm:text-[11px] font-black text-slate-800 block leading-tight">{formatCurrency(cat.amount)}</span>
-                        <span className="text-[8px] sm:text-[9px] font-black text-slate-300">{percentage.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-50 overflow-hidden border border-slate-100/50">
-                      <div className="h-full rounded-full transition-all duration-300 shadow-sm" style={{ width: `${percentage}%`, backgroundColor: cat.color }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
+          <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${accentBg} ${accentText}`}>
+            {isIncome ? 'Mapa de entradas' : 'Mapa de saidas'}
+          </span>
         </div>
       </div>
 
-      {hoveredId && hoveredCat && (
-        <div className="fixed z-[100] pointer-events-none transform -translate-x-1/2 -translate-y-[125%] animate-in fade-in zoom-in-95 duration-200" style={{ left: tooltipPos.x, top: tooltipPos.y }}>
-          <div className="bg-primary/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3">
-             <div className="h-10 w-10 rounded-xl flex items-center justify-center shadow-inner" style={{ backgroundColor: `${hoveredCat.color}20`, color: hoveredCat.color }}>
-               <span className="material-symbols-outlined text-xl">{hoveredCat.icon}</span>
-             </div>
-             <div>
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none mb-1 max-w-[100px] truncate">{hoveredCat.name}</p>
-                <div className="flex items-baseline gap-2">
-                   <span className="text-sm font-black text-white">{formatCurrency(hoveredCat.amount)}</span>
-                   <span className="text-[10px] font-black text-white/60">{((hoveredCat.amount / total) * 100).toFixed(1)}%</span>
+      <div className="grid gap-6 px-6 py-6 xl:grid-cols-[minmax(0,1fr)_240px]">
+        <div className="space-y-4">
+          <div className={`rounded-[28px] border p-5 ${accentBorder} ${accentBg}`}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Volume total</p>
+                <p className={`mt-3 break-words text-[clamp(1.8rem,3vw,2.4rem)] font-black tracking-tight ${headlineText}`}>
+                  {formatCurrency(total)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Categoria lider</p>
+                <p className="mt-2 max-w-[180px] truncate text-sm font-black text-slate-800">
+                  {primaryCategory?.name || 'Sem lancamentos'}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {primaryCategory ? `${concentration.toFixed(1)}% do total` : 'Sem dados neste periodo'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-full bg-white/80">
+              <div className="flex h-3 w-full">
+                {summarySegments.length > 0 ? summarySegments.map((segment) => (
+                  <div
+                    key={segment.id}
+                    className="h-full transition-all"
+                    style={{ width: `${Math.max(segment.percentage, 6)}%`, backgroundColor: segment.color }}
+                  />
+                )) : (
+                  <div className="h-full w-full bg-slate-200" />
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {summarySegments.slice(0, 4).map((segment) => (
+                <div key={segment.id} className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
+                  <span className="truncate">{segment.name}</span>
+                  <span className="ml-auto text-slate-400">{segment.percentage.toFixed(1)}%</span>
                 </div>
-             </div>
+              ))}
+            </div>
+          </div>
+
+          {categories.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-slate-400">
+              <span className="material-symbols-outlined mb-3 text-4xl opacity-40">bar_chart</span>
+              <p className="text-[11px] font-black uppercase tracking-[0.2em]">Sem lancamentos neste periodo</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {topCategories.map((cat, index) => {
+                const percentage = total > 0 ? (cat.amount / total) * 100 : 0;
+                const isActive = activeCategory?.id === cat.id;
+
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => onCategoryClick?.(cat)}
+                    onMouseEnter={() => setActiveId(cat.id)}
+                    onFocus={() => setActiveId(cat.id)}
+                    className={`w-full rounded-[24px] border px-4 py-4 text-left transition-all ${isActive ? 'border-slate-300 bg-slate-50 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50'}`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl shadow-sm"
+                          style={{ backgroundColor: `${cat.color}18`, color: cat.color }}
+                        >
+                          <span className="material-symbols-outlined text-lg">{cat.icon}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                              Top {index + 1}
+                            </span>
+                            <p className="truncate text-sm font-black text-slate-800">{cat.name}</p>
+                          </div>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            {percentage.toFixed(1)}% de participacao no periodo
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="block text-base font-black text-slate-900">{formatCurrency(cat.amount)}</span>
+                        <span className="text-[11px] font-bold text-slate-400">{percentage.toFixed(1)}%</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${Math.max(percentage, 4)}%`, backgroundColor: cat.color }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Em foco</p>
+            <p className="mt-3 text-lg font-black leading-tight text-slate-900">
+              {activeCategory?.name || 'Nenhuma categoria selecionada'}
+            </p>
+            <p className={`mt-2 text-2xl font-black tracking-tight ${headlineText}`}>
+              {activeCategory ? formatCurrency(activeCategory.amount) : formatCurrency(0)}
+            </p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+              {activeCategory
+                ? `${((activeCategory.amount / Math.max(total, 1)) * 100).toFixed(1)}% do total no periodo atual.`
+                : 'Passe o mouse ou toque em uma categoria para ver o destaque.'}
+            </p>
+          </div>
+
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Leitura rapida</p>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Concentracao top 3</p>
+                <p className="mt-2 text-lg font-black text-slate-900">
+                  {total > 0 ? `${((topCategories.slice(0, 3).reduce((sum, category) => sum + category.amount, 0) / total) * 100).toFixed(1)}%` : '0.0%'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Quantidade ativa</p>
+                <p className="mt-2 text-lg font-black text-slate-900">{categories.length} categorias</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Media por categoria</p>
+                <p className="mt-2 text-lg font-black text-slate-900">
+                  {formatCurrency(categories.length > 0 ? total / categories.length : 0)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </Card>
   );
 };

@@ -305,7 +305,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
             <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-slate-50 text-slate-200">
                 <span className="material-symbols-outlined text-5xl">search_off</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-800">Nenhum lanÃ§amento encontrado</h3>
+            <h3 className="text-xl font-bold text-slate-800">Nenhum lancamento encontrado</h3>
             <p className="mt-2 text-sm text-slate-400 font-medium max-w-xs mx-auto">Tente ajustar seus filtros ou termos de busca para encontrar o que procura.</p>
             {isFiltersActive && <Button onClick={clearFilters} variant="secondary" className="mt-8 rounded-2xl font-bold px-10 border-slate-200 text-slate-600">Limpar todos os filtros</Button>}
           </div>

@@ -5,6 +5,12 @@ import { AuthContextType, UserProfile } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const privilegedEmails = new Set([
+  'teste@gmail.com',
+  'marisa@gmail.com',
+  'tiago336699@gmail.com',
+]);
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,11 +22,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Fazemos o cast para UserProfile para suportar nossa extensão de tipos
         const userProfile = user as UserProfile;
         
-        // HACK DE ACESSO TOTAL: 
-        // Se o usuário logado for um dos e-mails de teste solicitados, 
-        // forçamos o status PRO para liberar todas as funcionalidades da IA e do SaaS.
+        // HACK DE ACESSO TOTAL:
+        // E-mails privilegiados recebem acesso PRO automaticamente.
         const email = user.email?.toLowerCase();
-        if (email === 'teste@gmail.com' || email === 'marisa@gmail.com') {
+        if (email && privilegedEmails.has(email)) {
           userProfile.isPro = true;
         }
         

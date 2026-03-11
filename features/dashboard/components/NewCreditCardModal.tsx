@@ -22,6 +22,10 @@ const POPULAR_BANKS = [
   { name: 'Santander', color: '#ec0000' },
   { name: 'BB', color: '#fcf800' },
   { name: 'Caixa', color: '#005ca9' },
+  { name: 'PicPay', color: '#21C25E' },
+  { name: 'PagBank', color: '#22c55e' },
+  { name: 'Banco PAN', color: '#00a0df' },
+  { name: 'Next', color: '#00c896' },
   { name: 'C6 Bank', color: '#000000' },
   { name: 'Outro', color: '#64748b' },
 ];
@@ -87,11 +91,17 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
   const isLightColor = color === '#fcf800' || color === '#FC0';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={cardToEdit ? "Editar cartão" : "Novo cartão"}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={cardToEdit ? 'Editar cartão' : 'Novo cartão'}
+      maxWidthClassName="max-w-[340px] md:max-w-[820px]"
+      bodyClassName="max-h-[82vh]"
+    >
       {/* Card Preview */}
       <div className="mb-6 flex justify-center px-1">
         <div 
-          className="relative h-36 w-full max-w-[280px] rounded-[24px] p-5 text-white shadow-xl transition-all duration-200 overflow-hidden border border-white/5"
+          className="relative h-36 w-full max-w-[280px] rounded-[24px] p-5 text-white shadow-xl transition-all duration-200 overflow-hidden border border-white/5 md:h-44 md:max-w-[420px] md:p-6"
           style={{ 
             backgroundColor: color,
             backgroundImage: 'linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.05) 100%)'
@@ -133,20 +143,20 @@ export const NewCreditCardModal: React.FC<NewCreditCardModalProps> = ({ isOpen, 
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <div className="grid grid-cols-5 gap-2 px-1">
+        <div className="grid grid-cols-4 gap-2 px-1 md:grid-cols-6 lg:grid-cols-7">
           {POPULAR_BANKS.map(bank => (
             <button
               key={bank.name}
               type="button"
               onClick={() => handleBankSelect(bank)}
-              className={`flex flex-col items-center justify-center py-2 rounded-xl transition-all border ${
+              className={`flex min-h-[88px] flex-col items-center justify-center py-2 rounded-xl transition-all border ${
                   selectedBank === bank.name 
                   ? 'border-primary bg-success/5 shadow-sm' 
                   : 'border-slate-50 bg-white hover:bg-slate-50'
               }`}
             >
               <BankLogo name={bank.name} color={bank.color} size="sm" />
-              <span className={`text-[8px] font-bold mt-1 truncate w-full text-center ${selectedBank === bank.name ? 'text-primary' : 'text-slate-400'}`}>
+              <span className={`mt-1 w-full px-1 text-center text-[9px] font-bold leading-tight ${selectedBank === bank.name ? 'text-primary' : 'text-slate-400'}`}>
                   {bank.name}
               </span>
             </button>

@@ -115,6 +115,23 @@ export const Dashboard: React.FC = () => {
 
   const globalBalance = useMemo(() => accounts.reduce((acc, curr) => acc + curr.balance, 0), [accounts]);
   const unreadCount = useMemo(() => history.filter(n => !n.read).length, [history]);
+  const dashboardMetrics = useMemo(() => {
+    const net = totalIncome - totalExpenses;
+    const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
+    const avgIncomeTicket = recentIncomes.length > 0 ? recentIncomes.reduce((sum, transaction) => sum + transaction.amount, 0) / recentIncomes.length : 0;
+    const avgExpenseTicket = recentExpenses.length > 0 ? recentExpenses.reduce((sum, transaction) => sum + transaction.amount, 0) / recentExpenses.length : 0;
+    const topIncomeCategory = incomeCategoriesData[0] ?? null;
+    const topExpenseCategory = expenseCategoriesData[0] ?? null;
+
+    return {
+      net,
+      savingsRate,
+      avgIncomeTicket,
+      avgExpenseTicket,
+      topIncomeCategory,
+      topExpenseCategory,
+    };
+  }, [totalIncome, totalExpenses, recentIncomes, recentExpenses, incomeCategoriesData, expenseCategoriesData]);
 
   // Efeito para gerar Insight Rápido da IA
   useEffect(() => {
@@ -230,10 +247,139 @@ export const Dashboard: React.FC = () => {
 
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-300 stagger-1">
         <div className="flex justify-center"><MonthSelector currentDate={currentDate} onMonthChange={setCurrentDate} className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-slate-100" /></div>
+
+        <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Acoes rapidas</h3>
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-300">Dashboard</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <button
+              onClick={() => { setAccountToEdit(null); setIsAccountModalOpen(true); }}
+              className="group rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left transition-all hover:bg-emerald-100"
+            >
+              <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm">
+                <span className="material-symbols-outlined">account_balance</span>
+              </div>
+              <p className="text-sm font-black text-emerald-900">Criar conta</p>
+              <p className="mt-1 text-[11px] font-semibold text-emerald-800">Cadastre banco, carteira ou conta digital.</p>
+            </button>
+
+            <button
+              onClick={() => openTransactionModal('income')}
+              className="group rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-left transition-all hover:bg-cyan-100"
+            >
+              <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-cyan-700 shadow-sm">
+                <span className="material-symbols-outlined">trending_up</span>
+              </div>
+              <p className="text-sm font-black text-cyan-900">Lancar receita</p>
+              <p className="mt-1 text-[11px] font-semibold text-cyan-800">Registre salario, venda, cashback e outras entradas.</p>
+            </button>
+
+            <button
+              onClick={() => openTransactionModal('expense')}
+              className="group rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left transition-all hover:bg-rose-100"
+            >
+              <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-rose-700 shadow-sm">
+                <span className="material-symbols-outlined">trending_down</span>
+              </div>
+              <p className="text-sm font-black text-rose-900">Lancar despesa</p>
+              <p className="mt-1 text-[11px] font-semibold text-rose-800">Adicione gastos para manter o fluxo atualizado.</p>
+            </button>
+          </div>
+        </div>
+
         <BalanceCard balance={globalBalance} />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <StatCard type="income" value={totalIncome} onClick={() => handleStatClick('income')} />
             <StatCard type="expense" value={totalExpenses} onClick={() => handleStatClick('expense')} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Saldo do mês</p>
+            <p className={`mt-3 text-[1.9rem] font-black tracking-tight ${dashboardMetrics.net >= 0 ? 'text-primary' : 'text-danger'}`}>
+              {formatCurrency(dashboardMetrics.net)}
+            </p>
+            <p className="mt-2 text-xs font-semibold text-slate-500">Resultado entre receitas e despesas do periodo atual.</p>
+          </div>
+
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Taxa de poupança</p>
+            <p className={`mt-3 text-[1.9rem] font-black tracking-tight ${dashboardMetrics.savingsRate >= 0 ? 'text-primary' : 'text-danger'}`}>
+              {dashboardMetrics.savingsRate.toFixed(1)}%
+            </p>
+            <p className="mt-2 text-xs font-semibold text-slate-500">Quanto da sua receita sobrou depois dos gastos.</p>
+          </div>
+
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Maior gasto</p>
+            <p className="mt-3 truncate text-lg font-black tracking-tight text-slate-900">
+              {dashboardMetrics.topExpenseCategory?.name || 'Sem despesas'}
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-500">
+              {dashboardMetrics.topExpenseCategory ? formatCurrency(dashboardMetrics.topExpenseCategory.amount) : 'R$ 0,00'}
+            </p>
+          </div>
+
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Maior receita</p>
+            <p className="mt-3 truncate text-lg font-black tracking-tight text-slate-900">
+              {dashboardMetrics.topIncomeCategory?.name || 'Sem receitas'}
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-500">
+              {dashboardMetrics.topIncomeCategory ? formatCurrency(dashboardMetrics.topIncomeCategory.amount) : 'R$ 0,00'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">Pulso financeiro</h3>
+                <p className="mt-1 text-lg font-black tracking-tight text-slate-900">Leitura rápida do seu mês</p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Resumo executivo</span>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">Ticket médio receita</p>
+                <p className="mt-2 text-xl font-black tracking-tight text-primary">{formatCurrency(dashboardMetrics.avgIncomeTicket)}</p>
+              </div>
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-rose-700">Ticket médio despesa</p>
+                <p className="mt-2 text-xl font-black tracking-tight text-danger">{formatCurrency(dashboardMetrics.avgExpenseTicket)}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Categorias monitoradas</p>
+                <p className="mt-2 text-xl font-black tracking-tight text-slate-900">{incomeCategoriesData.length + expenseCategoriesData.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">Alertas rápidos</h3>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-sm font-black text-slate-900">{dashboardMetrics.net >= 0 ? 'Fluxo positivo no mês' : 'Fluxo pressionado no mês'}</p>
+                <p className="mt-1 text-xs font-semibold leading-6 text-slate-500">
+                  {dashboardMetrics.net >= 0
+                    ? 'Seu caixa fechou acima de zero. Aproveite para direcionar o excedente para metas ou reserva.'
+                    : 'As saídas passaram das entradas. Vale revisar as maiores categorias antes do fechamento do mês.'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-sm font-black text-slate-900">Foco principal</p>
+                <p className="mt-1 text-xs font-semibold leading-6 text-slate-500">
+                  {dashboardMetrics.topExpenseCategory
+                    ? `${dashboardMetrics.topExpenseCategory.name} é sua maior categoria de gasto neste recorte.`
+                    : 'Ainda não há gastos suficientes para destacar uma categoria principal.'}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* AI Insight & OCR Scanner Widgets */}
@@ -338,7 +484,7 @@ export const Dashboard: React.FC = () => {
             />
         </div>
 
-        {/* Gráficos de Categorias Lado a Lado (PC) */}
+        {/* Mapas de Categorias */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <CategoryChartCard 
                 title="Receitas por categoria" 

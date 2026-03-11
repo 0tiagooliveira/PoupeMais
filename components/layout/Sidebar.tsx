@@ -11,9 +11,9 @@ export const Sidebar: React.FC = () => {
   
   const links = [
     { to: '/', icon: 'dashboard', label: 'Dashboard' },
-    { to: '/transactions', icon: 'receipt_long', label: 'Transações' },       
+    { to: '/transactions', icon: 'sync_alt', label: 'Transações' },       
     { to: '/ai-analysis', icon: 'savings', label: 'Poup+ IA', pro: true },      
-    { to: '/ai-consultoria', icon: 'chat', label: 'Consultoria CFO', pro: true },
+    { to: '/ai-consultoria', icon: 'chat', label: 'Consultoria Poup +', pro: true },
     { to: '/goals', icon: 'flag', label: 'Metas' },
     { to: '/credit-cards', icon: 'credit_card', label: 'Cartões' },
     { to: '/charts', icon: 'bar_chart', label: 'Análise' },
@@ -22,8 +22,8 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="hidden w-64 flex-col border-r border-slate-100 bg-white md:flex">
-      <div className="flex h-full flex-col px-4 py-8">
+    <aside className="hidden w-72 flex-col border-r border-slate-100 bg-white md:flex">
+      <div className="flex h-full flex-col px-5 py-8">
         <div className="mb-10 px-4">
            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
              <img 
@@ -39,13 +39,13 @@ export const Sidebar: React.FC = () => {
            </Link>
         </div>
 
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-2">
           {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
               className={({ isActive }) =>
-                `group flex items-center gap-4 rounded-2xl px-4 py-3 text-[13.5px] font-medium tracking-tight nav-transition relative ${
+                `group flex items-center gap-4 rounded-2xl px-4 py-3.5 text-[15px] font-semibold tracking-tight nav-transition relative ${
                   isActive
                     ? 'text-primary'
                     : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
@@ -57,12 +57,12 @@ export const Sidebar: React.FC = () => {
                   {isActive && (
                     <div className="absolute left-0 h-5 w-1 rounded-full bg-primary" />
                   )}
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${isActive ? 'bg-success/10 text-success' : 'text-slate-400 group-hover:text-slate-600'}`}>
-                    <span className="material-symbols-outlined text-[20px]">{link.icon}</span>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${isActive ? 'bg-success/10 text-success' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                    <span className="material-symbols-outlined text-[22px]">{link.icon}</span>
                   </div>
-                  <span className="truncate">{link.label}</span>
+                  <span className="truncate text-[15px]">{link.label}</span>
                   {link.pro && !currentUser?.isPro && (
-                    <span className="ml-auto text-[9px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded uppercase">PRO</span>
+                    <span className="ml-auto rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-600">PRO</span>
                   )}
                 </>
               )}

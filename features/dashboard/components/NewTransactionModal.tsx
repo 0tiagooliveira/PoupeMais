@@ -81,6 +81,21 @@ export const expenseCategories = [
   { name: 'Outros', icon: 'more_horiz', color: '#94A3B8' }
 ];
 
+const getReadableTextColor = (bgColor?: string) => {
+  if (!bgColor || !bgColor.startsWith('#')) return '#FFFFFF';
+
+  const hex = bgColor.replace('#', '');
+  const normalized = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+  if (normalized.length !== 6) return '#FFFFFF';
+
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 160 ? '#0F172A' : '#FFFFFF';
+};
+
 export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -93,7 +108,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   onCreateRule,
   startOcrOnOpen = false
 }) => {
-  const { allCategories } = useCategories();
+  const { allCategories, addCustomCategory } = useCategories();
   const [type, setType] = useState<TransactionType>(initialType);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -112,6 +127,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addNotification } = useNotification();
 
@@ -274,6 +290,40 @@ Apenas o JSON válido, sem NADA a mais (nem markdown, nem formatação). Se o re
       .filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase()));
   }, [allCategories, type, categorySearch]);
 
+  const canCreateCategory = useMemo(() => {
+    const candidate = categorySearch.trim().toLowerCase();
+    if (!candidate) return false;
+    return !allCategories.some((c) => c.type === type && c.name.trim().toLowerCase() === candidate);
+  }, [allCategories, type, categorySearch]);
+
+  const handleCreateCategory = async () => {
+    const nameToCreate = categorySearch.trim();
+    if (!nameToCreate) {
+      addNotification('Digite um nome para criar a categoria.', 'warning');
+      return;
+    }
+
+    setIsCreatingCategory(true);
+    try {
+      const color = type === 'income' ? '#10B981' : '#EF4444';
+      await addCustomCategory({
+        name: nameToCreate,
+        type,
+        color,
+        icon: getIconByCategoryName(nameToCreate),
+      } as Omit<Category, 'id' | 'isCustom'>);
+
+      setCategory(nameToCreate);
+      setIsCategorySelectorOpen(false);
+      setCategorySearch('');
+      addNotification('Categoria criada com sucesso!', 'success');
+    } catch (error) {
+      addNotification('Nao foi possivel criar a categoria.', 'error');
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
+
   const selectedCategoryData = useMemo(() => {
     return allCategories.find(c => c.name === category && c.type === type);
   }, [allCategories, category, type]);
@@ -282,7 +332,14 @@ Apenas o JSON válido, sem NADA a mais (nem markdown, nem formatação). Se o re
   const themeBorder = type === 'expense' ? 'border-red-200' : 'border-emerald-200';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={transactionToEdit ? 'Editar Lançamento' : 'Novo Lançamento'}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={transactionToEdit ? 'Editar Lançamento' : 'Novo Lançamento'}
+      maxWidthClassName="max-w-[920px]"
+      contentClassName="p-6 lg:p-8"
+      bodyClassName="max-h-[82vh]"
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 pt-2 relative">
         {isCategorySelectorOpen && (
           <div className="absolute inset-0 z-20 bg-surface flex flex-col animate-in slide-in-from-right duration-300">
@@ -306,6 +363,24 @@ Apenas o JSON válido, sem NADA a mais (nem markdown, nem formatação). Se o re
                          <span className="text-[10px] font-bold text-slate-600 text-center leading-tight line-clamp-2">{cat.name}</span>
                       </button>
                    ))}
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Nao encontrou?</p>
+                      <p className="text-[11px] font-semibold text-slate-600">Crie uma categoria nova para este tipo de lancamento.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCreateCategory}
+                      disabled={!canCreateCategory || isCreatingCategory}
+                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 transition-all hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-sm">add</span>
+                      {isCreatingCategory ? 'Criando...' : 'Criar categoria'}
+                    </button>
+                  </div>
                 </div>
              </div>
           </div>
@@ -335,62 +410,74 @@ Apenas o JSON válido, sem NADA a mais (nem markdown, nem formatação). Se o re
            </div>
         )}
 
-        <div className="text-center">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Valor da transação</label>
-            <div className="relative inline-flex items-center justify-center">
-                <span className={`text-3xl font-bold mr-2 ${themeColor} opacity-60`}>R$</span>
-                <input type="number" step="0.01" placeholder="0,00" value={amount} onChange={e => setAmount(e.target.value)} required autoFocus={!transactionToEdit} className={`w-full max-w-[240px] bg-transparent text-5xl font-black tracking-tighter outline-none text-center placeholder:text-slate-200 ${themeColor}`} />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)] lg:items-start">
+          <div className="space-y-6">
+            <div className="rounded-[28px] border border-slate-100 bg-slate-50/80 p-5 text-center lg:p-6">
+              <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Valor da transação</label>
+              <div className="relative inline-flex items-center justify-center">
+                <span className={`mr-3 text-3xl font-bold ${themeColor} opacity-60`}>R$</span>
+                <input type="number" step="0.01" placeholder="0,00" value={amount} onChange={e => setAmount(e.target.value)} required autoFocus={!transactionToEdit} className={`w-full max-w-[320px] bg-transparent text-5xl lg:text-6xl font-black tracking-tighter outline-none text-center placeholder:text-slate-200 ${themeColor}`} />
+              </div>
             </div>
-        </div>
 
-        <div className="relative">
-             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none"><span className="material-symbols-outlined text-slate-400">edit</span></div>
-             <input type="text" placeholder="Descrição (ex: Mercado, Salário)" value={description} onChange={e => setDescription(e.target.value)} required className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl font-bold text-slate-700 outline-none border border-transparent focus:bg-white focus:border-slate-200 focus:shadow-sm transition-all placeholder:text-slate-400" />
-        </div>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none"><span className="material-symbols-outlined text-slate-400">edit</span></div>
+              <input type="text" placeholder="Descrição (ex: Mercado, Salário)" value={description} onChange={e => setDescription(e.target.value)} required className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl font-bold text-slate-700 outline-none border border-transparent focus:bg-white focus:border-slate-200 focus:shadow-sm transition-all placeholder:text-slate-400" />
+            </div>
 
-        <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block px-1">Categoria</label>
-            <button type="button" onClick={() => setIsCategorySelectorOpen(true)} className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all active:scale-[0.98] ${category ? `bg-white ${themeBorder} shadow-sm` : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200'}`}>
-               <div className="flex items-center gap-3">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block px-1">Categoria</label>
+              <button type="button" onClick={() => setIsCategorySelectorOpen(true)} className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.98] ${category ? `bg-white ${themeBorder} shadow-sm` : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200'}`}>
+                <div className="flex items-center gap-3">
                   {category && selectedCategoryData ? (
-                     <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: selectedCategoryData.color }}><span className="material-symbols-outlined">{selectedCategoryData.icon || getIconByCategoryName(category)}</span></div>
+                    <div className="h-11 w-11 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: selectedCategoryData.color }}><span className="material-symbols-outlined">{selectedCategoryData.icon || getIconByCategoryName(category)}</span></div>
                   ) : (
-                     <div className="h-10 w-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400"><span className="material-symbols-outlined">category</span></div>
+                    <div className="h-11 w-11 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400"><span className="material-symbols-outlined">category</span></div>
                   )}
                   <div className="text-left">
-                     <span className={`block text-sm font-bold ${category ? 'text-slate-800' : 'text-slate-400'}`}>{category || "Selecionar categoria"}</span>
-                     {category && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Toque para alterar</span>}
+                    <span className={`block text-sm font-bold ${category ? 'text-slate-800' : 'text-slate-400'}`}>{category || 'Selecionar categoria'}</span>
+                    {category && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Toque para alterar</span>}
                   </div>
-               </div>
-               <span className="material-symbols-outlined text-slate-300">chevron_right</span>
-            </button>
-        </div>
+                </div>
+                <span className="material-symbols-outlined text-slate-300">chevron_right</span>
+              </button>
+            </div>
+          </div>
 
-        <div className="space-y-4">
-             <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block px-1">Conta / Cartão</label>
-                <div className="flex gap-3 overflow-x-auto pb-2 px-1 no-scrollbar">
-                    {accounts.map(acc => {
-                        const isSelected = accountId === acc.id;
-                        return (
-                            <button key={acc.id} type="button" onClick={() => setAccountId(acc.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all whitespace-nowrap ${isSelected ? `bg-primary border-primary text-white shadow-md` : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                                <div className="bg-white rounded-full p-0.5"><BankLogo name={acc.name} color={acc.color} size="sm" /></div>
-                                <span className="text-xs font-bold">{acc.name}</span>
-                            </button>
-                        )
-                    })}
-                </div>
-             </div>
-             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-2xl p-2 border border-slate-100">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block ml-2">Data</label>
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full bg-transparent font-bold text-slate-700 outline-none px-2 text-sm" />
-                </div>
-                <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100">
-                    <button type="button" onClick={() => setStatus('completed')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'completed' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">check_circle</span></button>
-                    <button type="button" onClick={() => setStatus('pending')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'pending' ? 'bg-white shadow-sm text-amber-500' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">schedule</span></button>
-                </div>
-             </div>
+          <div className="space-y-4 rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm lg:sticky lg:top-0">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block px-1">Conta / Cartão</label>
+              <div className="flex gap-3 overflow-x-auto pb-2 px-1 no-scrollbar lg:flex-col lg:overflow-visible">
+                {accounts.map(acc => {
+                  const isSelected = accountId === acc.id;
+                  const selectedTextColor = getReadableTextColor(acc.color);
+                  return (
+                    <button
+                      key={acc.id}
+                      type="button"
+                      onClick={() => setAccountId(acc.id)}
+                      className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all whitespace-nowrap ${isSelected ? 'shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                      style={isSelected ? { backgroundColor: acc.color || '#10B981', borderColor: acc.color || '#10B981', color: selectedTextColor } : undefined}
+                    >
+                      <div className="bg-white rounded-full p-0.5"><BankLogo name={acc.name} color={acc.color} size="sm" /></div>
+                      <span className="text-xs font-bold">{acc.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Data</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full bg-transparent font-bold text-slate-700 outline-none text-sm" />
+              </div>
+              <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100 min-h-[64px]">
+                <button type="button" onClick={() => setStatus('completed')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'completed' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">check_circle</span></button>
+                <button type="button" onClick={() => setStatus('pending')} className={`flex-1 rounded-xl flex items-center justify-center transition-all ${status === 'pending' ? 'bg-white shadow-sm text-amber-500' : 'text-slate-400'}`}><span className="material-symbols-outlined text-lg">schedule</span></button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-3 pt-2">

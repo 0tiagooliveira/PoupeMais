@@ -101,7 +101,7 @@ export const StatementImportPage: React.FC = () => {
       });
 
       await batch.commit();
-      addNotification("LanÃ§amentos importados com sucesso!", "success");
+      addNotification("Lancamentos importados com sucesso!", "success");
       
       // Limpa tudo apÃ³s salvar
       clearResults();

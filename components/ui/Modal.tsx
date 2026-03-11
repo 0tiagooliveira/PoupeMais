@@ -7,9 +7,20 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidthClassName?: string;
+  contentClassName?: string;
+  bodyClassName?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+export const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  maxWidthClassName = 'max-w-[340px]',
+  contentClassName = '',
+  bodyClassName = '',
+}) => {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -37,7 +48,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
       />
       
       {/* Content - Optimized Size */}
-      <div className="relative w-full max-w-[340px] scale-100 rounded-[32px] bg-surface p-6 shadow-2xl transition-transform border border-white/10 overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className={`relative w-full ${maxWidthClassName} scale-100 rounded-[32px] bg-surface p-6 shadow-2xl transition-transform border border-white/10 overflow-hidden animate-in zoom-in-95 duration-200 ${contentClassName}`}>
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-800 tracking-tight">{title}</h3>
           <button 
@@ -48,7 +59,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
           </button>
         </div>
         
-        <div className="custom-scrollbar max-h-[75vh] overflow-y-auto overflow-x-hidden">
+        <div className={`custom-scrollbar max-h-[75vh] overflow-y-auto overflow-x-hidden ${bodyClassName}`}>
           {children}
         </div>
       </div>

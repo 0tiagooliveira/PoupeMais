@@ -1,19 +1,20 @@
 ﻿
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCreditCards } from '../../hooks/useCreditCards';
+import { useTransactions } from '../../hooks/useTransactions';
 import { formatCurrency } from '../../utils/formatters';
 import { BackButton } from '../../components/ui/BackButton';
 import { BankLogo } from '../dashboard/components/AccountsList';
 import { NewCreditCardModal } from '../dashboard/components/NewCreditCardModal';
-import { incomeCategories, expenseCategories } from '../dashboard/components/NewTransactionModal';
+import { NewTransactionModal, incomeCategories, expenseCategories } from '../dashboard/components/NewTransactionModal';
 import { db } from '../../services/firebase';
-import { Transaction, CreditCard } from '../../types';
+import { Transaction, CreditCard, Account } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 
 type ViewMode = 'faturas' | 'consolidado';
 
 // Componente Interno de Gráfico para a Visão Consolidada
-const SplineAreaChart: React.FC<{ data: { label: string, value: number }[], height?: number }> = ({ data, height = 300 }) => {
+const SplineAreaChart: React.FC<{ data: { label: string, value: number }[], height?: number, accent?: string, accentSoft?: string }> = ({ data, height = 300, accent = '#10B981', accentSoft = '#34D399' }) => {
   if (!data || data.length === 0) return null;
 
   const width = 1000;
@@ -44,8 +45,8 @@ const SplineAreaChart: React.FC<{ data: { label: string, value: number }[], heig
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
           <defs>
             <linearGradient id="purpleGradient" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0" />
+              <stop offset="0%" stopColor={accentSoft} stopOpacity="0.45" />
+              <stop offset="100%" stopColor={accentSoft} stopOpacity="0" />
             </linearGradient>
           </defs>
 
@@ -67,7 +68,7 @@ const SplineAreaChart: React.FC<{ data: { label: string, value: number }[], heig
           <path d={areaD} fill="url(#purpleGradient)" />
           
           {/* Linha do Gráfico */}
-          <path d={pathD} fill="none" stroke="#8B5CF6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={pathD} fill="none" stroke={accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
           {/* Eixo X (Labels com rotação) */}
           {data.map((d, i) => {
@@ -90,6 +91,7 @@ const SplineAreaChart: React.FC<{ data: { label: string, value: number }[], heig
 
 export const CreditCardsPage: React.FC = () => {
   const { currentUser } = useAuth();
+  const { updateTransaction, deleteTransaction } = useTransactions(new Date(), 'month');
   const { cards, loading: loadingCards, addCard, updateCard } = useCreditCards();
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [loadingTrans, setLoadingTrans] = useState(true);
@@ -98,6 +100,8 @@ export const CreditCardsPage: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [cardToEdit, setCardToEdit] = useState<CreditCard | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -243,6 +247,22 @@ export const CreditCardsPage: React.FC = () => {
   const [selectedInvoiceIndex, setSelectedInvoiceIndex] = useState(0);
   const activeInvoice = invoicesData[selectedInvoiceIndex];
 
+  const accountsForModal = useMemo<Account[]>(() => {
+    return cards.map((card) => ({
+      id: card.id,
+      name: card.name,
+      type: 'credit-card',
+      balance: 0,
+      color: card.color,
+      initialBalance: 0,
+    }));
+  }, [cards]);
+
+  const activeLimitUsage = useMemo(() => {
+    if (!activeCard || !activeCard.limit || !activeInvoice) return 0;
+    return Math.min(100, (activeInvoice.total / activeCard.limit) * 100);
+  }, [activeCard, activeInvoice]);
+
   return (
     <div className="space-y-6 pb-24 animate-in fade-in duration-200">
       <header className="flex items-center justify-between px-1">
@@ -265,6 +285,26 @@ export const CreditCardsPage: React.FC = () => {
 
       {viewMode === 'faturas' ? (
         <div className="space-y-8">
+          {activeCard && activeInvoice && (
+            <section className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Fatura atual</p>
+                <p className="mt-2 text-2xl font-black text-slate-900">{formatCurrency(activeInvoice.total)}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">Vencimento em {activeInvoice.dueDate}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Limite do cartão</p>
+                <p className="mt-2 text-2xl font-black text-emerald-700">{formatCurrency(activeCard.limit)}</p>
+                <p className="mt-1 text-xs font-semibold text-emerald-700">Uso atual: {activeLimitUsage.toFixed(1)}%</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Transações da fatura</p>
+                <p className="mt-2 text-2xl font-black text-slate-900">{activeInvoice.transactions.length}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">Periodo {activeInvoice.cycleRange}</p>
+              </div>
+            </section>
+          )}
+
           <div className="overflow-x-auto no-scrollbar flex gap-4 px-1 py-2">
             {cards.map(card => (
               <button key={card.id} onClick={() => setSelectedCardId(card.id)} className={`relative min-w-[300px] h-[180px] rounded-[32px] p-6 text-white transition-all shadow-xl hover:scale-[1.02] active:scale-95 overflow-hidden border border-white/10 ${selectedCardId === card.id || (!selectedCardId && cards[0]?.id === card.id) ? 'ring-4 ring-primary ring-offset-4 ring-offset-background' : 'opacity-80'}`} style={{ backgroundColor: card.color || '#1e293b' }}>
@@ -306,12 +346,15 @@ export const CreditCardsPage: React.FC = () => {
                 {activeInvoice?.transactions.map((t) => {
                   const cat = [...incomeCategories, ...expenseCategories].find(c => c.name === t.category) || { icon: 'shopping_cart', color: '#94a3b8' };
                   return (
-                    <div key={t.id} className="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
+                      <div key={t.id} className="group flex items-center justify-between p-5 hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => { setEditingTransaction(t); setIsTransactionModalOpen(true); }}>
                        <div className="flex items-center gap-4">
                           <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-sm ${t.type === 'income' ? 'bg-success/10 text-success' : 'bg-slate-50 text-slate-500'}`}><span className="material-symbols-outlined text-xl">{t.type === 'income' ? 'undo' : cat.icon}</span></div>
                           <div><p className="text-sm font-bold text-slate-800 leading-none mb-1 line-clamp-1">{t.description}</p><p className="text-[10px] font-bold text-slate-400">{new Date(t.date).toLocaleDateString()} • {t.category}</p></div>
                        </div>
-                       <span className={`text-sm font-black ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>{t.type === 'income' ? '-' : ''}{formatCurrency(t.amount)}</span>
+                        <div className="flex items-center gap-3">
+                         <span className={`text-sm font-black ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>{t.type === 'income' ? '-' : ''}{formatCurrency(t.amount)}</span>
+                         <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">edit</span>
+                        </div>
                     </div>
                   )
                 })}
@@ -342,13 +385,26 @@ export const CreditCardsPage: React.FC = () => {
             </header>
             
             <div className="mt-8">
-              <SplineAreaChart data={installmentProjection} height={350} />
+              <SplineAreaChart data={installmentProjection} height={350} accent="#ef4444" accentSoft="#fca5a5" />
             </div>
           </div>
         </div>
       )}
 
       <NewCreditCardModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={async (data) => { if (cardToEdit) await updateCard(cardToEdit.id, data); else await addCard(data); }} cardToEdit={cardToEdit} />
+      <NewTransactionModal
+        isOpen={isTransactionModalOpen}
+        onClose={() => { setIsTransactionModalOpen(false); setEditingTransaction(null); }}
+        onSave={async (data) => {
+          if (editingTransaction) {
+            await updateTransaction(editingTransaction.id, data);
+          }
+        }}
+        onDelete={deleteTransaction}
+        accounts={accountsForModal}
+        transactionToEdit={editingTransaction}
+        onCreateRule={() => {}}
+      />
     </div>
   );
 };

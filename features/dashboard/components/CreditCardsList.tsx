@@ -75,16 +75,28 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
 
   return (
     <div className="flex flex-col">
-      <div className="mb-5 flex items-center justify-between px-1">
-        <h3 className="text-xl font-bold text-slate-800 tracking-tight">Cartões de crédito</h3>
-        {cards.length > 0 && (
-          <button 
-            onClick={() => navigate('/credit-cards')}
-            className="text-xs font-bold text-success hover:opacity-80 transition-opacity"
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 px-1">
+        <div>
+          <h3 className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Meus cartões</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Acompanhe limite, fatura atual e disponibilidade em um só lugar.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {cards.length > 0 && (
+            <button 
+              onClick={() => navigate('/credit-cards')}
+              className="text-xs font-bold text-success transition-opacity hover:opacity-80"
+            >
+              Ver todos
+            </button>
+          )}
+          <button
+            onClick={onAddCard}
+            className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-700 transition-all hover:bg-emerald-100 active:scale-95"
           >
-            Ver todos
+            <span className="material-symbols-outlined text-base">add</span>
+            Novo cartão
           </button>
-        )}
+        </div>
       </div>
       
       {cards.length === 0 ? (
@@ -93,12 +105,13 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
              <span className="material-symbols-outlined text-3xl">credit_card</span>
           </div>
           <h4 className="mb-2 text-sm font-bold text-slate-800 tracking-tight">Nenhum cartão cadastrado</h4>
-          <Button 
+          <button
             onClick={onAddCard}
-            className="bg-primary hover:bg-emerald-600 text-white font-bold text-xs px-8 rounded-2xl h-11 shadow-lg shadow-success/20"
+            className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-700 transition-all hover:bg-emerald-100 active:scale-95"
           >
-            + Adicionar cartão
-          </Button>
+            <span className="material-symbols-outlined text-base">add</span>
+            Novo cartão
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5">

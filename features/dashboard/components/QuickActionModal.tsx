@@ -75,7 +75,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
       }
     },
     {
-      label: 'Consultoria CFO Especializada',
+      label: 'Consultoria Poup + Especializada',
       description: 'O que a IA sugere sobre este gasto específico?',
       icon: 'savings',
       color: 'text-primary bg-emerald-50',

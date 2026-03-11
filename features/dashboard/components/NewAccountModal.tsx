@@ -16,15 +16,18 @@ interface NewAccountModalProps {
 }
 
 const BANKS = [
-  { name: 'Nubank', color: '#820ad1', code: '260', url: 'https://poup-beta.web.app/Icon/Nubank.svg' },
-  { name: 'Itaú', color: '#ec7000', code: '341', url: 'https://poup-beta.web.app/Icon/itau.svg' },
-  { name: 'Bradesco', color: '#cc092f', code: '237', url: 'https://poup-beta.web.app/Icon/bradesco.svg' },
-  { name: 'Inter', color: '#ff7a00', code: '077', url: 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20Inter%20S.A/inter.svg' },
-  { name: 'Santander', color: '#ec0000', code: '033', url: 'https://poup-beta.web.app/Icon/santander.svg' },
-  { name: 'Banco do Brasil', color: '#fcf800', code: '001', url: 'https://poup-beta.web.app/Icon/banco-do-brasil.svg' },
-  { name: 'Caixa', color: '#005ca9', code: '104', url: 'https://poup-beta.web.app/Icon/caixa.svg' },
-  { name: 'PicPay', color: '#21C25E', code: '380', url: 'https://poup-beta.web.app/Icon/picpay.svg' },
-  { name: 'C6 Bank', color: '#000000', code: '336', url: 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20C6%20S.A/c6%20bank.svg' },
+  { name: 'Nubank', color: '#820ad1', code: '260', url: 'https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-4-1.png' },
+  { name: 'Itaú', color: '#ec7000', code: '341', url: 'https://play-lh.googleusercontent.com/gRcutACE4XkEHmxcbUdOehxpTbp_LjmwJ6qIEbqfD34oh9feTNhTnlDgf97HEZ9eGKY' },
+  { name: 'Bradesco', color: '#cc092f', code: '237', url: 'https://img.icons8.com/color/1200/bradesco.jpg' },
+  { name: 'Inter', color: '#ff7a00', code: '077', url: 'https://play-lh.googleusercontent.com/DABQ3z4xA93QNsK9wqR2LdnamoDHkaKc-h1AueqJrVE7pP9GkIvZqf_URfxOIiNbFyzK=w480-h960-rw' },
+  { name: 'Santander', color: '#ec0000', code: '033', url: 'https://play-lh.googleusercontent.com/g_QDzrOlw8Belx8qb47fUu0MPL6AVFzDdbOz_NJZYQDNLveHYxwiUoe09Wvkxf-_548q=w480-h960-rw' },
+  { name: 'Banco do Brasil', color: '#fcf800', code: '001', url: 'https://play-lh.googleusercontent.com/1-aNhsSPNqiVluwNGZar_7F5PbQ4u1zteuJ1jumnArhe8bfYHHaVwu4aVOF5-NAmLaA=w480-h960-rw' },
+  { name: 'Caixa', color: '#005ca9', code: '104', url: 'https://play-lh.googleusercontent.com/ubV0x2kGJIEe10shxuFnH9Cy21OgHARwVUZ89nyE0YOZN9c25ov_dyHdk1rMgbPvoDI=w480-h960-rw' },
+  { name: 'PicPay', color: '#21C25E', code: '380', url: 'https://play-lh.googleusercontent.com/pTvc9kCumx_24eJDwGUpvcBwljcIBkrsL3qHwhBW2NalMQ-XxTtHRV9YAJanBxkV0Rw=w480-h960-rw' },
+  { name: 'PagBank', color: '#22c55e', code: '290', url: 'https://play-lh.googleusercontent.com/O9GpqGB-9aE8Qt79JM1VXoVA5rRQjLb4LVk7yVwd2cuWeAi0ML6uVbc7aXZEOeyYwg=w480-h960-rw' },
+  { name: 'Banco PAN', color: '#00a0df', code: '623', url: 'https://play-lh.googleusercontent.com/KVoKo2vX9E3ZjwfOL7eXvMWrmqMVAPLz96ePKd3QhKFDABTtPY9laAwTzJELzy7-fqKp=w480-h960-rw' },
+  { name: 'Next', color: '#00c896', code: '237', url: 'https://play-lh.googleusercontent.com/H10aAKl4vs91sow3buRJk85cEN58T7onVyNqVQPnWnEpRQmelArjGLdUx05imRQePjCD=w480-h960-rw' },
+  { name: 'C6 Bank', color: '#000000', code: '336', url: 'https://play-lh.googleusercontent.com/qYXhGgBxFLr5xgnv0AGhqW9v7tyedb_i5AVoebI6pow5pWPNZH1qEHnslmSHNkVpB-g=w240-h480-rw' },
 ];
 
 const ACCOUNT_TYPES = ['Corrente', 'Poupança', 'Investimentos', 'Dinheiro'];
@@ -76,7 +79,13 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={accountToEdit ? "Editar conta" : "Conectar instituição"}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={accountToEdit ? 'Editar conta' : 'Criar conta'}
+      maxWidthClassName="max-w-[340px] md:max-w-[760px]"
+      bodyClassName="max-h-[80vh]"
+    >
       {/* Visual Preview */}
       <div className="mb-8 flex flex-col items-center px-1">
         <div 
@@ -109,7 +118,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div>
           <label className="text-xs font-bold text-slate-400 mb-5 block px-1">Selecione o seu banco</label>
-          <div className="grid grid-cols-4 gap-y-6 gap-x-2">
+          <div className="grid grid-cols-4 gap-y-6 gap-x-2 md:grid-cols-6">
             {BANKS.map(bank => (
               <button
                 key={bank.name}
