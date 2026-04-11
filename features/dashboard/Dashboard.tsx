@@ -289,17 +289,18 @@ export const Dashboard: React.FC = () => {
         </button>
       </div>
       
-      <div className="grid gap-8 lg:grid-cols-2 pt-2 animate-in fade-in slide-in-from-bottom-12 duration-1000">
-        <div className="flex flex-col gap-8">
+      <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-bottom-12 duration-1000">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           <AccountsList accounts={accounts} onAddAccount={() => { setAccountToEdit(null); setIsAccountModalOpen(true); }} onAccountClick={(acc) => navigate(`/transactions/account/${acc.id}`)} onEditAccount={(acc) => { setAccountToEdit(acc); setIsAccountModalOpen(true); }} />
           <CreditCardsList cards={cards} transactions={transactions} onAddCard={() => setIsCreditCardModalOpen(true)} onDeleteCard={deleteCard} />
         </div>
 
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 gap-6">
-             <TransactionSummaryCard type="income" total={totalIncome} transactions={recentIncomes} onViewAll={() => navigate('/incomes')} onAdd={() => openTransactionModal('income')} onItemClick={handleTransactionItemClick} />
-             <TransactionSummaryCard type="expense" total={totalExpenses} transactions={recentExpenses} onViewAll={() => navigate('/expenses')} onAdd={() => openTransactionModal('expense')} onItemClick={handleTransactionItemClick} />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          <TransactionSummaryCard type="income" total={totalIncome} transactions={recentIncomes} onViewAll={() => navigate('/incomes')} onAdd={() => openTransactionModal('income')} onItemClick={handleTransactionItemClick} />
+          <TransactionSummaryCard type="expense" total={totalExpenses} transactions={recentExpenses} onViewAll={() => navigate('/expenses')} onAdd={() => openTransactionModal('expense')} onItemClick={handleTransactionItemClick} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           <CategoryChartCard title="Receitas por categoria" type="income" categories={incomeCategoriesData} total={totalIncome} onCategoryClick={(cat) => handleCategoryClick(cat, 'income')} />
           <CategoryChartCard title="Gastos por categoria" type="expense" categories={expenseCategoriesData} total={totalExpenses} onCategoryClick={(cat) => handleCategoryClick(cat, 'expense')} />
         </div>

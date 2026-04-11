@@ -58,9 +58,9 @@ export const BankLogo = ({ name, color, size = 'md' }: { name: string, color: st
 
 export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccount, onAccountClick, onEditAccount }) => {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-5 px-1">
-        <h3 className="text-xs font-bold text-slate-400">Minhas contas</h3>
+        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Minhas contas</h3>
         <button 
           onClick={onAddAccount} 
           className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-success/10 hover:text-success transition-all active:scale-90"
@@ -104,18 +104,16 @@ export const AccountsList: React.FC<AccountsListProps> = ({ accounts, onAddAccou
         ))}
 
         {accounts.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-12 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-200 dark:text-slate-600 shadow-sm border border-slate-100 dark:border-slate-800">
-                <span className="material-symbols-outlined text-3xl">account_balance</span>
+          <div className="flex flex-col items-center justify-center rounded-[32px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center shadow-sm">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/5 text-success/40">
+               <span className="material-symbols-outlined text-3xl">account_balance</span>
             </div>
-            <p className="text-xs font-bold text-slate-400 mb-6">Nenhuma conta conectada</p>
+            <h4 className="mb-2 text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">Nenhuma conta conectada</h4>
             <Button 
-                variant="primary" 
-                size="md" 
-                onClick={onAddAccount}
-                className="rounded-2xl font-bold text-xs bg-primary hover:bg-emerald-600 shadow-lg shadow-success/20"
+              onClick={onAddAccount}
+              className="bg-primary hover:bg-emerald-600 text-white font-bold text-xs px-8 rounded-2xl h-11 shadow-lg shadow-success/20"
             >
-                + Adicionar conta
+              + Adicionar conta
             </Button>
           </div>
         )}
