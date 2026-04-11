@@ -73,8 +73,11 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
   }, [isOpen, baseTransaction]);
 
   const filteredCategories = useMemo(() => {
-    return allCategories.filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase()));
-  }, [allCategories, categorySearch]);
+    const expectedType = baseTransaction?.type;
+    return allCategories
+      .filter(c => expectedType ? c.type === expectedType : true)
+      .filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase()));
+  }, [allCategories, categorySearch, baseTransaction?.type]);
 
   const selectedCategoryData = useMemo(() => {
     return allCategories.find(c => c.name === targetCategory);
@@ -260,11 +263,11 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
                 <button type="button" onClick={() => setIsCategorySelectorOpen(false)} className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600">
                    <span className="material-symbols-outlined">arrow_back</span>
                 </button>
-                <h3 className="text-sm font-bold text-slate-800">Escolha a Categoria</h3>
+                 <h3 className="text-sm font-bold text-slate-800">Selecionar Categoria</h3>
              </div>
              <div className="mb-4 relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-                <input type="text" placeholder="Buscar..." value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="w-full bg-slate-50 rounded-xl py-3 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-slate-100 transition-all" autoFocus />
+                 <input type="text" placeholder="Buscar categoria..." value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="w-full bg-slate-50 rounded-xl py-3 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-slate-100 transition-all" autoFocus />
              </div>
              <div className="flex-1 overflow-y-auto custom-scrollbar pb-4 pr-1">
                 {categorySearch.trim() && (
@@ -283,16 +286,24 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
                     </button>
                 )}
                 
-                <div className="grid grid-cols-3 gap-3">
+                 <div className="grid grid-cols-1 gap-2">
                    {filteredCategories.map(cat => (
-                      <button key={cat.id || cat.name} type="button" onClick={() => { setTargetCategory(cat.name); setIsCategorySelectorOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all active:scale-95">
-                         <div className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm text-white text-xl" style={{ backgroundColor: cat.color }}>
-                            <span className="material-symbols-outlined">{cat.icon || getIconByCategoryName(cat.name)}</span>
-                         </div>
-                         <span className="text-[10px] font-bold text-slate-600 text-center leading-tight line-clamp-2">{cat.name}</span>
-                      </button>
+                     <button
+                      key={cat.id || cat.name}
+                      type="button"
+                      onClick={() => { setTargetCategory(cat.name); setIsCategorySelectorOpen(false); }}
+                      className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5 text-left hover:bg-slate-50 transition-colors"
+                     >
+                      <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white text-lg" style={{ backgroundColor: cat.color }}>
+                        <span className="material-symbols-outlined">{cat.icon || getIconByCategoryName(cat.name)}</span>
+                      </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-800 leading-tight truncate">{cat.name}</p>
+                        <p className="text-[11px] font-bold uppercase text-slate-400 tracking-wide">{cat.type === 'income' ? 'Receita' : 'Despesa'}</p>
+                      </div>
+                     </button>
                    ))}
-                </div>
+                 </div>
                 
                 {filteredCategories.length === 0 && !categorySearch && (
                     <div className="text-center py-10 opacity-50">

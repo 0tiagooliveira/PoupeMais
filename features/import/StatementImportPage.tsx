@@ -57,6 +57,7 @@ export const StatementImportPage: React.FC = () => {
   const [categoryPickerType, setCategoryPickerType] = useState<'income' | 'expense' | 'all'>('expense');
   const [categoryPickerRowIndex, setCategoryPickerRowIndex] = useState<number | null>(null);
   const [categorySearch, setCategorySearch] = useState('');
+  const [isDestinationPanelExpanded, setIsDestinationPanelExpanded] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speechRecognitionRef = useRef<any>(null);
@@ -332,6 +333,40 @@ export const StatementImportPage: React.FC = () => {
       setDestinationId(suggestedDestinationId || SUGGESTED_DESTINATION_VALUE);
     }
   }, [hasResults, results, accounts, cards, detectedMetadata, destinationId]);
+
+  useEffect(() => {
+    if (!hasResults) {
+      setIsDestinationPanelExpanded(true);
+      return;
+    }
+
+    if (!destinationId) {
+      setIsDestinationPanelExpanded(true);
+      return;
+    }
+
+    setIsDestinationPanelExpanded(false);
+  }, [hasResults, destinationId]);
+
+  const getDestinationSummary = () => {
+    if (!destinationId || destinationId === SUGGESTED_DESTINATION_VALUE) {
+      const label = getSuggestedDestinationLabel() || 'Destino sugerido';
+      const typeLabel = getMostLikelySourceType() === 'card' ? 'Cartão' : 'Conta';
+      return { label, typeLabel, isSuggested: true };
+    }
+
+    const selectedCard = cards.find(card => card.id === destinationId);
+    if (selectedCard) {
+      return { label: selectedCard.name, typeLabel: 'Cartão', isSuggested: false };
+    }
+
+    const selectedAccount = accounts.find(account => account.id === destinationId);
+    if (selectedAccount) {
+      return { label: selectedAccount.name, typeLabel: 'Conta', isSuggested: false };
+    }
+
+    return { label: 'Destino selecionado', typeLabel: 'Manual', isSuggested: false };
+  };
 
   const editDraftAsBaseTransaction = (): Transaction | null => {
     if (!editDraft) return null;
@@ -881,172 +916,200 @@ export const StatementImportPage: React.FC = () => {
   // VIEW: REVIEW STATE
   if (hasResults) {
     return (
-        <div className="mx-auto max-w-3xl space-y-8 pb-32 animate-in fade-in duration-500">
-          <header className="flex items-center gap-4">
+        <div className="mx-auto max-w-3xl space-y-6 pb-32 px-3 sm:px-0 animate-in fade-in duration-500">
+          <header className="flex items-start gap-3 sm:items-center sm:gap-4">
             <Button variant="ghost" onClick={handleCancel} className="h-10 w-10 rounded-full p-0"><span className="material-symbols-outlined">close</span></Button>
             <div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Revisão em Lote</h2>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Confirme os dados extraídos</p>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-tight">Revisão em Lote</h2>
+              <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Confirme os dados extraídos</p>
             </div>
           </header>
 
-          <div className="bg-white p-6 rounded-[32px] border border-emerald-100 shadow-sm flex flex-col gap-4">
-             <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Destino dos Lançamentos</label>
-                <p className="text-xs text-slate-500 max-w-xs">
-                  O sistema sugere o destino correto com base na origem detectada. Confirme se estiver correto.
-                </p>
+          <div className="bg-white p-4 sm:p-6 rounded-[28px] border border-emerald-100 shadow-sm flex flex-col gap-4">
+             <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Destino dos Lançamentos</label>
+                  {!isDestinationPanelExpanded && (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5">
+                      <span className="material-symbols-outlined text-[14px] text-emerald-600">check_circle</span>
+                      <span className="text-[11px] font-black text-emerald-700 truncate max-w-[180px] sm:max-w-none">{getDestinationSummary().label}</span>
+                      <span className="text-[10px] font-bold text-emerald-700/80">• {getDestinationSummary().typeLabel}</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDestinationPanelExpanded(prev => !prev)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors"
+                >
+                  {isDestinationPanelExpanded ? 'Ocultar' : 'Alterar'}
+                  <span className="material-symbols-outlined text-sm">{isDestinationPanelExpanded ? 'expand_less' : 'expand_more'}</span>
+                </button>
              </div>
-             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-               <label className="flex flex-col gap-1">
-                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destino sugerido</span>
-                 <select 
-                    value={destinationId} 
-                    onChange={(e) => setDestinationId(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 w-full"
-                 >
-                    <option value="">Selecionar destino</option>
-                    {(getSuggestedDestinationLabel() || getSuggestedDestinationId()) && (
-                      <option value={getSuggestedDestinationId() || SUGGESTED_DESTINATION_VALUE}>
-                        ✨ {getSuggestedDestinationLabel() || 'Destino sugerido'} (sugerido)
-                      </option>
-                    )}
-                    {cards.length > 0 && (
-                        <optgroup label="Seus Cartões de Crédito">
-                            {cards.map(card => <option key={card.id} value={card.id}>💳 {card.name}</option>)}
-                        </optgroup>
-                    )}
-                    {accounts.length > 0 && (
-                        <optgroup label="Suas Contas Bancárias">
-                            {accounts.map(acc => <option key={acc.id} value={acc.id}>🏦 {acc.name}</option>)}
-                        </optgroup>
-                    )}
-                 </select>
-                 <p className="text-[11px] font-bold text-primary bg-primary/5 border border-primary/10 rounded-xl px-3 py-2">
-                   O sistema entendeu: <span className="font-black">{getSuggestedDestinationLabel() || 'sem sugestão'}</span>
-                   {getMostLikelySourceType() === 'card' ? ' • Cartão' : ' • Conta'}
+
+             {isDestinationPanelExpanded && (
+               <>
+                 <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
+                   O sistema sugere o destino correto com base na origem detectada. Confirme se estiver correto.
                  </p>
-               </label>
 
-               <div className="flex gap-2">
-                 <Button
-                   type="button"
-                   variant="secondary"
-                   onClick={() => setIsAccountModalOpen(true)}
-                   className="rounded-xl px-3 py-3 text-xs font-black whitespace-nowrap"
-                 >
-                   + Conta
-                 </Button>
-                 <Button
-                   type="button"
-                   variant="secondary"
-                   onClick={() => setIsCreditCardModalOpen(true)}
-                   className="rounded-xl px-3 py-3 text-xs font-black whitespace-nowrap"
-                 >
-                   + Cartão
-                 </Button>
-               </div>
-             </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+                   <label className="flex flex-col gap-1">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destino sugerido</span>
+                     <select 
+                        value={destinationId} 
+                        onChange={(e) => setDestinationId(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 w-full"
+                     >
+                        <option value="">Selecionar destino</option>
+                        {(getSuggestedDestinationLabel() || getSuggestedDestinationId()) && (
+                          <option value={getSuggestedDestinationId() || SUGGESTED_DESTINATION_VALUE}>
+                            ✨ {getSuggestedDestinationLabel() || 'Destino sugerido'} (sugerido)
+                          </option>
+                        )}
+                        {cards.length > 0 && (
+                            <optgroup label="Seus Cartões de Crédito">
+                                {cards.map(card => <option key={card.id} value={card.id}>💳 {card.name}</option>)}
+                            </optgroup>
+                        )}
+                        {accounts.length > 0 && (
+                            <optgroup label="Suas Contas Bancárias">
+                                {accounts.map(acc => <option key={acc.id} value={acc.id}>🏦 {acc.name}</option>)}
+                            </optgroup>
+                        )}
+                     </select>
+                     <p className="text-[11px] font-bold text-primary bg-primary/5 border border-primary/10 rounded-xl px-3 py-2">
+                       O sistema entendeu: <span className="font-black">{getSuggestedDestinationLabel() || 'sem sugestão'}</span>
+                       {getMostLikelySourceType() === 'card' ? ' • Cartão' : ' • Conta'}
+                     </p>
+                   </label>
 
-             {destinationId === SUGGESTED_DESTINATION_VALUE ? (
-               <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-                 Sugestão aplicada automaticamente com base na origem detectada.
-               </p>
-             ) : destinationId ? (
-               <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-                 Destino fixo aplicado: todos os lançamentos selecionados irão para este destino.
-               </p>
-             ) : (
-               <p className="text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
-                 Nenhuma sugestão compatível foi encontrada. Você ainda pode escolher uma conta ou cartão manualmente.
-               </p>
+                   <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-2">
+                     <Button
+                       type="button"
+                       variant="secondary"
+                       onClick={() => setIsAccountModalOpen(true)}
+                       className="rounded-xl px-3 py-3 text-xs font-black whitespace-nowrap w-full"
+                     >
+                       + Conta
+                     </Button>
+                     <Button
+                       type="button"
+                       variant="secondary"
+                       onClick={() => setIsCreditCardModalOpen(true)}
+                       className="rounded-xl px-3 py-3 text-xs font-black whitespace-nowrap w-full"
+                     >
+                       + Cartão
+                     </Button>
+                   </div>
+                 </div>
+
+                 {destinationId === SUGGESTED_DESTINATION_VALUE ? (
+                   <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                     Sugestão aplicada automaticamente com base na origem detectada.
+                   </p>
+                 ) : destinationId ? (
+                   <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                     Destino fixo aplicado: todos os lançamentos selecionados irão para este destino.
+                   </p>
+                 ) : (
+                   <p className="text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+                     Nenhuma sugestão compatível foi encontrada. Você ainda pode escolher uma conta ou cartão manualmente.
+                   </p>
+                 )}
+               </>
              )}
           </div>
 
-          <section className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="bg-slate-50 px-8 py-5 flex items-center justify-between border-b border-slate-100">
+          <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-slate-50 px-4 sm:px-8 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identificado ({selectedCount})</span>
                    <span className="text-[9px] font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">Automático</span>
                 </div>
-                <span className={`text-sm font-bold tracking-tighter ${totalAmount >= 0 ? 'text-success' : 'text-danger'}`}>
+                <span className={`text-sm font-bold tracking-tighter ${totalAmount >= 0 ? 'text-success' : 'text-danger'} sm:self-auto self-start`}>
                   {formatCurrency(totalAmount)}
                 </span>
             </div>
 
-            <div className="divide-y divide-slate-50 max-h-[500px] overflow-y-auto custom-scrollbar">
+            <div className="divide-y divide-slate-50 max-h-[58vh] sm:max-h-[500px] overflow-y-auto custom-scrollbar">
               {results.map((t, i) => (
                 <div
                   key={i}
-                  className={`group flex items-center justify-between px-6 py-4 transition-all hover:bg-slate-50 ${!t.selected ? 'opacity-40 grayscale' : ''}`}
+                  className={`group flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 transition-all hover:bg-slate-50 ${!t.selected ? 'opacity-40 grayscale' : ''}`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggleTransaction(i)}
-                    className={`mr-4 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 transition-all ${t.selected ? 'bg-primary border-primary text-white shadow-sm' : 'border-slate-200 bg-white text-transparent'}`}
-                    aria-label={t.selected ? 'Desmarcar lançamento' : 'Marcar lançamento'}
-                  >
-                    <span className="material-symbols-outlined text-sm font-black">check</span>
-                  </button>
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleTransaction(i)}
+                      className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 transition-all ${t.selected ? 'bg-primary border-primary text-white shadow-sm' : 'border-slate-200 bg-white text-transparent'}`}
+                      aria-label={t.selected ? 'Desmarcar lançamento' : 'Marcar lançamento'}
+                    >
+                      <span className="material-symbols-outlined text-sm font-black">check</span>
+                    </button>
 
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openTransactionEditor(i)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openTransactionEditor(i);
-                      }
-                    }}
-                    className="flex min-w-0 flex-1 items-center gap-4 text-left cursor-pointer"
-                  >
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm text-slate-400 shrink-0">
                       <span className="material-symbols-outlined text-xl">{getCategoryIcon(t.category, t.type)}</span>
                     </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-slate-800 leading-none mb-1 truncate">{removeInstallmentText(t.description)}</p>
-                        {t.installmentNumber && t.totalInstallments && (
-                          <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 uppercase whitespace-nowrap">
-                            {t.installmentNumber}/{t.totalInstallments}
-                          </span>
-                        )}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openTransactionEditor(i)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openTransactionEditor(i);
+                        }
+                      }}
+                      className="min-w-0 flex-1 cursor-pointer text-left"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[15px] sm:text-sm font-black text-slate-800 leading-tight truncate">{removeInstallmentText(t.description)}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-medium text-slate-400 uppercase tracking-tight">
+                            <span>{new Date(t.date).toLocaleDateString()}</span>
+                            {t.installmentNumber && t.totalInstallments && (
+                              <span className="inline-flex items-center rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[9px] font-black text-indigo-600 whitespace-nowrap">
+                                Parcela {t.installmentNumber}/{t.totalInstallments}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`text-base sm:hidden font-black tracking-tighter whitespace-nowrap ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>
+                          {t.type === 'income' ? '+' : ''}{formatCurrency(t.amount)}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400 uppercase tracking-tight flex-wrap">
-                        <span>{new Date(t.date).toLocaleDateString()}</span>
-                        <span className="h-1 w-1 rounded-full bg-slate-200"></span>
 
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={(e) => toggleSourceType(i, e)}
-                          className={`flex cursor-pointer items-center gap-1 px-2 py-1 rounded-full border transition-all hover:brightness-95 active:scale-95 ${t.sourceType === 'card' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}
+                          className={`flex cursor-pointer items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-all hover:bg-slate-100 active:scale-95`}
                           title="Trocar origem"
                         >
                           <span className="material-symbols-outlined text-[14px]">{t.sourceType === 'card' ? 'credit_card' : 'account_balance'}</span>
                           <span className="truncate max-w-[120px] font-bold text-[10px]">{t.bankName?.toLowerCase().startsWith('importado') ? 'Importado' : t.bankName}</span>
                         </button>
 
-                        <span className="h-1 w-1 rounded-full bg-slate-200"></span>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             openCategoryPicker('row', t.type, i);
                           }}
-                          className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-2 py-1 hover:bg-emerald-100 transition-colors"
+                          className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1.5 hover:bg-slate-100 transition-colors"
                         >
-                          <span className="material-symbols-outlined text-[14px]" style={{ color: getCategoryColor(t.category, t.type) }}>{getCategoryIcon(t.category, t.type)}</span>
-                          <span className="text-[10px] font-black" style={{ color: getCategoryColor(t.category, t.type) }}>{t.category}</span>
-                          <span className="material-symbols-outlined text-[12px] text-emerald-600">expand_more</span>
+                          <span className="material-symbols-outlined text-[14px] text-slate-500">{getCategoryIcon(t.category, t.type)}</span>
+                          <span className="text-[10px] font-black text-slate-600">{t.category}</span>
+                          <span className="material-symbols-outlined text-[12px] text-slate-500">expand_more</span>
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 pl-2">
-                    <span className={`text-sm font-black tracking-tighter whitespace-nowrap ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>
+                  <div className="flex items-center justify-end gap-3 pl-0 sm:pl-2">
+                    <span className={`hidden sm:inline text-base sm:text-sm font-black tracking-tighter whitespace-nowrap ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>
                       {t.type === 'income' ? '+' : ''}{formatCurrency(t.amount)}
                     </span>
                     <button
@@ -1055,7 +1118,7 @@ export const StatementImportPage: React.FC = () => {
                         e.stopPropagation();
                         openTransactionEditor(i);
                       }}
-                      className="flex h-8 min-w-[88px] items-center justify-center gap-1 rounded-lg border border-slate-100 bg-white px-3 text-slate-500 hover:text-primary hover:border-primary/20 hover:shadow-sm transition-all"
+                      className="flex h-9 min-w-[84px] items-center justify-center gap-1 rounded-lg border border-slate-100 bg-white px-3 text-slate-500 hover:text-primary hover:border-primary/20 hover:shadow-sm transition-all"
                       aria-label="Editar lançamento"
                     >
                       <span className="material-symbols-outlined text-base">edit</span>
@@ -1067,11 +1130,11 @@ export const StatementImportPage: React.FC = () => {
             </div>
           </section>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <Button 
               variant="secondary" 
               onClick={handleCancel} 
-              className="flex-1 py-5 rounded-[24px] font-black text-sm border-slate-200 text-slate-500 hover:text-slate-700"
+              className="flex-1 py-4 sm:py-5 rounded-[24px] font-black text-sm border-slate-200 text-slate-500 hover:text-slate-700"
             >
               Cancelar
             </Button>
@@ -1079,7 +1142,7 @@ export const StatementImportPage: React.FC = () => {
               onClick={saveTransactions} 
               isLoading={isSaving} 
               disabled={selectedCount === 0}
-              className="flex-[2] py-5 rounded-[24px] bg-success hover:bg-emerald-600 text-white font-black text-sm shadow-xl shadow-success/20"
+              className="flex-[2] py-4 sm:py-5 rounded-[24px] bg-success hover:bg-emerald-600 text-white font-black text-sm shadow-xl shadow-success/20"
             >
               Salvar Tudo
             </Button>
