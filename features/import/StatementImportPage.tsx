@@ -638,6 +638,44 @@ export const StatementImportPage: React.FC = () => {
       accounts.forEach(acc => accountsMap.set(acc.name.toLowerCase(), acc.id));
       cards.forEach(card => cardsMap.set(card.name.toLowerCase(), card.id));
 
+      const ensureCardDestination = (name: string) => {
+        const normalizedName = name.toLowerCase();
+        const existingCardName = Array.from(cardsMap.keys()).find(cardName => cardName.includes(normalizedName) || normalizedName.includes(cardName));
+        if (existingCardName) return cardsMap.get(existingCardName)!;
+
+        const newCardRef = userRef.collection('credit_cards').doc();
+        batch.set(newCardRef, {
+          name,
+          limit: detectedMetadata?.limit || 1000,
+          closingDay: detectedMetadata?.closingDay || 1,
+          dueDay: detectedMetadata?.dueDay || 10,
+          color: getBankColor(name),
+          createdAt: new Date().toISOString()
+        });
+        cardsMap.set(normalizedName, newCardRef.id);
+        addNotification(`Cartão "${name}" criado.`, 'info');
+        return newCardRef.id;
+      };
+
+      const ensureAccountDestination = (name: string) => {
+        const normalizedName = name.toLowerCase();
+        const existingAccountName = Array.from(accountsMap.keys()).find(accountName => accountName.includes(normalizedName) || normalizedName.includes(accountName));
+        if (existingAccountName) return accountsMap.get(existingAccountName)!;
+
+        const newAccountRef = userRef.collection('accounts').doc();
+        batch.set(newAccountRef, {
+          name,
+          type: 'Corrente',
+          balance: 0,
+          initialBalance: 0,
+          color: getBankColor(name),
+          createdAt: new Date().toISOString()
+        });
+        accountsMap.set(normalizedName, newAccountRef.id);
+        addNotification(`Conta "${name}" criada.`, 'info');
+        return newAccountRef.id;
+      };
+
       let futureInstallmentsCount = 0;
       let duplicatesSkipped = 0;
       let savedCount = 0;
@@ -685,6 +723,9 @@ export const StatementImportPage: React.FC = () => {
                 if (suggestedAccountName) {
                   targetId = accountsMap.get(suggestedAccountName)!;
                   isCard = false;
+                } else {
+                  // Se o destino sugerido não existir, cria automaticamente conforme o tipo inferido.
+                  targetId = isCard ? ensureCardDestination(bankName) : ensureAccountDestination(bankName);
                 }
               }
             } else {
@@ -696,52 +737,22 @@ export const StatementImportPage: React.FC = () => {
             }
         } else {
             if (isCard) {
-                const existingCardName = Array.from(cardsMap.keys()).find(name => name.includes(normalizedBankName) || normalizedBankName.includes(name));
-                if (existingCardName) {
-                    targetId = cardsMap.get(existingCardName)!;
-                } else {
-                    const newCardRef = userRef.collection('credit_cards').doc();
-                    batch.set(newCardRef, {
-                        name: bankName,
-                        limit: detectedMetadata?.limit || 1000,
-                        closingDay: detectedMetadata?.closingDay || 1,
-                        dueDay: detectedMetadata?.dueDay || 10,
-                        color: getBankColor(bankName),
-                        createdAt: new Date().toISOString()
-                    });
-                    targetId = newCardRef.id;
-                    // ATUALIZA O MAPA IMEDIATAMENTE para evitar duplicatas na mesma importação
-                    cardsMap.set(normalizedBankName, targetId);
-                    addNotification(`Cartão "${bankName}" criado.`, 'info');
-                }
+            targetId = ensureCardDestination(bankName);
             } else {
-                const existingAccountName = Array.from(accountsMap.keys()).find(name => name.includes(normalizedBankName) || normalizedBankName.includes(name));
-                if (existingAccountName) {
-                    targetId = accountsMap.get(existingAccountName)!;
-                } else {
-                    const newAccountRef = userRef.collection('accounts').doc();
-                    batch.set(newAccountRef, {
-                        name: bankName,
-                        type: 'Corrente',
-                        balance: 0,
-                        initialBalance: 0,
-                        color: getBankColor(bankName),
-                        createdAt: new Date().toISOString()
-                    });
-                    targetId = newAccountRef.id;
-                    // ATUALIZA O MAPA IMEDIATAMENTE para evitar duplicatas na mesma importação
-                    accountsMap.set(normalizedBankName, targetId);
-                    addNotification(`Conta "${bankName}" criada.`, 'info');
-                }
+            targetId = ensureAccountDestination(bankName);
             }
         }
 
         savedCount++;
         const transRef = userRef.collection('transactions').doc();
         const { selected, sourceType, bankName: bName, ...transactionData } = t;
+        const normalizedDescription = (installmentNumber && totalInstallments)
+          ? removeInstallmentText(t.description)
+          : (t.description || '').trim();
         
         batch.set(transRef, {
           ...transactionData,
+          description: normalizedDescription,
           accountId: targetId,
           status: 'completed',
           createdAt: new Date().toISOString(),
@@ -786,7 +797,7 @@ export const StatementImportPage: React.FC = () => {
                 const futureRef = userRef.collection('transactions').doc();
                 batch.set(futureRef, {
                     ...transactionData,
-                    description: `${baseDesc} ${nextInst}/${totalInstallments}`, 
+                  description: baseDesc,
                     accountId: targetId,
                     status: 'pending', 
                     date: nextDate.toISOString(),
