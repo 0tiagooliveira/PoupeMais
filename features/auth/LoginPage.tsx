@@ -168,7 +168,7 @@ export const LoginPage: React.FC = () => {
               <input
                 type="checkbox"
                 checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.value)}
+                onChange={(e) => setRememberMe(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-success focus:ring-success accent-success"
               />
               <span className="text-xs font-bold text-slate-500 group-hover:text-slate-800 transition-colors">

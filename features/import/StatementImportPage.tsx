@@ -6,20 +6,26 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCreditCards } from '../../hooks/useCreditCards';
+import { useCategories } from '../../hooks/useCategories';
 import { useProcessing } from '../../contexts/ProcessingContext';
 import { formatCurrency } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Modal } from '../../components/ui/Modal';
 import { BackButton } from '../../components/ui/BackButton';
 import { getIconByCategoryName } from '../../utils/categoryIcons';
 import { NewAccountModal } from '../dashboard/components/NewAccountModal';
-import { BankLogo } from '../dashboard/components/AccountsList';
-import { DetectedTransaction, InputMode } from '../../types';
+import { NewCreditCardModal } from '../dashboard/components/NewCreditCardModal';
+import { AutomationRulesModal } from '../automation/AutomationRulesModal';
+import { DetectedTransaction, InputMode, Transaction, AutomationRule } from '../../types';
 
 export const StatementImportPage: React.FC = () => {
+  const SUGGESTED_DESTINATION_VALUE = '__suggested_destination__';
   const { currentUser } = useAuth();
   const { addNotification } = useNotification();
   const { accounts, addAccount } = useAccounts();
-  const { cards } = useCreditCards();
+  const { cards, addCard } = useCreditCards();
+  const { allCategories } = useCategories();
   
   const { 
     isProcessing, 
@@ -39,8 +45,32 @@ export const StatementImportPage: React.FC = () => {
   const [destinationId, setDestinationId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isCreditCardModalOpen, setIsCreditCardModalOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<DetectedTransaction | null>(null);
+  const [editAmountInput, setEditAmountInput] = useState('');
+  const [isAutomationRuleModalOpen, setIsAutomationRuleModalOpen] = useState(false);
+  const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
+  const [categoryPickerMode, setCategoryPickerMode] = useState<'row' | 'edit'>('row');
+  const [categoryPickerType, setCategoryPickerType] = useState<'income' | 'expense' | 'all'>('expense');
+  const [categoryPickerRowIndex, setCategoryPickerRowIndex] = useState<number | null>(null);
+  const [categorySearch, setCategorySearch] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const speechRecognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    const w = window as any;
+    setSpeechSupported(Boolean(w.SpeechRecognition || w.webkitSpeechRecognition));
+
+    return () => {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -66,12 +96,381 @@ export const StatementImportPage: React.FC = () => {
     setResults(newTrans);
   };
 
+  const formatBrlInput = (raw: string) => {
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return '';
+    const value = Number(digits) / 100;
+    return value.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const parseBrlInput = (value: string) => {
+    const normalized = value.replace(/\./g, '').replace(',', '.').replace(/[^0-9.]/g, '');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const normalizeText = (value: string) => value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  const getMostLikelyDestination = () => {
+    const sourceTypeCounts = new Map<'account' | 'card', number>();
+
+    results.forEach((transaction) => {
+      const sourceType = transaction.sourceType || 'card';
+      sourceTypeCounts.set(sourceType, (sourceTypeCounts.get(sourceType) || 0) + 1);
+    });
+
+    const suggestedSourceType = (sourceTypeCounts.get('card') || 0) >= (sourceTypeCounts.get('account') || 0)
+      ? 'card'
+      : 'account';
+
+    const bankName = detectedMetadata?.bankName?.trim() || (() => {
+      const bankCounts = new Map<string, { label: string; count: number }>();
+
+      results.forEach((transaction) => {
+        const transactionBankName = transaction.bankName?.trim();
+        if (!transactionBankName) return;
+
+        const normalized = normalizeText(transactionBankName);
+        const existing = bankCounts.get(normalized);
+        bankCounts.set(normalized, {
+          label: existing?.label || transactionBankName,
+          count: (existing?.count || 0) + 1,
+        });
+      });
+
+      let topBankName = '';
+      let topCount = 0;
+
+      bankCounts.forEach((entry) => {
+        if (entry.count > topCount) {
+          topBankName = entry.label;
+          topCount = entry.count;
+        }
+      });
+
+      return topBankName;
+    })();
+
+    if (!bankName) return null;
+
+    return { bankName, sourceType: suggestedSourceType } as const;
+  };
+
+  const getMostLikelyBankName = () => {
+    const suggestedDestination = getMostLikelyDestination();
+    if (suggestedDestination) return suggestedDestination.bankName;
+
+    return '';
+  };
+
+  const getMostLikelySourceType = () => {
+    const suggestedDestination = getMostLikelyDestination();
+    return suggestedDestination?.sourceType || 'card';
+  };
+
+  const getSuggestedDestinationLabel = () => {
+    if (detectedMetadata?.bankName?.trim()) {
+      return detectedMetadata.bankName.trim();
+    }
+    return getMostLikelyBankName();
+  };
+
+  const getSuggestedDestinationId = () => {
+    const bankName = getSuggestedDestinationLabel();
+    if (!bankName) return '';
+
+    const normalizedBankName = normalizeText(bankName);
+
+    const matchingCard = cards.find((card) => {
+      const normalizedCardName = normalizeText(card.name);
+      return normalizedCardName.includes(normalizedBankName) || normalizedBankName.includes(normalizedCardName);
+    });
+
+    if (matchingCard) {
+      return matchingCard.id;
+    }
+
+    const matchingAccount = accounts.find((account) => {
+      const normalizedAccountName = normalizeText(account.name);
+      return normalizedAccountName.includes(normalizedBankName) || normalizedBankName.includes(normalizedAccountName);
+    });
+
+    return matchingAccount?.id || '';
+  };
+
+  const getCategoryDefinition = (name: string, type?: 'income' | 'expense') => {
+    const normalizedName = normalizeText(name);
+    return allCategories.find((category) => (type ? category.type === type : true) && normalizeText(category.name) === normalizedName);
+  };
+
+  const getCategoryIcon = (name: string, type?: 'income' | 'expense') => {
+    const category = getCategoryDefinition(name, type);
+    return category?.icon || getIconByCategoryName(name);
+  };
+
+  const getCategoryColor = (name: string, type?: 'income' | 'expense') => {
+    return getCategoryDefinition(name, type)?.color || '#94A3B8';
+  };
+
+  const openCategoryPicker = (mode: 'row' | 'edit', type: 'income' | 'expense' | 'all', rowIndex: number | null = null) => {
+    setCategoryPickerMode(mode);
+    setCategoryPickerType(type);
+    setCategoryPickerRowIndex(rowIndex);
+    setCategorySearch('');
+    setIsCategoryPickerOpen(true);
+  };
+
+  const closeCategoryPicker = () => {
+    setIsCategoryPickerOpen(false);
+    setCategoryPickerRowIndex(null);
+    setCategorySearch('');
+  };
+
+  const applyPickedCategory = (categoryName: string) => {
+    if (categoryPickerMode === 'row' && categoryPickerRowIndex !== null) {
+      setTransactionCategory(categoryPickerRowIndex, categoryName);
+    } else {
+      setEditDraft(prev => prev ? { ...prev, category: categoryName } : prev);
+    }
+
+    closeCategoryPicker();
+  };
+
+  const removeInstallmentText = (description: string) => {
+    return description
+      .replace(/\s*-\s*parcela\s*\d{1,2}\s*\/\s*\d{1,2}/gi, '')
+      .replace(/\s+parcela\s*\d{1,2}\s*\/\s*\d{1,2}/gi, '')
+      .replace(/\s+\d{1,2}\s*\/\s*\d{1,2}\s*$/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  };
+
+  const inferInstallmentInfo = (transaction: Pick<DetectedTransaction, 'description' | 'installmentNumber' | 'totalInstallments'>) => {
+    if (transaction.installmentNumber && transaction.totalInstallments) {
+      return {
+        installmentNumber: transaction.installmentNumber,
+        totalInstallments: transaction.totalInstallments,
+      };
+    }
+
+    const description = transaction.description || '';
+    const patterns = [
+      /parcela\s*(\d{1,3})\s*[\/-]\s*(\d{1,3})/i,
+      /\b(\d{1,3})\s*[\/-]\s*(\d{1,3})\b/i,
+      /(\d{1,3})\s+de\s+(\d{1,3})/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = description.match(pattern);
+      if (!match) continue;
+
+      const current = Number(match[1]);
+      const total = Number(match[2]);
+
+      if (!Number.isFinite(current) || !Number.isFinite(total)) continue;
+      if (current < 1 || total < 2 || current > total) continue;
+      if (total > 120) continue;
+
+      return {
+        installmentNumber: current,
+        totalInstallments: total,
+      };
+    }
+
+    return {
+      installmentNumber: undefined,
+      totalInstallments: undefined,
+    };
+  };
+
+  const buildTransactionSignature = (params: {
+    dateStr: string;
+    amount: number;
+    description: string;
+    type: 'income' | 'expense';
+    installmentNumber?: number;
+    totalInstallments?: number;
+  }) => {
+    const baseDescription = removeInstallmentText(params.description).trim().toLowerCase();
+    const installmentKey = params.installmentNumber && params.totalInstallments
+      ? `${params.installmentNumber}/${params.totalInstallments}`
+      : 'single';
+    return `${params.dateStr}|${params.amount.toFixed(2)}|${baseDescription}|${params.type}|${installmentKey}`;
+  };
+
+  const setTransactionCategory = (index: number, category: string) => {
+    const next = [...results];
+    next[index] = { ...next[index], category };
+    setResults(next);
+  };
+
+  const openTransactionEditor = (index: number) => {
+    setEditingIndex(index);
+    setEditDraft({ ...results[index] });
+    setEditAmountInput((results[index].amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  };
+
+  const closeTransactionEditor = () => {
+    setEditingIndex(null);
+    setEditDraft(null);
+    setEditAmountInput('');
+    setIsAutomationRuleModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (!hasResults) return;
+
+    const suggestedDestinationId = getSuggestedDestinationId();
+    if (!destinationId) {
+      setDestinationId(suggestedDestinationId || SUGGESTED_DESTINATION_VALUE);
+    }
+  }, [hasResults, results, accounts, cards, detectedMetadata, destinationId]);
+
+  const editDraftAsBaseTransaction = (): Transaction | null => {
+    if (!editDraft) return null;
+
+    return {
+      id: `import-preview-${editingIndex ?? 0}`,
+      description: editDraft.description,
+      amount: editDraft.amount,
+      type: editDraft.type,
+      category: editDraft.category,
+      accountId: destinationId || '',
+      date: editDraft.date,
+      status: 'pending',
+      isFixed: false,
+      isRecurring: false,
+      createdAt: new Date().toISOString(),
+      installmentNumber: editDraft.installmentNumber,
+      totalInstallments: editDraft.totalInstallments,
+    };
+  };
+
+  const saveTransactionEditor = () => {
+    if (editingIndex === null || !editDraft) return;
+
+    const next = [...results];
+    next[editingIndex] = {
+      ...next[editingIndex],
+      ...editDraft,
+      amount: parseBrlInput(editAmountInput) || next[editingIndex].amount,
+      description: editDraft.description.trim() || next[editingIndex].description,
+      category: editDraft.category.trim() || next[editingIndex].category,
+      bankName: editDraft.bankName?.trim() || next[editingIndex].bankName,
+      sourceType: editDraft.sourceType || next[editingIndex].sourceType,
+    };
+
+    setResults(next);
+    closeTransactionEditor();
+    addNotification('Lançamento atualizado.', 'success');
+  };
+
+  const handleApplyRuleToEditDraft = (updates: Partial<any>) => {
+    // Aplica os updates da regra automática ao draft em edição
+    if (!editDraft) return;
+
+    const updatedDraft = { ...editDraft };
+    
+    // Aplicar updates
+    if (updates.category) updatedDraft.category = updates.category;
+    if (updates.description) updatedDraft.description = updates.description;
+    if (updates.isIgnored !== undefined) updatedDraft.isIgnored = updates.isIgnored;
+
+    setEditDraft(updatedDraft);
+  };
+
+  const handleRuleCreatedInImportPreview = (rule: Omit<AutomationRule, 'id'>) => {
+    const normalize = (value: string) => value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const normalizedCondition = normalize(rule.conditions.descriptionContains || '');
+    if (!normalizedCondition) return;
+
+    const applyRule = (item: DetectedTransaction): DetectedTransaction => {
+      const normalizedDescription = normalize(item.description || '');
+      if (!normalizedDescription.includes(normalizedCondition)) return item;
+      if (rule.conditions.amountMin && item.amount < parseFloat(rule.conditions.amountMin)) return item;
+      if (rule.conditions.amountMax && item.amount > parseFloat(rule.conditions.amountMax)) return item;
+
+      const updated = { ...item };
+      if (rule.actions.categoryId) updated.category = rule.actions.categoryId;
+      if (rule.actions.renameTo) updated.description = rule.actions.renameTo;
+      return updated;
+    };
+
+    setResults(prev => prev.map(applyRule));
+
+    setEditDraft(prev => {
+      if (!prev) return prev;
+      const updatedDraft = applyRule(prev);
+      return { ...prev, ...updatedDraft };
+    });
+  };
+
   const toggleSourceType = (index: number, e: React.MouseEvent) => {
     e.stopPropagation(); 
     const newTrans = [...results];
     const current = newTrans[index].sourceType;
     newTrans[index].sourceType = current === 'card' ? 'account' : 'card';
     setResults(newTrans);
+  };
+
+  const handleVoiceCapture = () => {
+    if (!speechSupported) {
+      addNotification('Seu navegador não suporta reconhecimento de voz.', 'warning');
+      return;
+    }
+
+    const w = window as any;
+    const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
+
+    if (isRecording) {
+      speechRecognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript + ' ';
+        }
+      }
+
+      if (finalTranscript.trim()) {
+        setTextInput(prev => `${prev.trim()} ${finalTranscript.trim()}`.trim());
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsRecording(false);
+      addNotification('Falha na captura de voz. Tente novamente.', 'warning');
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    speechRecognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
   };
 
   const getBankColor = (bankName: string) => {
@@ -84,9 +483,116 @@ export const StatementImportPage: React.FC = () => {
     return '#21C25E';
   };
 
+  const applyAutomationRulesToTransactions = async (transactions: DetectedTransaction[]) => {
+    try {
+      if (!currentUser) {
+        console.warn('[AUTOMATION] currentUser não disponível');
+        return transactions;
+      }
+
+      console.log('[AUTOMATION] Aplicando regras a', transactions.length, 'transações');
+
+      // Buscar todas as regras do usuário
+      const rulesSnapshot = await db.collection('users')
+        .doc(currentUser.uid)
+        .collection('automation_rules')
+        .where('isActive', '==', true)
+        .get();
+
+      console.log('[AUTOMATION] Regras encontradas:', rulesSnapshot.docs.length);
+
+      if (rulesSnapshot.empty) {
+        console.log('[AUTOMATION] Nenhuma regra ativa encontrada');
+        return transactions;
+      }
+
+      const rules = rulesSnapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('[AUTOMATION] Regra:', {
+          descriptionContains: data.conditions?.descriptionContains,
+          categoryId: data.actions?.categoryId,
+          renameTo: data.actions?.renameTo
+        });
+        return data;
+      });
+
+      const normalizeText = (value: string) => value
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      // Aplicar regras a cada transação
+      const result = transactions.map(trans => {
+        let modified = { ...trans };
+
+        for (const rule of rules) {
+          const normalizedCondition = normalizeText(rule.conditions?.descriptionContains || '');
+          const normalizedDescription = normalizeText(modified.description || '');
+
+          // DEBUG
+          console.log('[AUTOMATION] Testando:', {
+            original: modified.description,
+            normalizado: normalizedDescription,
+            condicao: normalizedCondition,
+            match: normalizedDescription.includes(normalizedCondition)
+          });
+
+          // Verificar se a descrição contém o texto procurado
+          if (!normalizedDescription.includes(normalizedCondition)) continue;
+
+          // Verificar condições adicionais
+          if (rule.conditions?.amountMin && modified.amount < parseFloat(rule.conditions.amountMin)) {
+            console.log('[AUTOMATION] Pulando por amountMin');
+            continue;
+          }
+          if (rule.conditions?.amountMax && modified.amount > parseFloat(rule.conditions.amountMax)) {
+            console.log('[AUTOMATION] Pulando por amountMax');
+            continue;
+          }
+
+          // Aplicar ações
+          console.log('[AUTOMATION] ✅ MATCH ENCONTRADO! Aplicando ações...');
+          
+          if (rule.actions?.categoryId) {
+            console.log('[AUTOMATION] Alterando categoria de', modified.category, 'para', rule.actions.categoryId);
+            modified.category = rule.actions.categoryId;
+          }
+          if (rule.actions?.renameTo) {
+            console.log('[AUTOMATION] Renomeando de', modified.description, 'para', rule.actions.renameTo);
+            modified.description = rule.actions.renameTo;
+          }
+          if (rule.actions?.isIgnored) {
+            console.log('[AUTOMATION] Marcando como ignorada');
+            modified.isIgnored = rule.actions.isIgnored;
+          }
+
+          // Parar na primeira regra que combinar
+          break;
+        }
+
+        return modified;
+      });
+
+      console.log('[AUTOMATION] Resultado:', result);
+      return result;
+    } catch (err) {
+      console.error('[AUTOMATION] Erro ao aplicar regras:', err);
+      return transactions; // Retorna original se houver erro
+    }
+  };
+
   const saveTransactions = async () => {
-    const toSave = results.filter(t => t.selected);
+    let toSave = results.filter(t => t.selected);
     if (toSave.length === 0) return;
+
+    // Aplicar regras de automação antes de salvar
+    toSave = await applyAutomationRulesToTransactions(toSave);
+
+    const suggestedDestination = getMostLikelyDestination();
+    const forcedDestinationName = destinationId === SUGGESTED_DESTINATION_VALUE ? suggestedDestination?.bankName : '';
+    const forcedSourceType = destinationId === SUGGESTED_DESTINATION_VALUE ? suggestedDestination?.sourceType : undefined;
 
     setIsSaving(true);
     try {
@@ -110,9 +616,19 @@ export const StatementImportPage: React.FC = () => {
       existingSnap.docs.forEach(doc => {
           const d = doc.data();
           const dateStr = d.date.split('T')[0];
-          const desc = d.description.trim().toLowerCase();
-          const amount = parseFloat(d.amount).toFixed(2);
-          const sig = `${dateStr}|${amount}|${desc}|${d.type}`;
+          const inferred = inferInstallmentInfo({
+            description: d.description || '',
+            installmentNumber: d.installmentNumber,
+            totalInstallments: d.totalInstallments,
+          });
+          const sig = buildTransactionSignature({
+            dateStr,
+            amount: Number(d.amount),
+            description: d.description || '',
+            type: d.type,
+            installmentNumber: inferred.installmentNumber,
+            totalInstallments: inferred.totalInstallments,
+          });
           existingSignatures.add(sig);
       });
 
@@ -127,28 +643,57 @@ export const StatementImportPage: React.FC = () => {
       let savedCount = 0;
 
       for (const t of toSave) {
+        const inferredInstallments = inferInstallmentInfo({
+          description: t.description,
+          installmentNumber: t.installmentNumber,
+          totalInstallments: t.totalInstallments,
+        });
+        const installmentNumber = inferredInstallments.installmentNumber;
+        const totalInstallments = inferredInstallments.totalInstallments;
+
         const tDateStr = t.date.includes('T') ? t.date.split('T')[0] : t.date;
-        const tDesc = t.description.trim().toLowerCase();
-        const tAmount = t.amount.toFixed(2);
-        const tSig = `${tDateStr}|${tAmount}|${tDesc}|${t.type}`;
+        const tSig = buildTransactionSignature({
+          dateStr: tDateStr,
+          amount: t.amount,
+          description: t.description,
+          type: t.type,
+          installmentNumber,
+          totalInstallments,
+        });
 
         if (existingSignatures.has(tSig)) {
             duplicatesSkipped++;
             continue;
         }
 
-        const bankName = t.bankName || detectedMetadata?.bankName || 'Banco Desconhecido';
+        existingSignatures.add(tSig);
+
+        const bankName = forcedDestinationName || t.bankName || detectedMetadata?.bankName || 'Banco Desconhecido';
         const normalizedBankName = bankName.toLowerCase();
         
         let targetId = '';
-        let isCard = t.sourceType === 'card';
+        let isCard = forcedSourceType ? forcedSourceType === 'card' : t.sourceType === 'card';
 
         if (destinationId) {
-            targetId = destinationId;
-            const destIsCard = cards.some(c => c.id === destinationId);
-            const destIsAccount = accounts.some(a => a.id === destinationId);
-            if (destIsCard) isCard = true;
-            else if (destIsAccount) isCard = false;
+            if (destinationId === SUGGESTED_DESTINATION_VALUE) {
+              const suggestedCardName = Array.from(cardsMap.keys()).find(name => name.includes(normalizedBankName) || normalizedBankName.includes(name));
+              if (suggestedCardName) {
+                targetId = cardsMap.get(suggestedCardName)!;
+                isCard = true;
+              } else {
+                const suggestedAccountName = Array.from(accountsMap.keys()).find(name => name.includes(normalizedBankName) || normalizedBankName.includes(name));
+                if (suggestedAccountName) {
+                  targetId = accountsMap.get(suggestedAccountName)!;
+                  isCard = false;
+                }
+              }
+            } else {
+              targetId = destinationId;
+              const destIsCard = cards.some(c => c.id === destinationId);
+              const destIsAccount = accounts.some(a => a.id === destinationId);
+              if (destIsCard) isCard = true;
+              else if (destIsAccount) isCard = false;
+            }
         } else {
             if (isCard) {
                 const existingCardName = Array.from(cardsMap.keys()).find(name => name.includes(normalizedBankName) || normalizedBankName.includes(name));
@@ -193,7 +738,7 @@ export const StatementImportPage: React.FC = () => {
 
         savedCount++;
         const transRef = userRef.collection('transactions').doc();
-        const { selected, sourceType, bankName: bName, installmentNumber, totalInstallments, ...transactionData } = t;
+        const { selected, sourceType, bankName: bName, ...transactionData } = t;
         
         batch.set(transRef, {
           ...transactionData,
@@ -212,15 +757,32 @@ export const StatementImportPage: React.FC = () => {
             });
         }
 
-        if (isCard && installmentNumber && totalInstallments && totalInstallments > installmentNumber) {
+        if (installmentNumber && totalInstallments && totalInstallments > installmentNumber) {
             const remaining = totalInstallments - installmentNumber;
             const baseDate = new Date(t.date);
-            const baseDesc = t.description.replace(/\s?\d{1,2}[\/-]\d{1,2}|\s?\d{1,2}\sde\s\d{1,2}/gi, '').trim();
+            const baseDesc = removeInstallmentText(t.description);
 
             for (let i = 1; i <= remaining; i++) {
                 const nextInst = installmentNumber + i;
                 const nextDate = new Date(baseDate);
                 nextDate.setMonth(baseDate.getMonth() + i);
+
+                const futureDateStr = nextDate.toISOString().split('T')[0];
+                const futureSig = buildTransactionSignature({
+                  dateStr: futureDateStr,
+                  amount: t.amount,
+                  description: baseDesc,
+                  type: t.type,
+                  installmentNumber: nextInst,
+                  totalInstallments: totalInstallments,
+                });
+
+                if (existingSignatures.has(futureSig)) {
+                  continue;
+                }
+
+                existingSignatures.add(futureSig);
+
                 const futureRef = userRef.collection('transactions').doc();
                 batch.set(futureRef, {
                     ...transactionData,
@@ -317,28 +879,77 @@ export const StatementImportPage: React.FC = () => {
             </div>
           </header>
 
-          <div className="bg-white p-6 rounded-[32px] border border-emerald-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white p-6 rounded-[32px] border border-emerald-100 shadow-sm flex flex-col gap-4">
              <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Destino dos Lançamentos</label>
-                <p className="text-xs text-slate-500 max-w-xs">Selecione para evitar duplicação de cartões (Ex: Nubank)</p>
+                <p className="text-xs text-slate-500 max-w-xs">
+                  O sistema sugere o destino correto com base na origem detectada. Confirme se estiver correto.
+                </p>
              </div>
-             <select 
-                value={destinationId} 
-                onChange={(e) => setDestinationId(e.target.value)}
-                className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 w-full md:w-auto min-w-[250px]"
-             >
-                <option value="">✨ Automático (Detectar/Criar)</option>
-                {cards.length > 0 && (
-                    <optgroup label="Seus Cartões de Crédito">
-                        {cards.map(card => <option key={card.id} value={card.id}>{card.name}</option>)}
-                    </optgroup>
-                )}
-                {accounts.length > 0 && (
-                    <optgroup label="Suas Contas Bancárias">
-                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-                    </optgroup>
-                )}
-             </select>
+             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+               <label className="flex flex-col gap-1">
+                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destino sugerido</span>
+                 <select 
+                    value={destinationId} 
+                    onChange={(e) => setDestinationId(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 w-full"
+                 >
+                    <option value="">Selecionar destino</option>
+                    {(getSuggestedDestinationLabel() || getSuggestedDestinationId()) && (
+                      <option value={getSuggestedDestinationId() || SUGGESTED_DESTINATION_VALUE}>
+                        ✨ {getSuggestedDestinationLabel() || 'Destino sugerido'} (sugerido)
+                      </option>
+                    )}
+                    {cards.length > 0 && (
+                        <optgroup label="Seus Cartões de Crédito">
+                            {cards.map(card => <option key={card.id} value={card.id}>💳 {card.name}</option>)}
+                        </optgroup>
+                    )}
+                    {accounts.length > 0 && (
+                        <optgroup label="Suas Contas Bancárias">
+                            {accounts.map(acc => <option key={acc.id} value={acc.id}>🏦 {acc.name}</option>)}
+                        </optgroup>
+                    )}
+                 </select>
+                 <p className="text-[11px] font-bold text-primary bg-primary/5 border border-primary/10 rounded-xl px-3 py-2">
+                   O sistema entendeu: <span className="font-black">{getSuggestedDestinationLabel() || 'sem sugestão'}</span>
+                   {getMostLikelySourceType() === 'card' ? ' • Cartão' : ' • Conta'}
+                 </p>
+               </label>
+
+               <div className="flex gap-2">
+                 <Button
+                   type="button"
+                   variant="secondary"
+                   onClick={() => setIsAccountModalOpen(true)}
+                   className="rounded-xl px-3 py-3 text-xs font-black whitespace-nowrap"
+                 >
+                   + Conta
+                 </Button>
+                 <Button
+                   type="button"
+                   variant="secondary"
+                   onClick={() => setIsCreditCardModalOpen(true)}
+                   className="rounded-xl px-3 py-3 text-xs font-black whitespace-nowrap"
+                 >
+                   + Cartão
+                 </Button>
+               </div>
+             </div>
+
+             {destinationId === SUGGESTED_DESTINATION_VALUE ? (
+               <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                 Sugestão aplicada automaticamente com base na origem detectada.
+               </p>
+             ) : destinationId ? (
+               <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                 Destino fixo aplicado: todos os lançamentos selecionados irão para este destino.
+               </p>
+             ) : (
+               <p className="text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+                 Nenhuma sugestão compatível foi encontrada. Você ainda pode escolher uma conta ou cartão manualmente.
+               </p>
+             )}
           </div>
 
           <section className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
@@ -354,48 +965,91 @@ export const StatementImportPage: React.FC = () => {
 
             <div className="divide-y divide-slate-50 max-h-[500px] overflow-y-auto custom-scrollbar">
               {results.map((t, i) => (
-                <div 
-                  key={i} 
-                  onClick={() => toggleTransaction(i)}
-                  className={`flex items-center justify-between px-6 py-4 cursor-pointer transition-all hover:bg-slate-50 ${!t.selected ? 'opacity-40 grayscale' : ''}`}
+                <div
+                  key={i}
+                  className={`group flex items-center justify-between px-6 py-4 transition-all hover:bg-slate-50 ${!t.selected ? 'opacity-40 grayscale' : ''}`}
                 >
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleTransaction(i)}
+                    className={`mr-4 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 transition-all ${t.selected ? 'bg-primary border-primary text-white shadow-sm' : 'border-slate-200 bg-white text-transparent'}`}
+                    aria-label={t.selected ? 'Desmarcar lançamento' : 'Marcar lançamento'}
+                  >
+                    <span className="material-symbols-outlined text-sm font-black">check</span>
+                  </button>
+
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openTransactionEditor(i)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openTransactionEditor(i);
+                      }
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-4 text-left cursor-pointer"
+                  >
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm text-slate-400 shrink-0">
-                      <span className="material-symbols-outlined text-xl">{getIconByCategoryName(t.category)}</span>
+                      <span className="material-symbols-outlined text-xl">{getCategoryIcon(t.category, t.type)}</span>
                     </div>
+
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-slate-800 leading-none mb-1 truncate">{t.description}</p>
-                          {t.installmentNumber && t.totalInstallments && (
-                              <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 uppercase whitespace-nowrap">
-                                  {t.installmentNumber}/{t.totalInstallments}
-                              </span>
-                          )}
+                        <p className="text-sm font-bold text-slate-800 leading-none mb-1 truncate">{removeInstallmentText(t.description)}</p>
+                        {t.installmentNumber && t.totalInstallments && (
+                          <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 uppercase whitespace-nowrap">
+                            {t.installmentNumber}/{t.totalInstallments}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400 uppercase tracking-tight flex-wrap">
                         <span>{new Date(t.date).toLocaleDateString()}</span>
                         <span className="h-1 w-1 rounded-full bg-slate-200"></span>
-                        
-                        <div 
-                            onClick={(e) => toggleSourceType(i, e)}
-                            className={`flex cursor-pointer items-center gap-1 px-2 py-1 rounded-lg border transition-all hover:brightness-95 active:scale-95 ${t.sourceType === 'card' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}
+
+                        <button
+                          type="button"
+                          onClick={(e) => toggleSourceType(i, e)}
+                          className={`flex cursor-pointer items-center gap-1 px-2 py-1 rounded-full border transition-all hover:brightness-95 active:scale-95 ${t.sourceType === 'card' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}
+                          title="Trocar origem"
                         >
-                            <span className="material-symbols-outlined text-[14px]">{t.sourceType === 'card' ? 'credit_card' : 'account_balance'}</span>
-                            <span className="truncate max-w-[100px] font-bold text-[10px]">{t.bankName}</span>
-                        </div>
-                        
+                          <span className="material-symbols-outlined text-[14px]">{t.sourceType === 'card' ? 'credit_card' : 'account_balance'}</span>
+                          <span className="truncate max-w-[120px] font-bold text-[10px]">{t.bankName?.toLowerCase().startsWith('importado') ? 'Importado' : t.bankName}</span>
+                        </button>
+
                         <span className="h-1 w-1 rounded-full bg-slate-200"></span>
-                        <span className="text-slate-500">{t.category}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openCategoryPicker('row', t.type, i);
+                          }}
+                          className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-2 py-1 hover:bg-emerald-100 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[14px]" style={{ color: getCategoryColor(t.category, t.type) }}>{getCategoryIcon(t.category, t.type)}</span>
+                          <span className="text-[10px] font-black" style={{ color: getCategoryColor(t.category, t.type) }}>{t.category}</span>
+                          <span className="material-symbols-outlined text-[12px] text-emerald-600">expand_more</span>
+                        </button>
                       </div>
                     </div>
                   </div>
+
                   <div className="flex items-center gap-3 pl-2">
                     <span className={`text-sm font-black tracking-tighter whitespace-nowrap ${t.type === 'income' ? 'text-success' : 'text-slate-800'}`}>
                       {t.type === 'income' ? '+' : ''}{formatCurrency(t.amount)}
                     </span>
-                    <div className={`h-6 w-6 rounded-lg flex items-center justify-center border-2 transition-all shrink-0 ${t.selected ? 'bg-primary border-primary text-white shadow-sm' : 'border-slate-200 bg-white'}`}>
-                      {t.selected && <span className="material-symbols-outlined text-sm font-black">check</span>}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openTransactionEditor(i);
+                      }}
+                      className="flex h-8 min-w-[88px] items-center justify-center gap-1 rounded-lg border border-slate-100 bg-white px-3 text-slate-500 hover:text-primary hover:border-primary/20 hover:shadow-sm transition-all"
+                      aria-label="Editar lançamento"
+                    >
+                      <span className="material-symbols-outlined text-base">edit</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Editar</span>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -426,8 +1080,182 @@ export const StatementImportPage: React.FC = () => {
             onSave={async (data) => {
               await addAccount(data);
               setIsAccountModalOpen(false);
-              addNotification("Conta criada!", "success");
+              addNotification("Conta criada! Se quiser, selecione no campo de destino.", "success");
             }} 
+          />
+
+          <NewCreditCardModal
+            isOpen={isCreditCardModalOpen}
+            onClose={() => setIsCreditCardModalOpen(false)}
+            onSave={async (data) => {
+              await addCard(data);
+              setIsCreditCardModalOpen(false);
+              addNotification("Cartão criado! Se quiser, selecione no campo de destino.", "success");
+            }}
+          />
+
+          <Modal
+            isOpen={editingIndex !== null && !!editDraft}
+            onClose={closeTransactionEditor}
+            title="Editar Lançamento"
+          >
+            {editDraft && (
+              <div className="space-y-4">
+                <Input
+                  label="Nome / descrição"
+                  value={editDraft.description}
+                  onChange={(e) => setEditDraft(prev => prev ? { ...prev, description: e.target.value } : prev)}
+                  className="w-full"
+                />
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-sm font-medium text-secondary">Valor</span>
+                    <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-surface px-4 py-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                      <span className="text-sm font-bold text-slate-500">R$</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={editAmountInput}
+                        onChange={(e) => setEditAmountInput(formatBrlInput(e.target.value))}
+                        className="w-full bg-transparent text-base font-bold text-slate-800 outline-none"
+                        placeholder="0,00"
+                      />
+                    </div>
+                  </label>
+
+                  <label className="flex flex-col gap-1">
+                    <span className="text-sm font-medium text-secondary">Tipo</span>
+                    <select
+                      value={editDraft.type}
+                      onChange={(e) => setEditDraft(prev => prev ? { ...prev, type: e.target.value as 'income' | 'expense' } : prev)}
+                      className="w-full rounded-lg border bg-surface px-4 py-2 outline-none transition-all border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="expense">Despesa</option>
+                      <option value="income">Receita</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-sm font-medium text-secondary">Origem</span>
+                    <select
+                      value={editDraft.sourceType || 'account'}
+                      onChange={(e) => setEditDraft(prev => prev ? { ...prev, sourceType: e.target.value as 'account' | 'card' } : prev)}
+                      className="w-full rounded-lg border bg-surface px-4 py-2 outline-none transition-all border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="account">Conta bancária</option>
+                      <option value="card">Cartão de crédito</option>
+                    </select>
+                  </label>
+
+                  <Input
+                    label="Banco / cartão"
+                    value={editDraft.bankName || ''}
+                    onChange={(e) => setEditDraft(prev => prev ? { ...prev, bankName: e.target.value } : prev)}
+                    className="w-full"
+                  />
+                </div>
+
+                <label className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-secondary">Categoria</span>
+                  <button
+                    type="button"
+                    onClick={() => openCategoryPicker('edit', editDraft.type)}
+                    className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-surface px-3 py-2"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className="material-symbols-outlined text-lg" style={{ color: getCategoryColor(editDraft.category, editDraft.type) }}>
+                        {getCategoryIcon(editDraft.category, editDraft.type)}
+                      </span>
+                      <span className="text-sm font-bold text-slate-700 truncate">{editDraft.category}</span>
+                    </span>
+                    <span className="material-symbols-outlined text-slate-400">expand_more</span>
+                  </button>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAutomationRuleModalOpen(true)}
+                  className="w-full flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 hover:bg-amber-100 transition-colors"
+                >
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="h-10 w-10 rounded-xl bg-white text-amber-600 border border-amber-100 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-lg">auto_fix_high</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-800">Regra Inteligente</p>
+                      <p className="text-xs font-medium text-slate-500">Automatizar lançamentos futuros</p>
+                    </div>
+                  </div>
+                  <span className="material-symbols-outlined text-amber-500">chevron_right</span>
+                </button>
+
+                <div className="flex gap-3 pt-2">
+                  <Button variant="secondary" onClick={closeTransactionEditor} className="flex-1">
+                    Cancelar
+                  </Button>
+                  <Button onClick={saveTransactionEditor} className="flex-1 bg-success text-white">
+                    Salvar edição
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+
+          <Modal
+            isOpen={isCategoryPickerOpen}
+            onClose={closeCategoryPicker}
+            title="Selecionar Categoria"
+          >
+            <div className="space-y-3">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <input
+                  type="text"
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  placeholder="Buscar categoria..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div className="max-h-[48vh] overflow-y-auto custom-scrollbar pr-1 grid grid-cols-1 gap-2">
+                {(categoryPickerType === 'all'
+                  ? allCategories
+                  : allCategories.filter(category => category.type === categoryPickerType)
+                )
+                  .filter(category => category.name.toLowerCase().includes(categorySearch.toLowerCase()))
+                  .map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => applyPickedCategory(category.name)}
+                      className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2 text-left hover:bg-slate-50 transition-colors"
+                    >
+                      <div
+                        className="h-8 w-8 rounded-lg flex items-center justify-center text-white"
+                        style={{ backgroundColor: category.color }}
+                      >
+                        <span className="material-symbols-outlined text-base">{category.icon || getIconByCategoryName(category.name)}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-slate-800 truncate">{category.name}</p>
+                        <p className="text-[10px] font-bold uppercase text-slate-400">{category.type === 'income' ? 'Receita' : 'Despesa'}</p>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </Modal>
+
+          <AutomationRulesModal
+            isOpen={isAutomationRuleModalOpen}
+            onClose={() => setIsAutomationRuleModalOpen(false)}
+            baseTransaction={editDraftAsBaseTransaction()}
+            onApplyToCurrentTransaction={handleApplyRuleToEditDraft}
+            onRuleCreated={handleRuleCreatedInImportPreview}
           />
         </div>
     );
@@ -465,7 +1293,7 @@ export const StatementImportPage: React.FC = () => {
                 type="file" 
                 ref={fileInputRef} 
                 onChange={handleFileChange} 
-                accept="image/*,application/pdf,.csv,text/csv" 
+                accept="image/*,audio/*,application/pdf,.csv,text/csv" 
                 className="hidden" 
                 multiple
               />
@@ -505,10 +1333,23 @@ export const StatementImportPage: React.FC = () => {
             </div>
           ) : (
             <div className="relative">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Texto ou Voz</p>
+                <Button
+                  type="button"
+                  onClick={handleVoiceCapture}
+                  variant={isRecording ? 'primary' : 'secondary'}
+                  className={`rounded-xl px-3 py-2 text-xs font-black ${isRecording ? 'animate-pulse' : ''}`}
+                >
+                  <span className="material-symbols-outlined text-base mr-1">mic</span>
+                  {isRecording ? 'Parar Gravação' : 'Capturar Voz'}
+                </Button>
+              </div>
+
               <textarea
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Cole aqui o conteúdo do PDF ou mensagens..."
+                placeholder="Cole texto do extrato/fatura ou use Capturar Voz para ditar os lançamentos..."
                 className="w-full h-[300px] rounded-[40px] border border-slate-200 p-8 text-sm font-medium text-slate-700 placeholder:text-slate-300 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 resize-none transition-all shadow-sm"
               />
               <div className="absolute bottom-6 right-6 flex items-center gap-2 pointer-events-none opacity-40">
@@ -526,6 +1367,7 @@ export const StatementImportPage: React.FC = () => {
             {files.length > 1 ? `Processar ${files.length} Arquivos` : 'Processar com Inteligência Artificial'}
           </Button>
       </div>
+
     </div>
   );
 };

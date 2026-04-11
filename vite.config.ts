@@ -9,6 +9,14 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
       },
+      optimizeDeps: {
+        esbuildOptions: {
+          target: 'esnext',
+        },
+      },
+      build: {
+        target: 'esnext',
+      },
       plugins: [react()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),

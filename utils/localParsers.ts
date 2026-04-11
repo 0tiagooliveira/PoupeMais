@@ -27,8 +27,29 @@ const categorize = (description: string): string => {
     if (descUpper.includes('MERCADO') || descUpper.includes('ATACADAO') || descUpper.includes('CARREFOUR') || descUpper.includes('ASSAI') || descUpper.includes('SUPERMERCADO') || descUpper.includes('EXTRA') || descUpper.includes('PAO DE ACUCAR')) return 'Mercado';
     if (descUpper.includes('SHOPEE') || descUpper.includes('MERCADOLIVRE') || descUpper.includes('MAGALU') || descUpper.includes('ALIEXPRESS') || descUpper.includes('SHEIN') || descUpper.includes('AMAZON')) return 'Compras';
     if (descUpper.includes('IOF') || descUpper.includes('TARIFA') || descUpper.includes('ANUIDADE')) return 'Impostos';
+        if (descUpper.includes('CIGARRO') || descUpper.includes('TABACARIA') || descUpper.includes('NARGUILE')) return 'Compras';
+        if (descUpper.includes('SHOPPEE') || descUpper.includes('SHOPEE') || descUpper.includes('MERCADO LIVRE') || descUpper.includes('MERCADOLIVRE') || descUpper.includes('ML')) return 'Compras';
+        if (descUpper.includes('PASSAGEM') || descUpper.includes('UBER') || descUpper.includes('99') || descUpper.includes('POSTO') || descUpper.includes('GASOLINA')) return 'Transporte';
+        if (descUpper.includes('SPOTIFY') || descUpper.includes('YOUTUBE') || descUpper.includes('NETFLIX') || descUpper.includes('DISNEY')) return 'Assinaturas';
+        if (descUpper.includes('REMEDIO') || descUpper.includes('REMÉDIO') || descUpper.includes('FARMACIA') || descUpper.includes('DROGARIA')) return 'Saúde';
+        if (descUpper.includes('COPel') || descUpper.includes('COPEL') || descUpper.includes('NIO FIBRA') || descUpper.includes('INTERNET') || descUpper.includes('ENERGIA')) return 'Moradia';
+        if (descUpper.includes('PAGAMENTO RECEBIDO') || descUpper.includes('CREDITO DE') || descUpper.includes('CRÉDITO DE')) return 'Transferências';
+        if (/\b\d{2,3}\s\d{3}\s\d{3}\b/.test(descUpper) || /^[A-ZÀ-Ú]+\s[A-ZÀ-Ú]+\s[A-ZÀ-Ú]+/.test(descUpper)) return 'Transferências';
     
     return 'Outros';
+};
+
+const inferBankNameFromSource = (sourceName?: string): string => {
+    const value = (sourceName || '').toLowerCase();
+    if (!value) return 'Importado (CSV)';
+    if (value.includes('nubank') || value.includes('nu')) return 'Nubank';
+    if (value.includes('itau') || value.includes('itaú')) return 'Itaú';
+    if (value.includes('bradesco')) return 'Bradesco';
+    if (value.includes('inter')) return 'Inter';
+    if (value.includes('santander')) return 'Santander';
+    if (value.includes('bb') || value.includes('banco do brasil')) return 'Banco do Brasil';
+    if (value.includes('caixa')) return 'Caixa';
+    return 'Importado (CSV)';
 };
 
 // --- PDF PARSER ---
@@ -214,9 +235,9 @@ export const parseNubankText = (text: string, filename?: string): { transactions
 };
 
 // --- CSV PARSER ---
-export const parseCSV = (csvText: string): { transactions: DetectedTransaction[], metadata: DetectedMetadata } => {
+export const parseCSV = (csvText: string, sourceName?: string): { transactions: DetectedTransaction[], metadata: DetectedMetadata } => {
     const transactions: DetectedTransaction[] = [];
-    const metadata: DetectedMetadata = { bankName: 'Importado (CSV)' };
+    const metadata: DetectedMetadata = { bankName: inferBankNameFromSource(sourceName) };
 
     const result = Papa.parse(csvText, {
         header: true,
@@ -311,6 +332,9 @@ export const parseCSV = (csvText: string): { transactions: DetectedTransaction[]
 
         const category = categoryRaw ? String(categoryRaw) : categorize(description);
 
+        const isLikelyCard = metadata.bankName !== 'Importado (CSV)';
+        const looksLikeBankTransfer = lowerDesc.includes('pix') || lowerDesc.includes('ted') || lowerDesc.includes('doc') || lowerDesc.includes('transfer') || lowerDesc.includes('pagamento recebido');
+
         transactions.push({
             date,
             description,
@@ -318,7 +342,7 @@ export const parseCSV = (csvText: string): { transactions: DetectedTransaction[]
             type,
             category,
             selected: true,
-            sourceType: 'card', 
+            sourceType: looksLikeBankTransfer ? 'account' : (isLikelyCard ? 'card' : 'account'), 
             bankName: metadata.bankName,
             installmentNumber,
             totalInstallments

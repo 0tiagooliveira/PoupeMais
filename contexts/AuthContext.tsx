@@ -10,29 +10,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Subscribe to auth state changes using v8 syntax
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        // Fazemos o cast para UserProfile para suportar nossa extensão de tipos
-        const userProfile = user as UserProfile;
-        
-        // HACK DE ACESSO TOTAL: 
-        // Se o usuário logado for um dos e-mails de teste solicitados, 
-        // forçamos o status PRO para liberar todas as funcionalidades da IA e do SaaS.
-        const email = user.email?.toLowerCase();
-        if (email === 'teste@gmail.com' || email === 'marisa@gmail.com' || email === 'tiago336699@gmail.com') {
-          userProfile.isPro = true;
-        }
-        
-        setCurrentUser(userProfile);
-      } else {
-        setCurrentUser(null);
-      }
+    const failSafeTimeout = window.setTimeout(() => {
       setLoading(false);
-    });
+    }, 6000);
+
+    // Subscribe to auth state changes using v8 syntax
+    const unsubscribe = auth.onAuthStateChanged(
+      (user) => {
+        window.clearTimeout(failSafeTimeout);
+
+        if (user) {
+          // Fazemos o cast para UserProfile para suportar nossa extensão de tipos
+          const userProfile = user as UserProfile;
+
+          // HACK DE ACESSO TOTAL:
+          // Se o usuário logado for um dos e-mails de teste solicitados,
+          // forçamos o status PRO para liberar todas as funcionalidades da IA e do SaaS.
+          const email = user.email?.toLowerCase();
+          if (email === 'teste@gmail.com' || email === 'marisa@gmail.com' || email === 'tiago336699@gmail.com') {
+            userProfile.isPro = true;
+          }
+
+          setCurrentUser(userProfile);
+        } else {
+          setCurrentUser(null);
+        }
+
+        setLoading(false);
+      },
+      () => {
+        window.clearTimeout(failSafeTimeout);
+        setCurrentUser(null);
+        setLoading(false);
+      }
+    );
 
     // Cleanup subscription on unmount
-    return unsubscribe;
+    return () => {
+      window.clearTimeout(failSafeTimeout);
+      unsubscribe();
+    };
   }, []);
 
   const value = {
@@ -42,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

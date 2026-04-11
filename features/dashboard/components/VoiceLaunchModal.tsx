@@ -19,10 +19,15 @@ export const VoiceLaunchModal: React.FC<VoiceLaunchModalProps> = ({ isOpen, onCl
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const speechRecognitionRef = useRef<any>(null);
+  const transcriptRef = useRef('');
 
   useEffect(() => {
+    const w = window as any;
+    setSpeechSupported(Boolean(w.SpeechRecognition || w.webkitSpeechRecognition));
+
     let timer: any;
     if (isRecording) {
       timer = setInterval(() => setRecordingTime(p => p + 1), 1000);
@@ -34,31 +39,63 @@ export const VoiceLaunchModal: React.FC<VoiceLaunchModalProps> = ({ isOpen, onCl
 
   const startRecording = async () => {
     if (!currentUser?.isPro) return;
+    if (!speechSupported) {
+      addNotification('Seu navegador não suporta reconhecimento de voz.', 'warning');
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      chunksRef.current = [];
-      
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const file = new File([audioBlob], "voice.webm", { type: 'audio/webm' });
-        startProcessing('file', [file], '');
-        onProcessed();
-        stream.getTracks().forEach(track => track.stop());
+      const w = window as any;
+      const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+
+      setTranscript('');
+      transcriptRef.current = '';
+      recognition.lang = 'pt-BR';
+      recognition.interimResults = true;
+      recognition.continuous = true;
+
+      recognition.onresult = (event: any) => {
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += `${event.results[i][0].transcript} `;
+          }
+        }
+
+        if (finalTranscript.trim()) {
+          const nextTranscript = `${transcriptRef.current.trim()} ${finalTranscript.trim()}`.trim();
+          transcriptRef.current = nextTranscript;
+          setTranscript(nextTranscript);
+        }
       };
-      
-      recorder.start();
+
+      recognition.onerror = () => {
+        setIsRecording(false);
+        addNotification('Falha na captura de voz.', 'error');
+      };
+
+      recognition.onend = async () => {
+        setIsRecording(false);
+
+        if (transcriptRef.current.trim()) {
+          await startProcessing('text', [], transcriptRef.current);
+          onProcessed();
+        }
+      };
+
+      speechRecognitionRef.current = recognition;
+      recognition.start();
       setIsRecording(true);
     } catch (e) {
-      addNotification("Erro ao acessar microfone.", "error");
+      addNotification('Erro ao iniciar reconhecimento de voz.', 'error');
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+    if (speechRecognitionRef.current && isRecording) {
+      speechRecognitionRef.current.stop();
       setIsRecording(false);
     }
   };
@@ -85,6 +122,11 @@ export const VoiceLaunchModal: React.FC<VoiceLaunchModalProps> = ({ isOpen, onCl
             <p className="text-xs font-medium text-slate-400 max-w-[220px] mx-auto leading-relaxed">
               Ex: "Gastei 45 reais no mercado hoje" ou "Recebi o bônus de 500 reais".
             </p>
+            {!!transcript.trim() && (
+              <p className="text-xs font-bold text-slate-600 max-w-[260px] mx-auto leading-relaxed bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                {transcript}
+              </p>
+            )}
         </div>
 
         {!isRecording && (

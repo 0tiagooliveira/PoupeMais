@@ -38,6 +38,58 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [results, setResults] = useState<DetectedTransaction[]>([]);
   const [detectedMetadata, setDetectedMetadata] = useState<DetectedMetadata | null>(null);
 
+  const normalizeDate = (raw: string): string => {
+    const value = String(raw || '').trim();
+    if (!value) return new Date().toISOString().split('T')[0];
+
+    if (value.includes('/')) {
+      const parts = value.split('/').map(p => p.trim());
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+        return `${year}-${month}-${day}`;
+      }
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+      return value.slice(0, 10);
+    }
+
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().split('T')[0];
+    }
+
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const normalizeDetectedTransactions = (items: any[]): DetectedTransaction[] => {
+    if (!Array.isArray(items)) return [];
+
+    return items
+      .map((item) => {
+        const rawAmount = Number(item?.amount);
+        const type = item?.type === 'income' ? 'income' : 'expense';
+        const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
+        const description = String(item?.description || '').trim();
+
+        return {
+          date: normalizeDate(item?.date),
+          description: description || 'Lançamento importado',
+          amount,
+          type,
+          category: String(item?.category || (type === 'income' ? 'Receita' : 'Outros')).trim(),
+          selected: true,
+          sourceType: item?.sourceType === 'card' ? 'card' : 'account',
+          bankName: item?.bankName ? String(item.bankName) : undefined,
+          installmentNumber: Number.isInteger(item?.installmentNumber) ? item.installmentNumber : undefined,
+          totalInstallments: Number.isInteger(item?.totalInstallments) ? item.totalInstallments : undefined,
+        } as DetectedTransaction;
+      })
+      .filter((tx) => tx.amount > 0 && tx.description.length > 0);
+  };
+
   useEffect(() => {
     let interval: any;
     if (isProcessing) {
@@ -90,11 +142,10 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      fileTransactions = localResult.transactions;
                      fileMetadata = localResult.metadata;
                  } else {
-                     console.warn(`Nenhuma transação encontrada localmente em ${file.name}`);
-                     // Opcional: Se quiser manter IA apenas para imagens/casos extremos, descomente abaixo. 
-                     // Mas o pedido foi para remover a regra da IA ler tudo.
-                     // const aiResult = await processWithAI(null, textToParse);
-                     // fileTransactions = aiResult.transactions;
+                     console.warn(`Nenhuma transação encontrada localmente em ${file.name}. Tentando IA...`);
+                     const aiResult = await processWithAI(null, textToParse);
+                     fileTransactions = aiResult.transactions;
+                     fileMetadata = aiResult.metadata;
                  }
                } catch (e) {
                  console.error(`Erro ao ler PDF ${file.name}`, e);
@@ -102,11 +153,20 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                }
             } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
                const text = await file.text();
-               const csvResult = parseCSV(text);
+              const csvResult = parseCSV(text, file.name);
                fileTransactions = csvResult.transactions;
                fileMetadata = csvResult.metadata;
-            } else if (file.type.startsWith('image/')) {
-               // Imagens ainda usam IA pois OCR local é pesado/complexo para browser
+               if (fileTransactions.length === 0) {
+                 try {
+                   const aiResult = await processWithAI(null, text);
+                   fileTransactions = aiResult.transactions;
+                   fileMetadata = { ...fileMetadata, ...aiResult.metadata };
+                 } catch (e) {
+                   console.error(`Erro ao processar CSV ${file.name} com IA`, e);
+                 }
+               }
+            } else if (file.type.startsWith('image/') || file.type.startsWith('audio/')) {
+              // Imagens e áudios usam IA porque OCR/transcrição local no browser é limitado.
                try {
                  const aiResult = await processWithAI(file, null);
                  fileTransactions = aiResult.transactions;
@@ -152,7 +212,7 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setDetectedMetadata(lastMetadata);
           addNotification(`${allTransactions.length} registros extraídos com sucesso.`, "success");
       } else {
-          addNotification("Não foi possível identificar transações. Verifique o formato do arquivo.", "warning");
+          addNotification("Não foi possível identificar transações automaticamente. Tente outro arquivo, revise o texto/voz e confirme se a IA está configurada.", "warning");
       }
 
     } catch (err) {
@@ -166,9 +226,17 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Helper para IA (Mantido apenas para Imagens ou Texto Livre confuso)
   const processWithAI = async (file: File | null, text: string | null) => {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const meta = import.meta as any;
+      const env = (meta && meta.env) ? meta.env : {};
+      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY || env.VITE_API_KEY;
+
+      if (!apiKey) {
+        throw new Error('API key da IA não configurada. Defina GEMINI_API_KEY no ambiente.');
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       let contents: any = [];
-      let prompt = `Extraia transações financeiras. Retorne JSON: { metadata: { limit, dueDay, closingDay, bankName }, transactions: [{ date: 'YYYY-MM-DD', description, amount (positivo), type: 'income'|'expense', category }] }`;
+      let prompt = `Extraia transações financeiras de extratos/faturas/texto livre/voz. Retorne SOMENTE JSON no formato: { metadata: { limit, dueDay, closingDay, bankName }, transactions: [{ date: 'YYYY-MM-DD', description, amount (positivo), type: 'income'|'expense', category, sourceType: 'account'|'card', bankName }] }.`;
 
       if (file) {
          const reader = new FileReader();
@@ -182,12 +250,16 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
         contents,
         config: { responseMimeType: "application/json" }
       });
 
-      return JSON.parse(response.text || "{ \"transactions\": [], \"metadata\": {} }");
+      const parsed = JSON.parse(response.text || "{ \"transactions\": [], \"metadata\": {} }");
+      return {
+        metadata: parsed?.metadata || {},
+        transactions: normalizeDetectedTransactions(parsed?.transactions || [])
+      };
   };
 
   const clearResults = useCallback(() => {

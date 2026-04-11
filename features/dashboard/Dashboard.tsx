@@ -23,7 +23,6 @@ import { QuickActionModal } from './components/QuickActionModal';
 import { ProfileActionsModal } from '../../components/layout/ProfileActionsModal';
 import { EditProfileModal } from '../settings/EditProfileModal';
 import { AutomationRulesModal } from '../automation/AutomationRulesModal';
-import { QuickImportReviewModal } from './components/QuickImportReviewModal';
 import { VoiceLaunchModal } from './components/VoiceLaunchModal';
 import { Account, TransactionType, Transaction, CategoryData } from '../../types';
 import { getIconByCategoryName } from '../../utils/categoryIcons';
@@ -154,24 +153,41 @@ export const Dashboard: React.FC = () => {
     setQuickAction(prev => ({ ...prev, isOpen: false }));
   };
 
-  const handleCreateRule = (transaction: Transaction) => {
+  const handleCreateRule = async (transaction: Transaction) => {
+    // Se a transação está sendo editada, salva primeiro
+    if (transactionToEdit && transactionToEdit.id === transaction.id) {
+      try {
+        await updateTransaction(transactionToEdit.id, {
+          type: transaction.type,
+          amount: transaction.amount,
+          description: transaction.description,
+          category: transaction.category,
+          accountId: transaction.accountId,
+          date: transaction.date,
+          status: transaction.status,
+          isFixed: transaction.isFixed,
+          isRecurring: transaction.isRecurring,
+          frequency: transaction.frequency,
+          isIgnored: transaction.isIgnored
+        });
+      } catch (e) {
+        console.error('Erro ao salvar transação antes da regra:', e);
+        addNotification('Erro ao salvar transação', 'error');
+        return;
+      }
+    }
     setTransactionForRule(transaction);
     setIsRuleModalOpen(true);
-    setQuickAction(prev => ({ ...prev, isOpen: false }));
   };
 
   const handleLaunchClick = (mode: 'scanner' | 'statement') => {
-    if (!currentUser?.isPro) {
-        addNotification("Assine o PRO para lançamentos inteligentes.", "info");
-        return;
-    }
-    fileInputRef.current?.click();
+    navigate('/import-statement');
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    startProcessing('file', file, '');
+    startProcessing('file', [file], '');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -216,7 +232,7 @@ export const Dashboard: React.FC = () => {
                             <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Scanner</span>
                         </button>
                         <button 
-                            onClick={() => setIsVoiceModalOpen(true)} 
+                          onClick={() => navigate('/import-statement')} 
                             className="flex flex-col items-center gap-2 group/btn"
                         >
                             <div className="h-14 w-14 rounded-2xl bg-emerald-50 dark:bg-slate-800 text-primary flex items-center justify-center shadow-sm group-hover/btn:bg-primary group-hover/btn:text-white group-hover/btn:shadow-xl group-hover/btn:-translate-y-1 transition-all duration-300">
@@ -297,13 +313,6 @@ export const Dashboard: React.FC = () => {
       <NewCreditCardModal isOpen={isCreditCardModalOpen} onClose={() => setIsCreditCardModalOpen(false)} onSave={addCard} />
       <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} history={history} onClear={clearHistory} />
       <AutomationRulesModal isOpen={isRuleModalOpen} onClose={() => { setIsRuleModalOpen(false); setTransactionForRule(null); }} baseTransaction={transactionForRule} />
-      
-      <QuickImportReviewModal 
-        isOpen={hasResults} 
-        onClose={clearResults} 
-        results={results} 
-        accounts={accounts} 
-      />
       
       <VoiceLaunchModal 
         isOpen={isVoiceModalOpen} 

@@ -15,9 +15,11 @@ interface AutomationRulesModalProps {
   isOpen: boolean;
   onClose: () => void;
   baseTransaction?: Transaction | null;
+  onApplyToCurrentTransaction?: (updates: Partial<Transaction>) => void;
+  onRuleCreated?: (rule: Omit<AutomationRule, 'id'>) => void;
 }
 
-export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOpen, onClose, baseTransaction }) => {
+export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOpen, onClose, baseTransaction, onApplyToCurrentTransaction, onRuleCreated }) => {
   const { currentUser } = useAuth();
   const { addNotification } = useNotification();
   const { allCategories, addCustomCategory } = useCategories();
@@ -38,6 +40,14 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
   const [isCategorySelectorOpen, setIsCategorySelectorOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
+
+   const normalizeText = (value: string) => value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   // Inicializa com dados da transação base se houver
   useEffect(() => {
@@ -129,6 +139,32 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
       // Salvar Regra
       await db.collection('users').doc(currentUser.uid).collection('automation_rules').add(newRule);
 
+      if (onRuleCreated) {
+        onRuleCreated(newRule);
+      }
+
+      // Preparar updates para a transação atual (se houver)
+      const currentUpdates: any = {};
+      if (newRule.actions.categoryId) currentUpdates.category = newRule.actions.categoryId;
+      if (newRule.actions.renameTo) currentUpdates.description = newRule.actions.renameTo;
+      if (newRule.actions.isIgnored !== undefined) currentUpdates.isIgnored = newRule.actions.isIgnored;
+
+      // Aplicar à transação atual
+      if (baseTransaction && Object.keys(currentUpdates).length > 0) {
+        if (baseTransaction.id.startsWith('import-preview-')) {
+          // É um draft de import - aplicar via callback
+          if (onApplyToCurrentTransaction) {
+            onApplyToCurrentTransaction(currentUpdates);
+            addNotification('Ações automáticas aplicadas ao lançamento (em edição).', 'info');
+          }
+        } else {
+          // É uma transação já salva - atualizar no Firestore
+          const currentTransactionRef = db.collection('users').doc(currentUser.uid).collection('transactions').doc(baseTransaction.id);
+          await currentTransactionRef.update(currentUpdates);
+          addNotification('Ações automáticas aplicadas ao lançamento atual.', 'info');
+        }
+      }
+
       // Aplicar Retroativamente (Batch Processing)
       if (applyToExisting) {
         await applyRuleToHistory(newRule);
@@ -145,43 +181,71 @@ export const AutomationRulesModal: React.FC<AutomationRulesModalProps> = ({ isOp
   };
 
   const applyRuleToHistory = async (rule: Omit<AutomationRule, 'id'>) => {
-    // Busca as últimas 500 transações para aplicar a regra
-    // Firestore não tem 'contains', então buscamos tudo (ou por data) e filtramos no cliente
-    const snapshot = await db.collection('users').doc(currentUser!.uid)
-      .collection('transactions')
-      .orderBy('date', 'desc')
-      .limit(500)
-      .get();
+    try {
+      // Busca as últimas 500 transações para aplicar a regra
+      // Firestore não tem 'contains', então buscamos tudo (ou por data) e filtramos no cliente
+      const snapshot = await db.collection('users').doc(currentUser!.uid)
+        .collection('transactions')
+        .orderBy('date', 'desc')
+        .limit(500)
+        .get();
 
-    const batch = db.batch();
-    let updatesCount = 0;
+      const batch = db.batch();
+      let updatesCount = 0;
+      const normalizedCondition = normalizeText(rule.conditions.descriptionContains);
 
-    snapshot.docs.forEach(doc => {
-      const data = doc.data() as Transaction;
-      
-      // Valida Condições
-      const matchDesc = data.description.toLowerCase().includes(rule.conditions.descriptionContains.toLowerCase());
-      if (!matchDesc) return;
+      console.log('[AUTOMATION_RULE_DEBUG] Buscando transações. Total:', snapshot.docs.length);
+      console.log('[AUTOMATION_RULE_DEBUG] Procurando por:', rule.conditions.descriptionContains, '→ normalizado:', normalizedCondition);
 
-      if (rule.conditions.accountId && data.accountId !== rule.conditions.accountId) return;
-      if (rule.conditions.amountMin && data.amount < parseFloat(rule.conditions.amountMin)) return;
-      if (rule.conditions.amountMax && data.amount > parseFloat(rule.conditions.amountMax)) return;
+      const buildUpdates = (data: Transaction) => {
+        const updates: Partial<Transaction> = {};
 
-      // Aplica Ações
-      const updates: any = {};
-      if (rule.actions.categoryId) updates.category = rule.actions.categoryId;
-      if (rule.actions.renameTo) updates.description = rule.actions.renameTo;
-      if (rule.actions.isIgnored !== undefined) updates.isIgnored = rule.actions.isIgnored;
+        if (rule.actions.categoryId) updates.category = rule.actions.categoryId;
+        if (rule.actions.renameTo) updates.description = rule.actions.renameTo;
+        if (rule.actions.isIgnored !== undefined) updates.isIgnored = rule.actions.isIgnored;
 
-      if (Object.keys(updates).length > 0) {
-        batch.update(doc.ref, updates);
-        updatesCount++;
+        return updates;
+      };
+
+      const matchesRule = (data: Transaction) => {
+        const normalizedDescription = normalizeText(data.description);
+        const matchDesc = normalizedDescription.includes(normalizedCondition);
+        
+        if (!matchDesc) return false;
+
+        if (rule.conditions.accountId && data.accountId !== rule.conditions.accountId) return false;
+        if (rule.conditions.amountMin && data.amount < parseFloat(rule.conditions.amountMin)) return false;
+        if (rule.conditions.amountMax && data.amount > parseFloat(rule.conditions.amountMax)) return false;
+
+        return true;
+      };
+
+      snapshot.docs.forEach(doc => {
+        const data = doc.data() as Transaction;
+        
+        if (!matchesRule(data)) return;
+
+        console.log('[AUTOMATION_RULE_DEBUG] MATCH encontrado:', data.description, '→', data.category);
+
+        const updates = buildUpdates(data);
+
+        if (Object.keys(updates).length > 0) {
+          batch.update(doc.ref, updates);
+          updatesCount++;
+        }
+      });
+
+      console.log('[AUTOMATION_RULE_DEBUG] Total de matches:', updatesCount);
+
+      if (updatesCount > 0) {
+        await batch.commit();
+        addNotification(`${updatesCount} transações antigas foram atualizadas com a regra.`, "success");
+      } else {
+        addNotification(`Nenhuma transação anterior corresponde aos critérios da regra.`, "info");
       }
-    });
-
-    if (updatesCount > 0) {
-      await batch.commit();
-      addNotification(`${updatesCount} transações antigas foram atualizadas.`, "info");
+    } catch (err) {
+      console.error('[AUTOMATION_RULE_ERROR] Erro ao aplicar regra ao histórico:', err);
+      addNotification("Erro ao aplicar regra a transações anteriores.", "warning");
     }
   };
 

@@ -10,7 +10,8 @@ import { useAuth } from '../../contexts/AuthContext';
 export const MobileNav: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { addTransaction, deleteTransaction } = useTransactions(new Date());
+  const [today] = useState(() => new Date());
+  const { addTransaction, deleteTransaction } = useTransactions(today);
   const { accounts } = useAccounts();
   const { currentUser } = useAuth();
   const navigate = useNavigate();

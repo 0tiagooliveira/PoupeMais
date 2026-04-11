@@ -9,9 +9,6 @@ import 'firebase/compat/analytics';
 const meta = import.meta as any;
 const env = (meta && meta.env) ? meta.env : {};
 
-// Check if using default/fallback credentials
-const isUsingDefaultConfig = !env.VITE_FIREBASE_API_KEY;
-
 const firebaseConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyB8_TagbRuyEZ1puNUrn9UnyptHOOMZong",
   authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "poupe-mais-6a07f.firebaseapp.com",
@@ -21,10 +18,6 @@ const firebaseConfig = {
   appId: env.VITE_FIREBASE_APP_ID || "1:451102060352:web:1d9bb2a53494db04f814a5",
   measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || "G-32H9F0KZPS"
 };
-
-if (isUsingDefaultConfig) {
-  console.warn("⚠️ AVISO: Usando credenciais do Firebase de demonstração.");
-}
 
 // Initialize Firebase
 if (!firebase.apps.length) {
@@ -42,17 +35,6 @@ const app = firebase.app();
 export const auth = firebase.auth();
 export const db = firebase.firestore();
 export const storage = firebase.storage();
-
-// Habilita persistência de dados offline no Firestore (Opcional, mas melhora UX)
-try {
-  db.enablePersistence().catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn("Múltiplas abas abertas, persistência desabilitada.");
-    } else if (err.code === 'unimplemented') {
-      console.warn("O navegador não suporta persistência.");
-    }
-  });
-} catch (e) {}
 
 // Analytics (Safe initialization)
 let analytics = null;

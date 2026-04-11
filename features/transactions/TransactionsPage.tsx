@@ -131,11 +131,34 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
       setIsModalOpen(true);
   };
 
-  const handleCreateRule = (e: React.MouseEvent | Transaction, transaction?: Transaction) => {
+  const handleCreateRule = async (e: React.MouseEvent | Transaction, transaction?: Transaction) => {
     if ((e as React.MouseEvent).stopPropagation) {
         (e as React.MouseEvent).stopPropagation();
     }
     const targetTransaction = transaction || (e as Transaction);
+    
+    // Se a transação está sendo editada, salva primeiro
+    if (editingTransaction && editingTransaction.id === targetTransaction.id) {
+      try {
+        await updateTransaction(editingTransaction.id, {
+          type: targetTransaction.type,
+          amount: targetTransaction.amount,
+          description: targetTransaction.description,
+          category: targetTransaction.category,
+          accountId: targetTransaction.accountId,
+          date: targetTransaction.date,
+          status: targetTransaction.status,
+          isFixed: targetTransaction.isFixed,
+          isRecurring: targetTransaction.isRecurring,
+          frequency: targetTransaction.frequency,
+          isIgnored: targetTransaction.isIgnored
+        });
+      } catch (err) {
+        console.error('Erro ao salvar transação antes da regra:', err);
+        return;
+      }
+    }
+    
     setTransactionForRule(targetTransaction);
     setIsRuleModalOpen(true);
   };
@@ -309,8 +332,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
               let itemColor, itemBg;
               
               if (transaction.isIgnored) {
-                  itemColor = 'text-slate-400 dark:text-slate-500';
-                  itemBg = 'bg-slate-50 dark:bg-slate-800';
+                  itemColor = 'text-slate-600 dark:text-slate-300';
+                  itemBg = 'bg-slate-100 dark:bg-slate-800';
               } else if (isNeutral) {
                   itemColor = 'text-slate-600 dark:text-slate-300';
                   itemBg = 'bg-slate-100 dark:bg-slate-800';
@@ -323,28 +346,28 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
               const isPending = transaction.status === 'pending';
               
               return (
-                <div key={transaction.id} onClick={() => handleTransactionClick(transaction)} className={`group flex cursor-pointer items-center justify-between px-6 py-5 transition-all hover:bg-slate-50/80 dark:hover:bg-slate-800/50 ${isPending ? 'opacity-60 grayscale-[0.3]' : ''} ${transaction.isIgnored ? 'opacity-50' : ''}`}>
+                <div key={transaction.id} onClick={() => handleTransactionClick(transaction)} className={`group flex cursor-pointer items-center justify-between px-6 py-5 transition-all hover:bg-slate-50/80 dark:hover:bg-slate-800/50 ${isPending ? 'bg-amber-50/30 dark:bg-amber-900/10' : ''}`}>
                   <div className="flex items-center gap-4 min-w-0">
                     <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[18px] shadow-sm transition-transform group-hover:scale-110 ${itemBg} ${itemColor}`}>
                       <span className="material-symbols-outlined text-2xl">{transaction.isIgnored ? 'visibility_off' : (isNeutral ? 'sync_alt' : cat.icon)}</span>
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`font-bold text-sm leading-snug truncate ${transaction.isIgnored ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-800 dark:text-slate-100'}`}>{transaction.description}</p>
-                        {isPending && <span className="text-[8px] font-black bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-widest flex-shrink-0">Pendente</span>}
+                        <p className={`font-bold text-sm leading-snug truncate ${transaction.isIgnored ? 'text-slate-700 dark:text-slate-200 line-through decoration-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>{transaction.description}</p>
+                        {isPending && <span className="text-[8px] font-black bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded uppercase tracking-widest flex-shrink-0">Pendente</span>}
                         {isParcelado && <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border flex-shrink-0 ${itemIsExpense ? 'bg-red-50 dark:bg-red-900/20 text-danger border-red-100 dark:border-red-900/30' : 'bg-emerald-50 dark:bg-emerald-900/20 text-success border-emerald-100 dark:border-emerald-900/30'}`}>{transaction.installmentNumber}/{transaction.totalInstallments}</span>}
                       </div>
-                      <div className="mt-1 flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-tight">
-                        <span className="text-slate-500 dark:text-slate-400 uppercase flex-shrink-0">{new Date(transaction.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                      <div className="mt-1 flex items-center gap-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-tight">
+                        <span className="text-slate-600 dark:text-slate-300 uppercase flex-shrink-0">{new Date(transaction.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
                         <span className="h-1 w-1 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0"></span>
                         <span className="uppercase truncate">{isNeutral ? 'Neutro' : transaction.category}</span>
-                        {!accountId && <><span className="h-1 w-1 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0"></span><div className="flex items-center gap-1 min-w-0"><span className="material-symbols-outlined text-[12px] opacity-40">account_balance_wallet</span><span className="truncate max-w-[80px]">{accountsMap[transaction.accountId]}</span></div></>}
+                        {!accountId && <><span className="h-1 w-1 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0"></span><div className="flex items-center gap-1 min-w-0"><span className="material-symbols-outlined text-[12px] text-slate-400">account_balance_wallet</span><span className="truncate max-w-[80px]">{accountsMap[transaction.accountId]}</span></div></>}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 pl-2 flex-shrink-0">
                      <div className="text-right"><span className={`text-base font-black tracking-tighter ${itemColor}`}>{isNeutral ? '' : (itemIsExpense ? '-' : '+')}{formatCurrency(transaction.amount)}</span></div>
-                     <button onClick={(e) => handleCreateRule(e, transaction)} className="h-8 w-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-400 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100" title="Criar regra inteligente">
+                     <button onClick={(e) => handleCreateRule(e, transaction)} className="h-8 w-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 transition-colors" title="Criar regra inteligente">
                         <span className="material-symbols-outlined text-base">auto_fix_high</span>
                      </button>
                   </div>

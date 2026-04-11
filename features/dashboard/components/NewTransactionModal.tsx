@@ -357,7 +357,23 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
              {transactionToEdit && onCreateRule && (
                 <button 
                     type="button" 
-                    onClick={() => onCreateRule(transactionToEdit)}
+                    onClick={() => {
+                      const currentData = {
+                        ...transactionToEdit,
+                        type,
+                        amount: parseFloat(amount),
+                        description,
+                        category,
+                        accountId,
+                        date: new Date(date).toISOString(),
+                        status,
+                        isFixed,
+                        isRecurring,
+                        frequency: isRecurring ? frequency : undefined,
+                        isIgnored
+                      };
+                      onCreateRule(currentData as Transaction);
+                    }}
                     className="flex items-center justify-between p-3 rounded-2xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-900/20 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-all group w-full text-left"
                 >
                     <div className="flex items-center gap-3">
