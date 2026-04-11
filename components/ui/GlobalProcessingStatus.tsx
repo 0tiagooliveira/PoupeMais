@@ -20,9 +20,9 @@ export const GlobalProcessingStatus: React.FC = () => {
         onClick={() => navigate('/import-statement')}
         className="fixed bottom-24 right-4 z-[100] cursor-pointer animate-in slide-in-from-bottom-10 fade-in duration-500 md:bottom-8"
       >
-        <div className="bg-slate-900 text-white pl-5 pr-6 py-4 rounded-[24px] shadow-2xl shadow-slate-900/20 flex items-center gap-4 border border-white/10 hover:scale-105 transition-transform active:scale-95 group">
+            <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 text-white pl-5 pr-6 py-4 rounded-[24px] shadow-2xl shadow-emerald-300/40 flex items-center gap-4 border border-emerald-400/30 hover:scale-105 transition-transform active:scale-95 group">
            <div className="relative">
-              <div className="h-10 w-10 bg-emerald-500 rounded-full flex items-center justify-center text-slate-900 shadow-lg shadow-emerald-500/30">
+                     <div className="h-10 w-10 bg-emerald-400 rounded-full flex items-center justify-center text-emerald-900 shadow-lg shadow-emerald-500/30">
                 <span className="material-symbols-outlined text-2xl font-bold">check</span>
               </div>
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
@@ -31,10 +31,10 @@ export const GlobalProcessingStatus: React.FC = () => {
               </span>
            </div>
            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Análise Finalizada</p>
-              <p className="text-sm font-bold leading-none text-white group-hover:text-emerald-300 transition-colors">Revisar lançamentos</p>
+              <p className="text-[10px] font-black text-emerald-100/90 uppercase tracking-widest leading-none mb-1">Análise Finalizada</p>
+              <p className="text-sm font-bold leading-none text-white group-hover:text-emerald-50 transition-colors">Revisar lançamentos</p>
            </div>
-           <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300 group-hover:bg-white group-hover:text-slate-900 transition-all">
+           <div className="h-8 w-8 rounded-full bg-white/15 flex items-center justify-center text-emerald-50 group-hover:bg-white group-hover:text-emerald-700 transition-all">
              <span className="material-symbols-outlined text-lg">arrow_forward</span>
            </div>
         </div>

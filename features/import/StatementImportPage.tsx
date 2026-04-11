@@ -1436,7 +1436,7 @@ export const StatementImportPage: React.FC = () => {
           <Button 
             onClick={handleStartProcessing} 
             disabled={(mode === 'file' && files.length === 0) || (mode === 'text' && !textInput.trim())} 
-            className="w-full py-5 rounded-[24px] bg-slate-900 hover:bg-slate-800 text-white font-black text-sm shadow-xl shadow-slate-200 transition-all hover:scale-[1.01] active:scale-[0.99]"
+            className="w-full py-5 rounded-[24px] bg-success hover:bg-emerald-600 text-white font-black text-sm shadow-xl shadow-emerald-200 transition-all hover:scale-[1.01] active:scale-[0.99]"
           >
             {files.length > 1 ? `Processar ${files.length} Arquivos` : 'Processar com Inteligência Artificial'}
           </Button>

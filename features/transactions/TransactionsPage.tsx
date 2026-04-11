@@ -6,6 +6,7 @@ import { Transaction, TransactionType, TransactionStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { MonthSelector } from '../dashboard/components/MonthSelector';
 import { useAccounts } from '../../hooks/useAccounts';
+import { useCreditCards } from '../../hooks/useCreditCards';
 import { BackButton } from '../../components/ui/BackButton';
 import { NewTransactionModal, incomeCategories, expenseCategories } from '../dashboard/components/NewTransactionModal';
 import { AutomationRulesModal } from '../automation/AutomationRulesModal';
@@ -25,6 +26,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
   const [currentDate, setCurrentDate] = useState(new Date());
   const { transactions, loading, addTransaction, updateTransaction, deleteTransaction } = useTransactions(currentDate);
   const { accounts } = useAccounts();
+  const { cards } = useCreditCards();
   
   // Estados de Filtro e Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,11 +60,27 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
     return accounts.find(a => a.id === accountId);
   }, [accounts, accountId]);
 
+  const selectedCard = useMemo(() => {
+    return cards.find(c => c.id === accountId);
+  }, [cards, accountId]);
+
   const displayTitle = useMemo(() => {
     if (selectedCategory) return `${selectedCategory}`;
     if (selectedAccount) return `Extrato: ${selectedAccount.name}`;
+    if (selectedCard) return `Extrato: ${selectedCard.name}`;
     return baseTitle;
-  }, [selectedCategory, selectedAccount, baseTitle]);
+  }, [selectedCategory, selectedAccount, selectedCard, baseTitle]);
+
+  const institutionsMap = useMemo(() => {
+    const map: Record<string, { name: string; type: 'account' | 'card' }> = {};
+    accounts.forEach((curr) => {
+      map[curr.id] = { name: curr.name, type: 'account' };
+    });
+    cards.forEach((curr) => {
+      map[curr.id] = { name: curr.name, type: 'card' };
+    });
+    return map;
+  }, [accounts, cards]);
 
   const accountsMap = useMemo(() => {
     return accounts.reduce((acc, curr) => {
@@ -343,30 +361,51 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ title: baseT
               const cat = getCategoryInfo(transaction.category);
               const isParcelado = transaction.totalInstallments && transaction.totalInstallments > 1;
               const isPending = transaction.status === 'pending';
+              const institution = institutionsMap[transaction.accountId];
               
               return (
-                <div key={transaction.id} onClick={() => handleTransactionClick(transaction)} className={`group flex cursor-pointer items-center justify-between px-6 py-5 transition-all hover:bg-emerald-50/40 ${isPending ? 'bg-amber-50/30' : ''}`}>
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[18px] shadow-sm transition-transform group-hover:scale-110 ${itemBg} ${itemColor}`}>
-                      <span className="material-symbols-outlined text-2xl">{transaction.isIgnored ? 'visibility_off' : (isNeutral ? 'sync_alt' : cat.icon)}</span>
+                <div key={transaction.id} className={`group flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5 transition-all hover:bg-emerald-50/40 ${isPending ? 'bg-amber-50/30' : ''}`}>
+                  <div
+                    onClick={() => handleTransactionClick(transaction)}
+                    className="flex items-start gap-3 sm:gap-4 min-w-0 cursor-pointer flex-1"
+                  >
+                    <div className={`flex h-11 w-11 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-[16px] border border-slate-100 shadow-sm transition-transform group-hover:scale-105 ${itemBg} ${itemColor}`}>
+                      <span className="material-symbols-outlined text-[20px] sm:text-[22px]">{transaction.isIgnored ? 'visibility_off' : (isNeutral ? 'sync_alt' : cat.icon)}</span>
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={`font-bold text-sm leading-snug truncate ${transaction.isIgnored ? 'text-slate-700 line-through decoration-slate-400' : 'text-slate-800'}`}>{transaction.description}</p>
-                        {isPending && <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase tracking-widest flex-shrink-0">Pendente</span>}
-                        {isParcelado && <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border flex-shrink-0 ${itemIsExpense ? 'bg-red-50 text-danger border-red-100' : 'bg-emerald-50 text-success border-emerald-100'}`}>{transaction.installmentNumber}/{transaction.totalInstallments}</span>}
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-bold text-sm leading-snug truncate ${transaction.isIgnored ? 'text-slate-700 line-through decoration-slate-400' : 'text-slate-800'}`}>{transaction.description}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-tight">{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
+                        {isPending && <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase tracking-widest">Pendente</span>}
+                        {isParcelado && <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border ${itemIsExpense ? 'bg-red-50 text-danger border-red-100' : 'bg-emerald-50 text-success border-emerald-100'}`}>{transaction.installmentNumber}/{transaction.totalInstallments}</span>}
                       </div>
-                      <div className="mt-1 flex items-center gap-2 text-[10px] font-bold text-slate-500 tracking-tight">
-                        <span className="text-slate-600 uppercase flex-shrink-0">{new Date(transaction.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
-                        <span className="h-1 w-1 rounded-full bg-slate-200 flex-shrink-0"></span>
-                        <span className="uppercase truncate">{isNeutral ? 'Neutro' : transaction.category}</span>
-                        {!accountId && <><span className="h-1 w-1 rounded-full bg-slate-200 flex-shrink-0"></span><div className="flex items-center gap-1 min-w-0"><span className="material-symbols-outlined text-[12px] text-slate-400">account_balance_wallet</span><span className="truncate max-w-[80px]">{accountsMap[transaction.accountId]}</span></div></>}
+                      <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                        {!accountId && (
+                          <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full border border-slate-200 bg-slate-50 text-slate-600">
+                            <span className="material-symbols-outlined text-[13px]">{institution?.type === 'card' ? 'credit_card' : 'account_balance_wallet'}</span>
+                            <span className="text-[11px] sm:text-xs font-bold truncate max-w-[120px]">{institution?.name || accountsMap[transaction.accountId] || 'Sem origem'}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full border border-slate-200 bg-slate-50 text-slate-600">
+                          <span className="material-symbols-outlined text-[13px]">{cat.icon}</span>
+                          <span className="text-[11px] sm:text-xs font-bold truncate max-w-[120px]">{isNeutral ? 'Neutro' : transaction.category}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 pl-2 flex-shrink-0">
-                     <div className="text-right"><span className={`text-base font-black tracking-tighter ${itemColor}`}>{isNeutral ? '' : (itemIsExpense ? '-' : '+')}{formatCurrency(transaction.amount)}</span></div>
-                     <button onClick={(e) => handleCreateRule(e, transaction)} className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 hover:text-emerald-700 transition-colors" title="Criar regra inteligente">
+
+                  <div className="flex items-center justify-end gap-2.5 sm:gap-4 pl-0 sm:pl-3 flex-shrink-0">
+                     <div className="text-right">
+                       <span className={`text-2xl sm:text-base font-black tracking-tighter ${itemColor}`}>{isNeutral ? '' : (itemIsExpense ? '-' : '+')}{formatCurrency(transaction.amount)}</span>
+                     </div>
+                     <button
+                       onClick={() => handleTransactionClick(transaction)}
+                       className="flex h-10 min-w-[96px] sm:min-w-[104px] items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-slate-500 hover:text-primary hover:border-emerald-300 hover:bg-emerald-50 transition-all"
+                     >
+                        <span className="material-symbols-outlined text-base">edit</span>
+                        <span className="text-[11px] font-black uppercase tracking-widest">Editar</span>
+                     </button>
+                     <button onClick={(e) => handleCreateRule(e, transaction)} className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 hover:text-emerald-700 transition-colors" title="Criar regra inteligente">
                         <span className="material-symbols-outlined text-base">auto_fix_high</span>
                      </button>
                   </div>

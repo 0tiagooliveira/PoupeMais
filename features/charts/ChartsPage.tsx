@@ -319,13 +319,13 @@ export const ChartsPage: React.FC = () => {
          <div className="space-y-4"><CategoryChartCard title="Saídas do Mês" type="expense" categories={monthStats.expenseCats} total={monthStats.expense} onCategoryClick={(cat) => handleCategoryClick(cat, 'expense')} /><AICommentBubble text={aiComments.expense} loading={isAnalyzing} type="warning" label="IA sobre Saídas" /></div>
       </div>
 
-      <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-emerald-700 to-emerald-600 rounded-[32px] p-8 text-white shadow-xl shadow-emerald-200 relative overflow-hidden">
          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Balanço Líquido ({new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(currentMonthDate)})</p>
-                <div className="flex items-baseline gap-2"><span className={`text-4xl font-black tracking-tighter ${monthStats.result >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatCurrency(monthStats.result)}</span>{monthStats.income > 0 && <span className="text-xs font-bold bg-white/10 px-2 py-1 rounded-lg text-white/80">{((monthStats.result / monthStats.income) * 100).toFixed(0)}% poupado</span>}</div>
+             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100/80 mb-2">Balanço Líquido ({new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(currentMonthDate)})</p>
+             <div className="flex items-baseline gap-2"><span className={`text-4xl font-black tracking-tighter ${monthStats.result >= 0 ? 'text-emerald-100' : 'text-rose-100'}`}>{formatCurrency(monthStats.result)}</span>{monthStats.income > 0 && <span className="text-xs font-bold bg-white/15 px-2 py-1 rounded-lg text-white">{((monthStats.result / monthStats.income) * 100).toFixed(0)}% poupado</span>}</div>
             </div>
-            {(aiComments.general || isAnalyzing) && (<div className="md:max-w-xs bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10"><div className="flex items-center gap-2 mb-2"><span className="material-symbols-outlined text-xs text-indigo-300">savings</span><span className="text-[9px] font-bold text-indigo-200 uppercase">Veredito da IA</span></div>{isAnalyzing ? <div className="h-4 w-24 bg-white/10 rounded animate-pulse"></div> : <p className="text-xs font-medium leading-relaxed text-indigo-50">"{aiComments.general}"</p>}</div>)}
+          {(aiComments.general || isAnalyzing) && (<div className="md:max-w-xs bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/15"><div className="flex items-center gap-2 mb-2"><span className="material-symbols-outlined text-xs text-emerald-100">savings</span><span className="text-[9px] font-bold text-emerald-100 uppercase">Veredito da IA</span></div>{isAnalyzing ? <div className="h-4 w-24 bg-white/15 rounded animate-pulse"></div> : <p className="text-xs font-medium leading-relaxed text-white">"{aiComments.general}"</p>}</div>)}
          </div>
          <span className="material-symbols-outlined absolute -right-6 -bottom-6 text-white/5 text-[150px] rotate-12">account_balance_wallet</span>
       </div>
