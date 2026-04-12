@@ -48,6 +48,7 @@ export const Dashboard: React.FC = () => {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [isRecoveringCards, setIsRecoveringCards] = useState(false);
   const [transactionForRule, setTransactionForRule] = useState<Transaction | null>(null);
   const [accountToEdit, setAccountToEdit] = useState<Account | null>(null);
 
@@ -65,6 +66,88 @@ export const Dashboard: React.FC = () => {
   const { transactions, addTransaction, updateTransaction, deleteTransaction, loading: loadingTrans } = useTransactions(currentDate);
   const { accounts, addAccount, updateAccount, deleteAccount } = useAccounts();
   const { cards, addCard, deleteCard } = useCreditCards();
+
+  const getCardColor = (name: string) => {
+    const lower = name.toLowerCase();
+    if (lower.includes('nubank') || lower.includes('nu pagamentos')) return '#820ad1';
+    if (lower.includes('itaú') || lower.includes('itau')) return '#ec7000';
+    if (lower.includes('bradesco')) return '#cc092f';
+    if (lower.includes('inter')) return '#ff7a00';
+    if (lower.includes('santander')) return '#ec0000';
+    return '#21C25E';
+  };
+
+  const inferCardName = (t: Transaction) => {
+    const anyT = t as any;
+    const bankName = String(anyT?.bankName || '').trim();
+    if (bankName) return bankName;
+
+    const desc = String(t.description || '').toLowerCase();
+    if (desc.includes('nubank')) return 'Nubank';
+    if (desc.includes('itau') || desc.includes('itaú')) return 'Itaú';
+    if (desc.includes('bradesco')) return 'Bradesco';
+    if (desc.includes('santander')) return 'Santander';
+    if (desc.includes('inter')) return 'Inter';
+    if (desc.includes('c6')) return 'C6 Bank';
+    return 'Cartão importado';
+  };
+
+  const recoverCardsFromTransactions = async () => {
+    if (!currentUser?.uid) {
+      addNotification('Usuário não autenticado.', 'error');
+      return;
+    }
+
+    const cardTx = transactions.filter((t) => {
+      const anyT = t as any;
+      const sourceType = String(anyT?.sourceType || '').toLowerCase();
+      const description = String(t.description || '').toLowerCase();
+      const category = String(t.category || '').toLowerCase();
+      return (
+        sourceType === 'card' ||
+        description.includes('fatura') ||
+        description.includes('cartao') ||
+        description.includes('cartão') ||
+        category.includes('cartão') ||
+        category.includes('cartao')
+      );
+    });
+
+    if (cardTx.length === 0) {
+      addNotification('Nenhum lançamento de cartão encontrado para recuperar.', 'info');
+      return;
+    }
+
+    const existingNames = new Set(cards.map((c) => c.name.trim().toLowerCase()));
+    const inferredNames = Array.from(new Set(cardTx.map(inferCardName).map((name) => name.trim()).filter(Boolean)));
+    const namesToCreate = inferredNames.filter((name) => !existingNames.has(name.toLowerCase()));
+
+    if (namesToCreate.length === 0) {
+      addNotification('Os cartões detectados já estão cadastrados.', 'info');
+      return;
+    }
+
+    setIsRecoveringCards(true);
+    try {
+      await Promise.all(
+        namesToCreate.map((name) =>
+          addCard({
+            name,
+            limit: 1000,
+            closingDay: 1,
+            dueDay: 10,
+            color: getCardColor(name),
+          })
+        )
+      );
+      addNotification(`${namesToCreate.length} cartão(ões) recuperado(s) com sucesso.`, 'success');
+    } catch (error: any) {
+      console.error('Erro ao recuperar cartões:', error);
+      addNotification(error?.message || 'Erro ao recuperar cartões automaticamente.', 'error');
+    } finally {
+      setIsRecoveringCards(false);
+    }
+  };
 
   const isNeutralIncome = (t: Transaction) => {
     if (t.type !== 'income') return false;
@@ -303,12 +386,19 @@ export const Dashboard: React.FC = () => {
       <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-bottom-12 duration-1000">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           <AccountsList accounts={accounts} onAddAccount={() => { setAccountToEdit(null); setIsAccountModalOpen(true); }} onAccountClick={(acc) => navigate(`/transactions/account/${acc.id}`)} onEditAccount={(acc) => { setAccountToEdit(acc); setIsAccountModalOpen(true); }} />
-          <CreditCardsList cards={cards} transactions={transactions} onAddCard={() => setIsCreditCardModalOpen(true)} onDeleteCard={deleteCard} />
+          <CreditCardsList
+            cards={cards}
+            transactions={transactions}
+            onAddCard={() => setIsCreditCardModalOpen(true)}
+            onDeleteCard={deleteCard}
+            onRecoverCards={recoverCardsFromTransactions}
+            recoveringCards={isRecoveringCards}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-          <TransactionSummaryCard type="income" total={totalIncome} transactions={recentIncomes} onViewAll={() => navigate('/incomes')} onAdd={() => openTransactionModal('income')} onItemClick={handleTransactionItemClick} />
-          <TransactionSummaryCard type="expense" total={totalExpenses} transactions={recentExpenses} onViewAll={() => navigate('/expenses')} onAdd={() => openTransactionModal('expense')} onItemClick={handleTransactionItemClick} />
+          <TransactionSummaryCard type="income" total={totalIncome} transactions={recentIncomes} accounts={accounts} cards={cards} onViewAll={() => navigate('/incomes')} onAdd={() => openTransactionModal('income')} onItemClick={handleTransactionItemClick} />
+          <TransactionSummaryCard type="expense" total={totalExpenses} transactions={recentExpenses} accounts={accounts} cards={cards} onViewAll={() => navigate('/expenses')} onAdd={() => openTransactionModal('expense')} onItemClick={handleTransactionItemClick} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">

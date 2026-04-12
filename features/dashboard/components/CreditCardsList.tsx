@@ -12,11 +12,42 @@ interface CreditCardsListProps {
   transactions?: Transaction[];
   onAddCard: () => void;
   onDeleteCard: (id: string) => void;
+  onRecoverCards?: () => void;
+  recoveringCards?: boolean;
 }
 
-export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transactions = [], onAddCard, onDeleteCard }) => {
+export const CreditCardsList: React.FC<CreditCardsListProps> = ({
+  cards,
+  transactions = [],
+  onAddCard,
+  onDeleteCard,
+  onRecoverCards,
+  recoveringCards = false,
+}) => {
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const cardLikeTransactionsCount = useMemo(() => {
+    return transactions.filter((t) => {
+      const data = t as any;
+      const sourceType = String(data?.sourceType || '').toLowerCase();
+      const description = String(t.description || '').toLowerCase();
+      const category = String(t.category || '').toLowerCase();
+      const bankName = String(data?.bankName || '').toLowerCase();
+
+      return (
+        sourceType === 'card' ||
+        description.includes('fatura') ||
+        description.includes('cartao') ||
+        description.includes('cartão') ||
+        category.includes('cartão') ||
+        category.includes('cartao') ||
+        bankName.includes('nubank') ||
+        bankName.includes('visa') ||
+        bankName.includes('mastercard')
+      );
+    }).length;
+  }, [transactions]);
 
   // Cálculo de Balanços (Fatura e Disponível)
   const cardStats = useMemo(() => {
@@ -74,34 +105,58 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full">
       <div className="mb-5 flex items-center justify-between px-1">
         <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Cartões de crédito</h3>
-        {cards.length > 0 && (
-          <button 
-            onClick={() => navigate('/credit-cards')}
-            className="text-xs font-bold text-success hover:opacity-80 transition-opacity"
+        <div className="flex items-center gap-2">
+          {cards.length > 0 && (
+            <button
+              onClick={() => navigate('/credit-cards')}
+              className="text-xs font-bold text-success hover:opacity-80 transition-opacity"
+            >
+              Ver todos
+            </button>
+          )}
+          <button
+            onClick={onAddCard}
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-success/10 hover:text-success transition-all active:scale-90"
+            title="Adicionar cartão"
           >
-            Ver todos
+            <span className="material-symbols-outlined text-lg font-bold">add</span>
           </button>
-        )}
+        </div>
       </div>
       
       {cards.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[32px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center shadow-sm">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/5 text-success/40">
-             <span className="material-symbols-outlined text-3xl">credit_card</span>
+        <div className="group flex items-center justify-between rounded-[24px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-success/5 text-success/40 border border-black/5">
+              <span className="material-symbols-outlined text-xl">credit_card</span>
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+                {cardLikeTransactionsCount > 0 ? 'Lançamentos de cartão detectados' : 'Nenhum cartão cadastrado'}
+              </h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {cardLikeTransactionsCount > 0
+                  ? `${cardLikeTransactionsCount} lançamentos encontrados sem cartão cadastrado`
+                  : 'Adicione para acompanhar limite'}
+              </p>
+            </div>
           </div>
-          <h4 className="mb-2 text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">Nenhum cartão cadastrado</h4>
-          <Button 
-            onClick={onAddCard}
-            className="bg-primary hover:bg-emerald-600 text-white font-bold text-xs px-8 rounded-2xl h-11 shadow-lg shadow-success/20"
-          >
-            + Adicionar cartão
-          </Button>
+
+          {cardLikeTransactionsCount > 0 && onRecoverCards ? (
+            <Button onClick={onRecoverCards} isLoading={recoveringCards} className="rounded-2xl h-10 px-5 text-xs font-bold">
+              Recuperar cartões
+            </Button>
+          ) : (
+            <Button onClick={onAddCard} className="rounded-2xl h-10 px-5 text-xs font-bold">
+              + Adicionar cartão
+            </Button>
+          )}
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3">
           {cards.map((card) => {
             const stat = cardStats[card.id] || { currentInvoice: 0, usedLimit: 0, available: card.limit, percentage: 0 };
             const barColor = stat.percentage > 85 ? 'bg-danger' : stat.percentage > 60 ? 'bg-amber-400' : 'bg-success';
@@ -110,71 +165,62 @@ export const CreditCardsList: React.FC<CreditCardsListProps> = ({ cards, transac
               <div 
                 key={card.id}
                 onClick={() => navigate('/credit-cards')} 
-                className="group relative overflow-hidden rounded-[28px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm transition-all hover:shadow-xl hover:scale-[1.01] cursor-pointer"
+                className="group cursor-pointer rounded-[24px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition-all hover:border-success/30 hover:shadow-md active:scale-[0.98]"
               >
-                {/* Lateral Accent */}
-                <div className="absolute top-0 left-0 h-full w-2" style={{ backgroundColor: card.color }}></div>
-                
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-4 min-w-0">
                     <BankLogo name={card.name} color={card.color} size="md" />
                     <div>
-                      <p className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-none mb-1">{card.name}</p>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Vence dia {card.dueDay}</p>
+                      <p className="text-base font-bold text-slate-800 dark:text-slate-100 leading-none mb-1 truncate">{card.name}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vence dia {card.dueDay}</p>
                     </div>
                   </div>
-                  
-                  <button 
+
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fatura atual</p>
+                      <p className={`text-[clamp(1.05rem,2.5vw,1.5rem)] font-black tracking-tight ${stat.currentInvoice > 0 ? 'text-danger' : 'text-slate-700 dark:text-slate-300'}`}>
+                        {formatCurrency(stat.currentInvoice)}
+                      </p>
+                    </div>
+                    <button 
                     onClick={(e) => { e.stopPropagation(); setCardToDelete(card.id); }}
-                    className="text-slate-200 dark:text-slate-700 hover:text-danger dark:hover:text-red-400 transition-colors p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    <span className="material-symbols-outlined text-xl">delete</span>
-                  </button>
+                      className="text-slate-200 dark:text-slate-700 hover:text-danger dark:hover:text-red-400 transition-colors p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <span className="material-symbols-outlined text-xl">delete</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Grid de Informações de Limite */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Limite Utilizado</span>
-                    <p className={`text-lg font-black tracking-tight ${stat.usedLimit > card.limit ? 'text-danger' : 'text-slate-800 dark:text-slate-100'}`}>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Limite utilizado</span>
+                    <p className={`text-base font-black tracking-tight ${stat.usedLimit > card.limit ? 'text-danger' : 'text-slate-800 dark:text-slate-100'}`}>
                       {formatCurrency(stat.usedLimit)}
                     </p>
                   </div>
-                  <div className="space-y-0.5 text-right">
+                  <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5 text-right">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Disponível</span>
-                    <p className="text-lg font-black text-success tracking-tight">
+                    <p className="text-base font-black text-success tracking-tight">
                       {formatCurrency(stat.available)}
                     </p>
                   </div>
                 </div>
 
-                {/* Barra de Progresso do Uso */}
-                <div className="mb-6 space-y-1.5">
-                    <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner border border-slate-50 dark:border-slate-700">
-                        <div 
-                            className={`h-full transition-all duration-1000 ease-out rounded-full shadow-sm ${barColor}`}
-                            style={{ width: `${stat.percentage}%` }}
-                        />
-                    </div>
-                    <div className="flex justify-between items-center px-0.5">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">
-                          {stat.percentage.toFixed(1)}% do limite comprometido
-                        </span>
-                    </div>
-                </div>
-
-                <div className="flex items-end justify-between border-t border-slate-50 dark:border-slate-800 pt-5">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-tighter">Limite Total</span>
-                    <span className="text-base font-bold text-slate-500 dark:text-slate-400 tracking-tighter">
-                      {formatCurrency(card.limit)}
-                    </span>
+                <div className="mt-3 space-y-1.5">
+                  <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-50 dark:border-slate-700">
+                    <div 
+                      className={`h-full transition-all duration-1000 ease-out rounded-full ${barColor}`}
+                      style={{ width: `${stat.percentage}%` }}
+                    />
                   </div>
-                  <div className="text-right space-y-1">
-                     <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-tighter">Fatura Atual</span>
-                     <span className="text-xl font-bold tracking-tighter block text-slate-800 dark:text-slate-100">
-                       {formatCurrency(stat.currentInvoice)}
-                     </span>
+                  <div className="flex justify-between items-center px-0.5">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">
+                      {stat.percentage.toFixed(1)}% do limite comprometido
+                    </span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">
+                      Limite total {formatCurrency(card.limit)}
+                    </span>
                   </div>
                 </div>
               </div>

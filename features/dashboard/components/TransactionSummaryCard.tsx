@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Transaction } from '../../../types';
+import { Account, CreditCard, Transaction } from '../../../types';
 import { formatCurrency } from '../../../utils/formatters';
 import { Button } from '../../../components/ui/Button';
 import { incomeCategories, expenseCategories } from './NewTransactionModal';
@@ -9,6 +9,8 @@ interface TransactionSummaryCardProps {
   type: 'income' | 'expense';
   total: number;
   transactions: Transaction[];
+  accounts?: Account[];
+  cards?: CreditCard[];
   onViewAll: () => void;
   onAdd: () => void;
   onItemClick?: (transaction: Transaction) => void;
@@ -18,6 +20,8 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
   type,
   total,
   transactions,
+  accounts = [],
+  cards = [],
   onViewAll,
   onAdd,
   onItemClick
@@ -32,6 +36,18 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
   const getCategoryInfo = (categoryName: string) => {
     const all = [...incomeCategories, ...expenseCategories];
     return all.find(c => c.name === categoryName) || { icon: 'receipt_long', color: '#94a3b8' };
+  };
+
+  const getOriginName = (transaction: Transaction) => {
+    if (transaction.accountName) return transaction.accountName;
+
+    const fromAccount = accounts.find((acc) => acc.id === transaction.accountId);
+    if (fromAccount) return fromAccount.name;
+
+    const fromCard = cards.find((card) => card.id === transaction.accountId);
+    if (fromCard) return fromCard.name;
+
+    return 'Sem origem';
   };
 
   return (
@@ -94,9 +110,13 @@ export const TransactionSummaryCard: React.FC<TransactionSummaryCardProps> = ({
                         </span>
                       )}
                     </div>
-                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 tracking-tight">
-                      {new Date(t.date).toLocaleDateString('pt-BR')}
-                    </span>
+                    <div className="flex items-center gap-1.5 text-[9px] font-semibold text-slate-400 dark:text-slate-500 tracking-tight">
+                      <span>{new Date(t.date).toLocaleDateString('pt-BR')}</span>
+                      <span>•</span>
+                      <span className="truncate max-w-[90px]">{t.category}</span>
+                      <span>•</span>
+                      <span className="truncate max-w-[90px]">{getOriginName(t)}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="text-right ml-2">

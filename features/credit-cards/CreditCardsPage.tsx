@@ -99,6 +99,37 @@ export const CreditCardsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [cardToEdit, setCardToEdit] = useState<CreditCard | null>(null);
 
+  const normalizeText = (value: string) =>
+    String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+  const isTransactionFromCard = (card: CreditCard, transaction: Transaction) => {
+    if (transaction.accountId === card.id) return true;
+
+    const txAny = transaction as any;
+    const sourceType = normalizeText(txAny?.sourceType || '');
+    const bankName = normalizeText(txAny?.bankName || '');
+    const description = normalizeText(transaction.description || '');
+    const cardName = normalizeText(card.name || '');
+
+    const sourceLooksLikeCard =
+      sourceType === 'card' ||
+      description.includes('fatura') ||
+      description.includes('cartao') ||
+      description.includes('cartão');
+
+    const nameMatches =
+      !!bankName && !!cardName && (bankName.includes(cardName) || cardName.includes(bankName));
+
+    // Se só existe um cartão, aceitamos transações marcadas como cartão mesmo sem nome casado.
+    if (cards.length === 1 && sourceLooksLikeCard) return true;
+
+    return sourceLooksLikeCard && nameMatches;
+  };
+
   useEffect(() => {
     if (!currentUser) return;
     setLoadingTrans(true);
@@ -145,8 +176,8 @@ export const CreditCardsPage: React.FC = () => {
         const cycleEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), closingDay);
 
         const cardTrans = allTransactions.filter(t => 
-          t.accountId === card.id && 
-          !t.isIgnored && // Ignora transações marcadas
+          isTransactionFromCard(card, t) &&
+          !t.isIgnored &&
           new Date(t.date) >= cycleStart && 
           new Date(t.date) < cycleEnd
         );
@@ -177,7 +208,7 @@ export const CreditCardsPage: React.FC = () => {
       allTransactions.forEach(t => {
         if (t.isIgnored) return; // Ignora se marcado
 
-        const isCardTrans = cards.some(c => c.id === t.accountId);
+        const isCardTrans = cards.some(c => isTransactionFromCard(c, t));
         if (!isCardTrans) return;
 
         const isParcelado = t.totalInstallments && t.totalInstallments > 1;
@@ -217,8 +248,8 @@ export const CreditCardsPage: React.FC = () => {
         const dueDateObj = new Date(year, month, dueDay);
 
         const invTransactions = allTransactions.filter(t => 
-          t.accountId === activeCard.id && 
-          !t.isIgnored && // Filtra ignoradas
+          isTransactionFromCard(activeCard, t) &&
+          !t.isIgnored &&
           new Date(t.date) >= cycleStartDate && 
           new Date(t.date) < cycleCutoffDate
         );

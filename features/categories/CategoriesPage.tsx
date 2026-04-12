@@ -9,15 +9,31 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { TransactionType, Category } from '../../types';
 
 const AVAILABLE_ICONS = [
-  'payments', 'shopping_cart', 'restaurant', 'directions_car', 'home', 
-  'medical_services', 'school', 'sports_esports', 'flight', 'subscriptions',
-  'credit_card', 'gavel', 'card_giftcard', 'pets', 'build', 'smartphone',
-  'bolt', 'water_drop', 'propane', 'spa', 'handshake', 'savings', 'checkroom',
-  'face', 'local_gas_station', 'more_horiz', 'computer', 'stars', 'trending_up',
-  'real_estate_agent', 'show_chart', 'pie_chart', 'percent', 'currency_exchange',
-  'storefront', 'design_services', 'undo', 'account_balance', 'emoji_events',
-  'diversity_3', 'elderly', 'child_friendly', 'volunteer_activism', 'casino',
-  'sync_alt', 'calendar_month', 'move_to_inbox', 'query_stats', 'home_repair_service'
+  'payments', 'shopping_cart', 'restaurant', 'local_cafe', 'bakery_dining',
+  'local_pizza', 'lunch_dining', 'fastfood', 'receipt_long', 'directions_car',
+  'commute', 'train', 'flight', 'directions_bus', 'home', 'house', 'apartment',
+  'real_estate_agent', 'hotel', 'medical_services', 'health_and_safety', 'monitor_heart',
+  'psychology', 'self_improvement', 'school', 'menu_book', 'sports_esports',
+  'stadia_controller', 'music_note', 'movie', 'theaters', 'subscriptions',
+  'credit_card', 'account_balance_wallet', 'savings', 'account_balance', 'currency_exchange',
+  'attach_money', 'paid', 'price_check', 'request_quote', 'gavel', 'card_giftcard',
+  'redeem', 'pets', 'build', 'construction', 'handyman', 'plumbing', 'smartphone',
+  'devices', 'computer', 'tv', 'headphones', 'wifi', 'bolt', 'water_drop', 'local_gas_station',
+  'propane', 'spa', 'checkroom', 'face', 'volunteer_activism', 'handshake', 'groups',
+  'family_restroom', 'child_friendly', 'elderly', 'diversity_3', 'stars', 'emoji_events',
+  'casino', 'sports_soccer', 'sports_basketball', 'sports_tennis', 'fitness_center',
+  'monitor_weight', 'trending_up', 'show_chart', 'pie_chart', 'query_stats', 'insights',
+  'percent', 'storefront', 'shopping_bag', 'local_mall', 'design_services', 'brush',
+  'palette', 'camera_alt', 'photo_camera', 'sync_alt', 'undo', 'calendar_month',
+  'event', 'move_to_inbox', 'archive', 'inventory_2', 'more_horiz', 'category',
+  'home_repair_service', 'workspace_premium', 'military_tech'
+];
+
+const AVAILABLE_COLORS = [
+  '#21C25E', '#16A34A', '#22C55E', '#84CC16', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9',
+  '#3B82F6', '#2563EB', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899', '#F43F5E',
+  '#EF4444', '#DC2626', '#F97316', '#FB923C', '#F59E0B', '#EAB308', '#64748B', '#475569',
+  '#334155', '#0F172A', '#000000', '#7C3AED', '#1D4ED8', '#059669'
 ];
 
 export const CategoriesPage: React.FC = () => {
@@ -30,6 +46,7 @@ export const CategoriesPage: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('category');
   const [newColor, setNewColor] = useState('#21C25E');
+  const [iconSearch, setIconSearch] = useState('');
   const [saving, setSaving] = useState(false);
 
   const filteredCategories = useMemo(() => {
@@ -41,12 +58,20 @@ export const CategoriesPage: React.FC = () => {
       setNewName(editingCategory.name);
       setNewIcon(editingCategory.icon);
       setNewColor(editingCategory.color);
+      setIconSearch('');
     } else {
       setNewName('');
       setNewIcon('category');
       setNewColor('#21C25E');
+      setIconSearch('');
     }
   }, [editingCategory, isModalOpen]);
+
+  const filteredIcons = useMemo(() => {
+    const query = iconSearch.trim().toLowerCase();
+    if (!query) return AVAILABLE_ICONS;
+    return AVAILABLE_ICONS.filter(icon => icon.toLowerCase().includes(query));
+  }, [iconSearch]);
 
   const handleSave = async () => {
     if (!newName.trim()) {
@@ -200,8 +225,15 @@ export const CategoriesPage: React.FC = () => {
 
           <div>
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Ícone</label>
-            <div className="grid grid-cols-6 gap-2 max-h-[180px] overflow-y-auto p-1 custom-scrollbar">
-              {AVAILABLE_ICONS.map(icon => (
+            <Input
+              label="Buscar ícone"
+              placeholder="Ex: casa, cart, saúde..."
+              value={iconSearch}
+              onChange={e => setIconSearch(e.target.value)}
+              className="mb-3"
+            />
+            <div className="grid grid-cols-6 gap-2 max-h-[220px] overflow-y-auto p-1 custom-scrollbar">
+              {filteredIcons.map(icon => (
                 <button 
                   key={icon}
                   type="button"
@@ -217,7 +249,7 @@ export const CategoriesPage: React.FC = () => {
           <div>
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Cor</label>
             <div className="flex flex-wrap gap-2">
-              {['#21C25E', '#EF4444', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#0EA5E9', '#14B8A6', '#64748B', '#000000'].map(color => (
+              {AVAILABLE_COLORS.map(color => (
                 <button 
                   key={color}
                   type="button"

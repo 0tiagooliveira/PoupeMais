@@ -9,7 +9,8 @@ export const Sidebar: React.FC = () => {
   
   const links = [
     { to: '/', icon: 'dashboard', label: 'Dashboard' },
-    { to: '/transactions', icon: 'receipt_long', label: 'Transações' },
+    { to: '/transactions', icon: 'payments', label: 'Transações' },
+    { to: '/automation-rules', icon: 'auto_fix_high', label: 'Regras Inteligentes' },
     { to: '/ai-analysis', icon: 'savings', label: 'Poup+ IA', pro: true },
     { to: '/credit-cards', icon: 'credit_card', label: 'Cartões' },
     { to: '/charts', icon: 'bar_chart', label: 'Análise' },

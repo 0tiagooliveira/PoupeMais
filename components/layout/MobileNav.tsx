@@ -19,12 +19,13 @@ export const MobileNav: React.FC = () => {
   // Links da esquerda (antes do botão +)
   const mainLinks = [
     { to: '/', icon: 'home', label: 'Início' },
-    { to: '/transactions', icon: 'receipt_long', label: 'Extrato' },
+    { to: '/transactions', icon: 'payments', label: 'Extrato' },
   ];
 
   // Links do menu secundário (modal)
   const menuLinks = [
     { to: '/ai-analysis', icon: 'savings', label: 'Poup IA', desc: 'Inteligência Artificial', pro: true },
+    { to: '/automation-rules', icon: 'auto_fix_high', label: 'Regras Inteligentes', desc: 'Editar aprendizagem automática' },
     { to: '/charts', icon: 'bar_chart', label: 'Análise', desc: 'Gráficos e relatórios' },
     { to: '/credit-cards', icon: 'credit_card', label: 'Cartões', desc: 'Faturas e limites' },
     { to: '/pricing', icon: 'verified', label: 'Plano PRO', desc: 'Benefícios exclusivos', pro: true },

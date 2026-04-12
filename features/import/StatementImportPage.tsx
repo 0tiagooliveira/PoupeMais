@@ -18,6 +18,7 @@ import { NewAccountModal } from '../dashboard/components/NewAccountModal';
 import { NewCreditCardModal } from '../dashboard/components/NewCreditCardModal';
 import { AutomationRulesModal } from '../automation/AutomationRulesModal';
 import { DetectedTransaction, InputMode, Transaction, AutomationRule } from '../../types';
+import { applyRulesToDetectedTransactions, fetchActiveAutomationRules } from '../../utils/automationRules';
 
 export const StatementImportPage: React.FC = () => {
   const SUGGESTED_DESTINATION_VALUE = '__suggested_destination__';
@@ -422,29 +423,8 @@ export const StatementImportPage: React.FC = () => {
   };
 
   const handleRuleCreatedInImportPreview = (rule: Omit<AutomationRule, 'id'>) => {
-    const normalize = (value: string) => value
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    const normalizedCondition = normalize(rule.conditions.descriptionContains || '');
-    if (!normalizedCondition) return;
-
-    const applyRule = (item: DetectedTransaction): DetectedTransaction => {
-      const normalizedDescription = normalize(item.description || '');
-      if (!normalizedDescription.includes(normalizedCondition)) return item;
-      if (rule.conditions.amountMin && item.amount < parseFloat(rule.conditions.amountMin)) return item;
-      if (rule.conditions.amountMax && item.amount > parseFloat(rule.conditions.amountMax)) return item;
-
-      const updated = { ...item };
-      if (rule.actions.categoryId) updated.category = rule.actions.categoryId;
-      if (rule.actions.renameTo) updated.description = rule.actions.renameTo;
-      return updated;
-    };
-
-    setResults(prev => prev.map(applyRule));
+    const runtimeRule: AutomationRule = { ...rule, id: `runtime-${Date.now()}` };
+    setResults(prev => applyRulesToDetectedTransactions(prev, [runtimeRule]).transactions);
 
     setEditDraft(prev => {
       if (!prev) return prev;
@@ -527,103 +507,17 @@ export const StatementImportPage: React.FC = () => {
 
       console.log('[AUTOMATION] Aplicando regras a', transactions.length, 'transações para UID:', currentUser.uid);
 
-      // Buscar todas as regras do usuário - com tratamento de erro de permissão
-      let rules: any[] = [];
-      try {
-        const rulesSnapshot = await db.collection('users')
-          .doc(currentUser.uid)
-          .collection('automation_rules')
-          .where('isActive', '==', true)
-          .get();
-
-        rules = rulesSnapshot.docs.map(doc => doc.data());
-        console.log('[AUTOMATION] Regras encontradas:', rules.length);
-      } catch (queryError: any) {
-        console.error('[AUTOMATION] Erro ao buscar regras com where:', queryError?.code);
-        
-        // Fallback: buscar todas as regras sem filtro
-        try {
-          const rulesSnapshot = await db.collection('users')
-            .doc(currentUser.uid)
-            .collection('automation_rules')
-            .get();
-
-          rules = rulesSnapshot.docs
-            .map(doc => doc.data())
-            .filter(rule => rule.isActive !== false);
-          console.log('[AUTOMATION] Regras encontradas (fallback):', rules.length);
-        } catch (fallbackError: any) {
-          console.error('[AUTOMATION] Erro ao buscar regras (fallback):', { uid: currentUser.uid, code: fallbackError?.code, message: fallbackError?.message });
-          return transactions;
-        }
-      }
+      const rules = await fetchActiveAutomationRules(currentUser.uid);
+      console.log('[AUTOMATION] Regras encontradas:', rules.length);
 
       if (rules.length === 0) {
         console.log('[AUTOMATION] Nenhuma regra ativa encontrada');
         return transactions;
       }
 
-      const normalizeText = (value: string) => value
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      // Aplicar regras a cada transação
-      const result = transactions.map(trans => {
-        let modified = { ...trans };
-
-        for (const rule of rules) {
-          const normalizedCondition = normalizeText(rule.conditions?.descriptionContains || '');
-          const normalizedDescription = normalizeText(modified.description || '');
-
-          // DEBUG
-          console.log('[AUTOMATION] Testando:', {
-            original: modified.description,
-            normalizado: normalizedDescription,
-            condicao: normalizedCondition,
-            match: normalizedDescription.includes(normalizedCondition)
-          });
-
-          // Verificar se a descrição contém o texto procurado
-          if (!normalizedDescription.includes(normalizedCondition)) continue;
-
-          // Verificar condições adicionais
-          if (rule.conditions?.amountMin && modified.amount < parseFloat(rule.conditions.amountMin)) {
-            console.log('[AUTOMATION] Pulando por amountMin');
-            continue;
-          }
-          if (rule.conditions?.amountMax && modified.amount > parseFloat(rule.conditions.amountMax)) {
-            console.log('[AUTOMATION] Pulando por amountMax');
-            continue;
-          }
-
-          // Aplicar ações
-          console.log('[AUTOMATION] ✅ MATCH ENCONTRADO! Aplicando ações...');
-          
-          if (rule.actions?.categoryId) {
-            console.log('[AUTOMATION] Alterando categoria de', modified.category, 'para', rule.actions.categoryId);
-            modified.category = rule.actions.categoryId;
-          }
-          if (rule.actions?.renameTo) {
-            console.log('[AUTOMATION] Renomeando de', modified.description, 'para', rule.actions.renameTo);
-            modified.description = rule.actions.renameTo;
-          }
-          if (rule.actions?.isIgnored) {
-            console.log('[AUTOMATION] Marcando como ignorada');
-            modified.isIgnored = rule.actions.isIgnored;
-          }
-
-          // Parar na primeira regra que combinar
-          break;
-        }
-
-        return modified;
-      });
-
-      console.log('[AUTOMATION] Resultado:', result);
-      return result;
+      const ruled = applyRulesToDetectedTransactions(transactions, rules);
+      console.log('[AUTOMATION] Regras aplicadas em', ruled.appliedCount, 'transações');
+      return ruled.transactions;
     } catch (err: any) {
       console.error('[AUTOMATION] Erro ao aplicar regras:', { msg: err?.message, code: err?.code });
       return transactions; // Retorna original se houver erro

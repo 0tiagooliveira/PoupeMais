@@ -224,6 +224,25 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
     return allCategories.find(c => c.name === category && c.type === type);
   }, [allCategories, category, type]);
 
+  const installmentSummary = useMemo(() => {
+    const installmentNumber = transactionToEdit?.installmentNumber;
+    const totalInstallments = transactionToEdit?.totalInstallments;
+
+    if (!installmentNumber || !totalInstallments || totalInstallments <= 1) {
+      return null;
+    }
+
+    const installmentAmount = Number(amount || transactionToEdit?.amount || 0);
+    const totalPurchaseAmount = installmentAmount * totalInstallments;
+
+    return {
+      installmentNumber,
+      totalInstallments,
+      installmentAmount,
+      totalPurchaseAmount,
+    };
+  }, [transactionToEdit?.installmentNumber, transactionToEdit?.totalInstallments, transactionToEdit?.amount, amount]);
+
   const themeColor = type === 'expense' ? 'text-danger' : 'text-success';
   const themeBorder = type === 'expense' ? 'border-red-200' : 'border-emerald-200';
 
@@ -292,6 +311,16 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 <span className={`text-3xl font-bold mr-2 ${themeColor} opacity-60`}>R$</span>
                 <input type="number" step="0.01" placeholder="0,00" value={amount} onChange={e => setAmount(e.target.value)} required autoFocus={!transactionToEdit} className={`w-full max-w-[240px] bg-transparent text-5xl font-black tracking-tighter outline-none text-center placeholder:text-slate-200 dark:placeholder:text-slate-700 ${themeColor}`} />
             </div>
+            {type === 'expense' && installmentSummary && (
+              <div className="mt-3 inline-flex flex-col items-center gap-1 rounded-2xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/60 dark:bg-amber-900/20 px-4 py-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                  Parcela {installmentSummary.installmentNumber}/{installmentSummary.totalInstallments}
+                </span>
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                  Valor total da compra: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(installmentSummary.totalPurchaseAmount)}
+                </span>
+              </div>
+            )}
         </div>
 
         <div className="relative">

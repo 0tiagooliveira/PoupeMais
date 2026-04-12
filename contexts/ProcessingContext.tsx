@@ -5,6 +5,7 @@ import { DetectedTransaction, DetectedMetadata, InputMode } from '../types';
 import { useNotification } from './NotificationContext';
 import { useAuth } from './AuthContext';
 import { extractTextFromPDF, parseNubankText, parseCSV } from '../utils/localParsers';
+import { applyRulesToDetectedTransactions, fetchActiveAutomationRules } from '../utils/automationRules';
 
 interface ProcessingContextType {
   isProcessing: boolean;
@@ -231,7 +232,25 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       if (allTransactions.length > 0) {
-          setResults(allTransactions.map(t => ({ ...t, selected: true })));
+          let finalTransactions = allTransactions.map(t => ({ ...t, selected: true }));
+
+          // Aprendizado continuo: aplica regras ja salvas do usuario em cada nova importacao.
+          if (currentUser?.uid) {
+            try {
+              const activeRules = await fetchActiveAutomationRules(currentUser.uid);
+              if (activeRules.length > 0) {
+                const ruled = applyRulesToDetectedTransactions(finalTransactions, activeRules);
+                finalTransactions = ruled.transactions;
+                if (ruled.appliedCount > 0) {
+                  addNotification(`Regras inteligentes aplicadas em ${ruled.appliedCount} lancamentos.`, 'info');
+                }
+              }
+            } catch (rulesError: any) {
+              console.error('[AUTOMATION] Falha ao aplicar regras no preview:', rulesError?.message || rulesError);
+            }
+          }
+
+          setResults(finalTransactions);
           setDetectedMetadata(lastMetadata);
           addNotification(`${allTransactions.length} registros extraídos com sucesso.`, "success");
       } else {

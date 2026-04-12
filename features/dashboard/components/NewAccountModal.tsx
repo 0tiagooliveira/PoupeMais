@@ -16,15 +16,15 @@ interface NewAccountModalProps {
 }
 
 const BANKS = [
-  { name: 'Nubank', color: '#820ad1', code: '260', url: 'https://poup-beta.web.app/Icon/Nubank.svg' },
-  { name: 'Itaú', color: '#ec7000', code: '341', url: 'https://poup-beta.web.app/Icon/itau.svg' },
+  { name: 'Nubank', color: '#820ad1', code: '260', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Nubank_logo_2021.svg/960px-Nubank_logo_2021.svg.png?_=20210624094348' },
+  { name: 'Itaú', color: '#ec7000', code: '341', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Ita%C3%BA_Unibanco_logo_2023.svg/1280px-Ita%C3%BA_Unibanco_logo_2023.svg.png?_=20231207142828' },
   { name: 'Bradesco', color: '#cc092f', code: '237', url: 'https://poup-beta.web.app/Icon/bradesco.svg' },
-  { name: 'Inter', color: '#ff7a00', code: '077', url: 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20Inter%20S.A/inter.svg' },
-  { name: 'Santander', color: '#ec0000', code: '033', url: 'https://poup-beta.web.app/Icon/santander.svg' },
-  { name: 'Banco do Brasil', color: '#fcf800', code: '001', url: 'https://poup-beta.web.app/Icon/banco-do-brasil.svg' },
-  { name: 'Caixa', color: '#005ca9', code: '104', url: 'https://poup-beta.web.app/Icon/caixa.svg' },
-  { name: 'PicPay', color: '#21C25E', code: '380', url: 'https://poup-beta.web.app/Icon/picpay.svg' },
-  { name: 'C6 Bank', color: '#000000', code: '336', url: 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20C6%20S.A/c6%20bank.svg' },
+  { name: 'Inter', color: '#ff7a00', code: '077', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Logo_do_banco_Inter_%282023%29.svg/1280px-Logo_do_banco_Inter_%282023%29.svg.png' },
+  { name: 'Santander', color: '#ec0000', code: '033', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Banco_Santander_Logotipo.svg/500px-Banco_Santander_Logotipo.svg.png?_=20220121074547' },
+  { name: 'Banco do Brasil', color: '#fcf800', code: '001', url: 'https://cdn.worldvectorlogo.com/logos/banco-do-brasil-3.svg' },
+  { name: 'Caixa', color: '#005ca9', code: '104', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Caixa_Econ%C3%B4mica_Federal_logo.svg/3840px-Caixa_Econ%C3%B4mica_Federal_logo.svg.png' },
+  { name: 'PicPay', color: '#21C25E', code: '380', url: 'https://static.wikia.nocookie.net/logopedia/images/b/b5/Picpayicon.jpg/revision/latest?cb=20181222023507' },
+  { name: 'C6 Bank', color: '#000000', code: '336', url: 'https://cdn.worldvectorlogo.com/logos/c6-bank-1.svg' },
 ];
 
 const ACCOUNT_TYPES = ['Corrente', 'Poupança', 'Investimentos', 'Dinheiro'];
@@ -118,7 +118,7 @@ export const NewAccountModal: React.FC<NewAccountModalProps> = ({ isOpen, onClos
                 className="group flex flex-col items-center gap-2 transition-all active:scale-90"
               >
                 <div className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${name === bank.name ? 'ring-[3px] ring-primary ring-offset-2 scale-110 shadow-lg' : 'ring-1 ring-slate-100 dark:ring-slate-700 hover:ring-slate-300 dark:hover:ring-slate-600'}`}>
-                    <BankLogo name={bank.name} color={bank.color} size="md" />
+                    <BankLogo name={bank.name} color={bank.color} size="md" logoUrl={bank.url} useImage />
                     {name === bank.name && (
                         <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full h-5 w-5 flex items-center justify-center shadow-md border-2 border-white z-20">
                             <span className="material-symbols-outlined text-[12px] font-bold">check</span>

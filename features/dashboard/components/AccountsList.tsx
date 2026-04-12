@@ -11,47 +11,53 @@ interface AccountsListProps {
   onEditAccount: (account: Account) => void;
 }
 
-const getBankLogoUrl = (name: string) => {
-  const lowerName = name.toLowerCase();
-  
-  if (lowerName.includes('nubank')) return 'https://poup-beta.web.app/Icon/Nubank.svg';
-  if (lowerName.includes('itaú') || lowerName.includes('itau')) return 'https://poup-beta.web.app/Icon/itau.svg';
-  if (lowerName.includes('bradesco')) return 'https://poup-beta.web.app/Icon/bradesco.svg';
-  if (lowerName.includes('santander')) return 'https://poup-beta.web.app/Icon/santander.svg';
-  if (lowerName.includes('brasil') || lowerName.includes('bb')) return 'https://poup-beta.web.app/Icon/banco-do-brasil.svg';
-  if (lowerName.includes('caixa')) return 'https://poup-beta.web.app/Icon/caixa.svg';
-  if (lowerName.includes('picpay')) return 'https://poup-beta.web.app/Icon/picpay.svg';
-  
-  if (lowerName.includes('inter')) return 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20Inter%20S.A/inter.svg';
-  if (lowerName.includes('c6')) return 'https://cdn.jsdelivr.net/gh/Tgentil/Bancos-em-SVG@main/Banco%20C6%20S.A/c6%20bank.svg';
-  
-  return null;
-};
-
-export const BankLogo = ({ name, color, size = 'md' }: { name: string, color: string, size?: 'sm' | 'md' | 'lg' }) => {
-  const logoUrl = getBankLogoUrl(name);
+export const BankLogo = ({
+  name,
+  color,
+  size = 'md',
+  logoUrl,
+  useImage = false,
+}: {
+  name: string;
+  color: string;
+  size?: 'sm' | 'md' | 'lg';
+  logoUrl?: string;
+  useImage?: boolean;
+}) => {
+  const [imgFailed, setImgFailed] = React.useState(false);
   const sizeClasses = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-14 w-14' : 'h-11 w-11';
+  const lowerName = String(name || '').toLowerCase();
+  const label =
+    lowerName.includes('nubank') ? 'nu' :
+    lowerName.includes('itaú') || lowerName.includes('itau') ? 'it' :
+    lowerName.includes('inter') ? 'in' :
+    lowerName.includes('santander') ? 'sa' :
+    lowerName.includes('bradesco') ? 'br' :
+    lowerName.includes('brasil') || lowerName.includes('bb') ? 'bb' :
+    lowerName.includes('caixa') ? 'cx' :
+    lowerName.includes('picpay') ? 'pp' :
+    lowerName.includes('c6') ? 'c6' :
+    lowerName.includes('dinheiro') ? '$' :
+    'bk';
 
   return (
     <div 
       className={`${sizeClasses} flex items-center justify-center rounded-full overflow-hidden shadow-sm flex-shrink-0 transition-transform group-hover:scale-110 border border-black/5`}
       style={{ backgroundColor: color }}
     >
-      {logoUrl ? (
-        <img 
-          src={logoUrl} 
-          alt={name} 
+      {useImage && logoUrl && !imgFailed ? (
+        <img
+          src={logoUrl}
+          alt={name}
           className="h-full w-full object-cover"
           onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-            (e.target as HTMLImageElement).parentElement!.style.backgroundColor = color;
+            setImgFailed(true);
           }}
         />
-      ) : (
-        <span className="material-symbols-outlined text-white text-xl">
-          {name.toLowerCase().includes('dinheiro') ? 'payments' : 'account_balance'}
-        </span>
-      )}
+      ) : null}
+      <span className={`text-white text-[11px] font-black uppercase tracking-wider select-none ${(useImage && logoUrl && !imgFailed) ? 'hidden' : ''}`}>
+        {label}
+      </span>
     </div>
   );
 };
