@@ -317,8 +317,30 @@ export const parseCSV = (csvText: string, sourceName?: string): { transactions: 
         
         // Detecta Income por descrição se for ambíguo
         const lowerDesc = description.toLowerCase();
-        if (lowerDesc.includes('depósito') || lowerDesc.includes('recebido') || lowerDesc.includes('pix recebido') || lowerDesc.includes('salário') || lowerDesc.includes('estorno')) {
+        const normalizedDesc = lowerDesc
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+        const looksLikeIncomingTransfer =
+            normalizedDesc.includes('transferencia recebida') ||
+            normalizedDesc.includes('pix recebido') ||
+            normalizedDesc.includes('pix recebida') ||
+            normalizedDesc.includes('recebimento pix') ||
+            normalizedDesc.includes('recebido via pix') ||
+            normalizedDesc.includes('recebida via pix') ||
+            normalizedDesc.includes('deposito recebido') ||
+            normalizedDesc.includes('valor adicionado na conta por cartao de credito') ||
+            (normalizedDesc.includes('valor adicionado') && normalizedDesc.includes('pix no credito'));
+
+        if (
+            normalizedDesc.includes('deposito') ||
+            normalizedDesc.includes('recebido') ||
+            normalizedDesc.includes('recebida') ||
+            normalizedDesc.includes('salario') ||
+            normalizedDesc.includes('estorno') ||
+            looksLikeIncomingTransfer
+        ) {
             type = 'income';
+            amount = Math.abs(amount);
         }
 
         // Parcelas

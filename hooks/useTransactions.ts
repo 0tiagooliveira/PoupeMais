@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import firebase from 'firebase/compat/app';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,9 +13,37 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const autoFixingIdsRef = useRef<Set<string>>(new Set());
   const selectedYear = currentDate.getFullYear();
   const selectedMonth = currentDate.getMonth();
   const periodKey = viewMode === 'year' ? `${selectedYear}` : `${selectedYear}-${selectedMonth}`;
+
+  const normalizeText = (value: string) => value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  const shouldForceIncomeByDescription = (description: string) => {
+    const desc = normalizeText(description || '');
+
+    const hasIncomingSignal =
+      desc.includes('transferencia recebida') ||
+      desc.includes('pix recebido') ||
+      desc.includes('pix recebida') ||
+      desc.includes('recebimento pix') ||
+      desc.includes('recebido via pix') ||
+      desc.includes('recebida via pix') ||
+      desc.includes('valor adicionado na conta por cartao de credito') ||
+      (desc.includes('valor adicionado') && desc.includes('pix no credito'));
+
+    const hasOutgoingSignal =
+      desc.includes('transferencia enviada') ||
+      desc.includes('pix enviado') ||
+      desc.includes('pagamento') ||
+      desc.includes('fatura');
+
+    return hasIncomingSignal && !hasOutgoingSignal;
+  };
 
   // Função para remover campos undefined que o Firebase rejeita
   const sanitize = (obj: any) => {
@@ -71,6 +99,61 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
         id: doc.id,
         ...doc.data()
       })) as Transaction[];
+
+      // Corrige automaticamente transações importadas como despesa que, pela descrição,
+      // são transferências recebidas (receita).
+      const misclassifiedIncome = rawData.filter((t) => {
+        if (t.type !== 'expense') return false;
+        if (!t.description || !shouldForceIncomeByDescription(t.description)) return false;
+        if (autoFixingIdsRef.current.has(t.id)) return false;
+        return true;
+      });
+
+      if (misclassifiedIncome.length > 0) {
+        const userRef = db.collection('users').doc(currentUser.uid);
+
+        misclassifiedIncome.forEach((t) => autoFixingIdsRef.current.add(t.id));
+
+        (async () => {
+          try {
+            await Promise.all(misclassifiedIncome.map(async (t) => {
+              const transRef = userRef.collection('transactions').doc(t.id);
+
+              await db.runTransaction(async (transaction) => {
+                const latestTransDoc = await transaction.get(transRef);
+                if (!latestTransDoc.exists) return;
+
+                const latest = latestTransDoc.data() as Transaction;
+                if (latest.type !== 'expense') return;
+                if (!latest.description || !shouldForceIncomeByDescription(latest.description)) return;
+
+                const amount = Math.abs(Number(latest.amount) || 0);
+
+                transaction.update(transRef, {
+                  type: 'income',
+                  amount,
+                });
+
+                if (latest.status === 'completed' && !latest.isIgnored && latest.accountId && !isNaN(amount)) {
+                  const accountRef = userRef.collection('accounts').doc(latest.accountId);
+                  const accountDoc = await transaction.get(accountRef);
+
+                  if (accountDoc.exists) {
+                    // A transação já impactou como despesa (-X). Para virar receita (+X), ajustamos +2X.
+                    transaction.update(accountRef, {
+                      balance: firebase.firestore.FieldValue.increment(amount * 2),
+                    });
+                  }
+                }
+              });
+            }));
+          } catch (error) {
+            console.error('Erro na autocorreção de receitas recebidas:', error);
+          } finally {
+            misclassifiedIncome.forEach((t) => autoFixingIdsRef.current.delete(t.id));
+          }
+        })();
+      }
 
       const filteredData = rawData.filter(t => {
         const tDate = new Date(t.date);

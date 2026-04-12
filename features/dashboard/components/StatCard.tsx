@@ -27,14 +27,14 @@ export const StatCard: React.FC<StatCardProps> = ({ type, value, onClick }) => {
       </div>
       
       {/* Content row with icon and value */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
          {/* Squircle Icon Container */}
          <div className={`flex h-14 w-12 items-center justify-center rounded-[20px] text-white shadow-sm shadow-black/5 transition-transform group-hover:scale-105 ${iconBg}`}>
             <span className="material-symbols-outlined text-2xl font-bold">{icon}</span>
          </div>
          
-         <div className="flex flex-col">
-            <span className={`text-2xl font-bold tracking-tighter ${colorClass}`}>
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className={`block min-w-0 whitespace-nowrap overflow-hidden text-ellipsis leading-tight text-[clamp(1rem,3.8vw,1.6rem)] font-bold tracking-tight ${colorClass}`}>
               {formatCurrency(value)}
             </span>
          </div>

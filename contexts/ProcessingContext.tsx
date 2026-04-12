@@ -67,12 +67,35 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const normalizeDetectedTransactions = (items: any[]): DetectedTransaction[] => {
     if (!Array.isArray(items)) return [];
 
+    const normalizeText = (value: string) => value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    const shouldForceIncomeByDescription = (description: string) => {
+      const desc = normalizeText(description || '');
+
+      return (
+        desc.includes('transferencia recebida') ||
+        desc.includes('pix recebido') ||
+        desc.includes('pix recebida') ||
+        desc.includes('recebimento pix') ||
+        desc.includes('recebido via pix') ||
+        desc.includes('recebida via pix') ||
+        desc.includes('valor adicionado na conta por cartao de credito') ||
+        (desc.includes('valor adicionado') && desc.includes('pix no credito'))
+      );
+    };
+
     return items
       .map((item) => {
         const rawAmount = Number(item?.amount);
-        const type = item?.type === 'income' ? 'income' : 'expense';
-        const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
         const description = String(item?.description || '').trim();
+        let type: 'income' | 'expense' = item?.type === 'income' ? 'income' : 'expense';
+        if (shouldForceIncomeByDescription(description)) {
+          type = 'income';
+        }
+        const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
 
         return {
           date: normalizeDate(item?.date),

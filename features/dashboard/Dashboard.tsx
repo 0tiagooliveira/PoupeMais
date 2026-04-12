@@ -70,7 +70,18 @@ export const Dashboard: React.FC = () => {
     if (t.type !== 'income') return false;
     const desc = t.description.toLowerCase();
     const cat = t.category.toLowerCase();
-    return desc.includes('pagamento de cartão') || desc.includes('fatura') || cat.includes('pagamento de cartão') || desc.includes('estorno') || cat.includes('estorno');
+    const cardKeywords = ['cartão', 'cartao', 'card', 'nubank', 'itau', 'bradesco', 'santander', 'inter', 'c6', 'mastercard', 'visa', 'elo', 'amex'];
+    const hasCardContext = cardKeywords.some(keyword => desc.includes(keyword));
+
+    const isCardPayment =
+      cat.includes('pagamento de cartão') ||
+      cat.includes('fatura cartão') ||
+      desc.includes('pagamento de cartão') ||
+      desc.includes('pagamento fatura') ||
+      desc.includes('pagamento da fatura') ||
+      (desc.includes('fatura') && hasCardContext);
+
+    return isCardPayment;
   };
 
   const { totalIncome, totalExpenses, incomeCategoriesData, expenseCategoriesData, recentIncomes, recentExpenses } = useMemo(() => {

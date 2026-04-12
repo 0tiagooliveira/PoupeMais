@@ -10,6 +10,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const isForcedProUser = (email?: string | null, uid?: string) => {
+      const normalizedEmail = (email || '').toLowerCase().trim();
+      const normalizedUid = (uid || '').trim();
+
+      const forcedProEmails = new Set([
+        'teste@gmail.com',
+        'marisa@gmail.com',
+        'tiago336699@gmail.com',
+        'rhayra83@gmail.com',
+      ]);
+
+      const forcedProUids = new Set([
+        'rKD63ADh54Nery9jEiDXemo6lzu1',
+      ]);
+
+      return forcedProEmails.has(normalizedEmail) || forcedProUids.has(normalizedUid);
+    };
+
     const failSafeTimeout = window.setTimeout(() => {
       setLoading(false);
     }, 6000);
@@ -20,23 +38,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.clearTimeout(failSafeTimeout);
 
         if (user) {
-          // Fazemos o cast para UserProfile para suportar nossa extensão de tipos
           const userProfile = user as UserProfile;
+          const forcedPro = isForcedProUser(userProfile.email, userProfile.uid);
 
-          // Acesso PRO liberado para usuários específicos.
-          const email = user.email?.toLowerCase();
-          const uid = user.uid;
-          if (
-            email === 'teste@gmail.com' ||
-            email === 'marisa@gmail.com' ||
-            email === 'tiago336699@gmail.com' ||
-            email === 'rhayra83@gmail.com' ||
-            uid === 'rKD63ADh54Nery9jEiDXemo6lzu1'
-          ) {
-            userProfile.isPro = true;
-          }
-
-          setCurrentUser(userProfile);
+          // Evita depender de mutação no objeto do Firebase; salva no estado já com isPro explícito.
+          setCurrentUser({
+            ...userProfile,
+            isPro: Boolean(userProfile.isPro || forcedPro),
+          });
         } else {
           setCurrentUser(null);
         }

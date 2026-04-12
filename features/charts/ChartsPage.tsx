@@ -198,7 +198,16 @@ export const ChartsPage: React.FC = () => {
     if (t.isIgnored) return false;
     const cleanDesc = t.description.toLowerCase();
     const cleanCat = t.category.toLowerCase();
-    const isCreditCardPayment = cleanCat.includes('pagamento de cartão') || cleanCat.includes('fatura') || cleanDesc.includes('pagamento de fatura') || (cleanDesc.includes('fatura') && (cleanDesc.includes('cartão') || cleanDesc.includes('card') || cleanDesc.includes('nubank') || cleanDesc.includes('itau')));
+    const cardKeywords = ['cartão', 'cartao', 'card', 'nubank', 'itau', 'bradesco', 'santander', 'inter', 'c6', 'mastercard', 'visa', 'elo', 'amex'];
+    const hasCardContext = cardKeywords.some(keyword => cleanDesc.includes(keyword));
+
+    const isCreditCardPayment =
+      cleanCat.includes('pagamento de cartão') ||
+      cleanCat.includes('fatura cartão') ||
+      cleanDesc.includes('pagamento de fatura') ||
+      cleanDesc.includes('pagamento da fatura') ||
+      (cleanDesc.includes('fatura') && hasCardContext);
+
     if (isCreditCardPayment) return false;
     return true;
   };
