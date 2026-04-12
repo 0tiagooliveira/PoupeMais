@@ -23,11 +23,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Fazemos o cast para UserProfile para suportar nossa extensão de tipos
           const userProfile = user as UserProfile;
 
-          // HACK DE ACESSO TOTAL:
-          // Se o usuário logado for um dos e-mails de teste solicitados,
-          // forçamos o status PRO para liberar todas as funcionalidades da IA e do SaaS.
+          // Acesso PRO liberado para usuários específicos.
           const email = user.email?.toLowerCase();
-          if (email === 'teste@gmail.com' || email === 'marisa@gmail.com' || email === 'tiago336699@gmail.com') {
+          const uid = user.uid;
+          if (
+            email === 'teste@gmail.com' ||
+            email === 'marisa@gmail.com' ||
+            email === 'tiago336699@gmail.com' ||
+            email === 'rhayra83@gmail.com' ||
+            uid === 'rKD63ADh54Nery9jEiDXemo6lzu1'
+          ) {
             userProfile.isPro = true;
           }
 
