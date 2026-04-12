@@ -520,36 +520,48 @@ export const StatementImportPage: React.FC = () => {
 
   const applyAutomationRulesToTransactions = async (transactions: DetectedTransaction[]) => {
     try {
-      if (!currentUser) {
-        console.warn('[AUTOMATION] currentUser não disponível');
+      if (!currentUser || !currentUser.uid) {
+        console.warn('[AUTOMATION] currentUser ou uid não disponível', { currentUser, uid: currentUser?.uid });
         return transactions;
       }
 
-      console.log('[AUTOMATION] Aplicando regras a', transactions.length, 'transações');
+      console.log('[AUTOMATION] Aplicando regras a', transactions.length, 'transações para UID:', currentUser.uid);
 
-      // Buscar todas as regras do usuário
-      const rulesSnapshot = await db.collection('users')
-        .doc(currentUser.uid)
-        .collection('automation_rules')
-        .where('isActive', '==', true)
-        .get();
+      // Buscar todas as regras do usuário - com tratamento de erro de permissão
+      let rules: any[] = [];
+      try {
+        const rulesSnapshot = await db.collection('users')
+          .doc(currentUser.uid)
+          .collection('automation_rules')
+          .where('isActive', '==', true)
+          .get();
 
-      console.log('[AUTOMATION] Regras encontradas:', rulesSnapshot.docs.length);
+        rules = rulesSnapshot.docs.map(doc => doc.data());
+        console.log('[AUTOMATION] Regras encontradas:', rules.length);
+      } catch (queryError: any) {
+        console.error('[AUTOMATION] Erro ao buscar regras com where:', queryError?.code);
+        
+        // Fallback: buscar todas as regras sem filtro
+        try {
+          const rulesSnapshot = await db.collection('users')
+            .doc(currentUser.uid)
+            .collection('automation_rules')
+            .get();
 
-      if (rulesSnapshot.empty) {
+          rules = rulesSnapshot.docs
+            .map(doc => doc.data())
+            .filter(rule => rule.isActive !== false);
+          console.log('[AUTOMATION] Regras encontradas (fallback):', rules.length);
+        } catch (fallbackError: any) {
+          console.error('[AUTOMATION] Erro ao buscar regras (fallback):', { uid: currentUser.uid, code: fallbackError?.code, message: fallbackError?.message });
+          return transactions;
+        }
+      }
+
+      if (rules.length === 0) {
         console.log('[AUTOMATION] Nenhuma regra ativa encontrada');
         return transactions;
       }
-
-      const rules = rulesSnapshot.docs.map(doc => {
-        const data = doc.data();
-        console.log('[AUTOMATION] Regra:', {
-          descriptionContains: data.conditions?.descriptionContains,
-          categoryId: data.actions?.categoryId,
-          renameTo: data.actions?.renameTo
-        });
-        return data;
-      });
 
       const normalizeText = (value: string) => value
         .toLowerCase()
@@ -612,8 +624,8 @@ export const StatementImportPage: React.FC = () => {
 
       console.log('[AUTOMATION] Resultado:', result);
       return result;
-    } catch (err) {
-      console.error('[AUTOMATION] Erro ao aplicar regras:', err);
+    } catch (err: any) {
+      console.error('[AUTOMATION] Erro ao aplicar regras:', { msg: err?.message, code: err?.code });
       return transactions; // Retorna original se houver erro
     }
   };

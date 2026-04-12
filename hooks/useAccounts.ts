@@ -10,8 +10,23 @@ export const useAccounts = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) return;
+    console.log('[ACCOUNTS] useEffect triggered - checking conditions', {
+      hasCurrentUser: !!currentUser,
+      uid: currentUser?.uid,
+      currentUserKeys: Object.keys(currentUser || {})
+    });
 
+    if (!currentUser) {
+      console.log('[ACCOUNTS] currentUser is null/undefined');
+      return;
+    }
+
+    if (!currentUser.uid) {
+      console.log('[ACCOUNTS] currentUser exists but uid is missing/undefined', { currentUser });
+      return;
+    }
+
+    console.log('[ACCOUNTS] Loading accounts for UID:', currentUser.uid);
     setLoading(true);
 
     const query = db.collection('users')
@@ -25,15 +40,17 @@ export const useAccounts = () => {
         ...doc.data()
       })) as Account[];
       
+      console.log('[ACCOUNTS] Loaded', data.length, 'accounts');
       setAccounts(data);
       setLoading(false);
-    }, (error) => {
-      console.error("Error fetching accounts:", error);
+    }, (error: any) => {
+      console.error('[ACCOUNTS] Error fetching accounts:', { uid: currentUser.uid, message: error.message, code: error.code });
+      setAccounts([]);
       setLoading(false);
     });
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
   const addAccount = async (data: Omit<Account, 'id'>) => {
     if (!currentUser) throw new Error("No user logged in");

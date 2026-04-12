@@ -57,8 +57,12 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
   };
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !currentUser.uid) {
+      console.log('[TRANSACTIONS] Waiting for currentUser...', { currentUser });
+      return;
+    }
     setLoading(true);
+    console.log('[TRANSACTIONS] Loading transactions for UID:', currentUser.uid, 'Period:', periodKey, 'ViewMode:', viewMode);
 
     let startQueryDate: Date;
     let endQueryDate: Date;
@@ -114,7 +118,9 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
 
         misclassifiedIncome.forEach((t) => autoFixingIdsRef.current.add(t.id));
 
-        (async () => {
+        // Executa autocorreção de forma não-bloqueante
+        // onSnapshot continuará atualizando a UI após a correção
+        Promise.resolve().then(async () => {
           try {
             await Promise.all(misclassifiedIncome.map(async (t) => {
               const transRef = userRef.collection('transactions').doc(t.id);
@@ -152,7 +158,7 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
           } finally {
             misclassifiedIncome.forEach((t) => autoFixingIdsRef.current.delete(t.id));
           }
-        })();
+        });
       }
 
       const filteredData = rawData.filter(t => {
@@ -165,10 +171,12 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
         }
       });
 
+      console.log('[TRANSACTIONS] Loaded', filteredData.length, 'transactions');
       setTransactions(filteredData);
       setLoading(false);
-    }, (error) => {
-      console.error("Error fetching transactions:", error);
+    }, (error: any) => {
+      console.error('[TRANSACTIONS] Error fetching transactions:', { uid: currentUser.uid, message: error.message, code: error.code, period: periodKey });
+      setTransactions([]);
       setLoading(false);
     });
 
@@ -265,7 +273,13 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
     const payload = sanitize(newData);
     delete (payload as any).repeatCount;
     batch.update(transRef, payload);
-    await batch.commit();
+    
+    try {
+      await batch.commit();
+    } catch (error: any) {
+      console.error('Erro ao atualizar transação:', error);   
+      throw new Error(error?.message || 'Erro ao atualizar transação no Firestore');
+    }
   };
 
   const deleteTransaction = async (id: string) => {

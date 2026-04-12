@@ -46,6 +46,26 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const syncDisplayNameFromFirestore = async (uid: string) => {
+    try {
+      const userDocRef = db.collection('users').doc(uid);
+      const userDocSnap = await userDocRef.get();
+      if (userDocSnap.exists) {
+        const data = userDocSnap.data();
+        const displayNameFromDb = data?.displayName || '';
+        const firebaseUser = auth.currentUser;
+        
+        // Se não tiver displayName no Firebase Auth mas tiver no Firestore, sincroniza
+        if (firebaseUser && !firebaseUser.displayName && displayNameFromDb) {
+          console.log('[LOGIN] Syncing displayName from Firestore:', displayNameFromDb);
+          await firebaseUser.updateProfile({ displayName: displayNameFromDb });
+        }
+      }
+    } catch (error) {
+      console.error('[LOGIN] Error syncing displayName:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -59,7 +79,12 @@ export const LoginPage: React.FC = () => {
         : firebase.auth.Auth.Persistence.SESSION;
         
       await auth.setPersistence(persistence);
-      await auth.signInWithEmailAndPassword(email.trim(), password);
+      const userCred = await auth.signInWithEmailAndPassword(email.trim(), password);
+      
+      // Sincroniza displayName do Firestore se necessário
+      if (userCred.user?.uid) {
+        await syncDisplayNameFromFirestore(userCred.user.uid);
+      }
       
       addNotification('Que bom ter você de volta!', 'success', 3000, false);
       navigate('/');
@@ -96,6 +121,9 @@ export const LoginPage: React.FC = () => {
             settings: { currency: 'BRL', theme: 'light' }
           });
         }
+        
+        // Sincroniza displayName do Firestore se necessário
+        await syncDisplayNameFromFirestore(user.uid);
       }
       addNotification('Acesso autorizado!', 'success', 3000, false);
       navigate('/');

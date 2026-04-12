@@ -82,6 +82,7 @@ export const RegisterPage: React.FC = () => {
       const userCredential = await auth.createUserWithEmailAndPassword(email.trim(), password);
       const user = userCredential.user;
       if (user) {
+        console.log('[REGISTER] Updating displayName:', name);
         await user.updateProfile({ displayName: name });
         await initializeUser(user);
       }

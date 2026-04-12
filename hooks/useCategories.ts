@@ -11,7 +11,12 @@ export const useCategories = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !currentUser.uid) {
+      console.log('[CATEGORIES] Waiting for currentUser...', { currentUser });
+      return;
+    }
+
+    console.log('[CATEGORIES] Loading categories for UID:', currentUser.uid);
 
     const unsubscribe = db.collection('users')
       .doc(currentUser.uid)
@@ -22,15 +27,17 @@ export const useCategories = () => {
           ...doc.data(),
           isCustom: true
         })) as Category[];
+        console.log('[CATEGORIES] Loaded', data.length, 'custom categories');
         setCustomCategories(data);
         setLoading(false);
-      }, (error) => {
-        console.error("Error fetching categories:", error);
+      }, (error: any) => {
+        console.error('[CATEGORIES] Error fetching categories:', { uid: currentUser.uid, message: error.message, code: error.code });
+        setCustomCategories([]);
         setLoading(false);
       });
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
   const allCategories = useMemo(() => {
     const system: Category[] = [

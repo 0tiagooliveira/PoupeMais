@@ -10,8 +10,17 @@ export const useCreditCards = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) return;
+    console.log('[CREDIT_CARDS] useEffect triggered - checking conditions', {
+      hasCurrentUser: !!currentUser,
+      uid: currentUser?.uid
+    });
 
+    if (!currentUser || !currentUser.uid) {
+      console.log('[CREDIT_CARDS] Waiting for currentUser or uid', { uid: currentUser?.uid });
+      return;
+    }
+
+    console.log('[CREDIT_CARDS] Loading credit cards for UID:', currentUser.uid);
     setLoading(true);
 
     const query = db.collection('users')
@@ -25,15 +34,17 @@ export const useCreditCards = () => {
         ...doc.data()
       })) as CreditCard[];
       
+      console.log('[CREDIT_CARDS] Loaded', data.length, 'credit cards');
       setCards(data);
       setLoading(false);
-    }, (error) => {
-      console.error("Error fetching credit cards:", error);
+    }, (error: any) => {
+      console.error('[CREDIT_CARDS] Error fetching credit cards:', { uid: currentUser.uid, message: error.message, code: error.code });
+      setCards([]);
       setLoading(false);
     });
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
   const addCard = async (data: Omit<CreditCard, 'id' | 'createdAt'>) => {
     if (!currentUser) throw new Error("No user logged in");

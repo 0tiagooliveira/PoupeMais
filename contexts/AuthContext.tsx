@@ -1,6 +1,6 @@
 
 import React, { createContext, useEffect, useState, useContext } from 'react';
-import { auth } from '../services/firebase';
+import { auth, db } from '../services/firebase';
 import { AuthContextType, UserProfile } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -8,6 +8,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const initializeUserWorkspace = async (uid: string, email: string, displayName: string) => {
+    try {
+      const userDocRef = db.collection('users').doc(uid);
+      const userDocSnap = await userDocRef.get();
+      
+      if (!userDocSnap.exists) {
+        console.log('[AUTH] Initializing workspace for UID:', uid);
+        await userDocRef.set({
+          displayName: displayName || '',
+          email: email,
+          createdAt: new Date().toISOString(),
+          settings: { currency: 'BRL', theme: 'light' }
+        });
+        console.log('[AUTH] Workspace initialized successfully');
+      } else {
+        console.log('[AUTH] Workspace already exists for UID:', uid);
+      }
+    } catch (error) {
+      console.error('[AUTH] Error initializing workspace:', error);
+    }
+  };
 
   useEffect(() => {
     const isForcedProUser = (email?: string | null, uid?: string) => {
@@ -29,31 +51,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const failSafeTimeout = window.setTimeout(() => {
+      console.warn('[AUTH] Fail-safe timeout reached - loading state forced to false');
       setLoading(false);
-    }, 6000);
+    }, 8000);
 
     // Subscribe to auth state changes using v8 syntax
     const unsubscribe = auth.onAuthStateChanged(
-      (user) => {
+      async (user) => {
         window.clearTimeout(failSafeTimeout);
 
         if (user) {
           const userProfile = user as UserProfile;
           const forcedPro = isForcedProUser(userProfile.email, userProfile.uid);
 
-          // Evita depender de mutação no objeto do Firebase; salva no estado já com isPro explícito.
-          setCurrentUser({
-            ...userProfile,
-            isPro: Boolean(userProfile.isPro || forcedPro),
-          });
-        } else {
-          setCurrentUser(null);
-        }
+          console.log('[AUTH] User loaded:', { uid: userProfile.uid, email: userProfile.email, displayName: userProfile.displayName, hasUid: !!userProfile.uid });
 
-        setLoading(false);
+          // Inicializa espaço de trabalho se necessário (silenciosamente em background)
+          if (userProfile.uid) {
+            initializeUserWorkspace(userProfile.uid, userProfile.email || '', userProfile.displayName || '');
+          }
+
+          // Se não tiver displayName no Firebase Auth, tenta carregar do Firestore
+          if (!userProfile.displayName) {
+            console.log('[AUTH] No displayName in Firebase Auth, fetching from Firestore...');
+            db.collection('users').doc(userProfile.uid).get().then((doc) => {
+              if (doc.exists) {
+                const firestoreData = doc.data();
+                const displayNameFromFirestore = firestoreData?.displayName || '';
+                console.log('[AUTH] displayName from Firestore:', displayNameFromFirestore);
+
+                setCurrentUser({
+                  ...userProfile,
+                  displayName: displayNameFromFirestore,
+                  isPro: Boolean(userProfile.isPro || forcedPro),
+                });
+              } else {
+                console.log('[AUTH] Firestore user document not found');
+                setCurrentUser({
+                  ...userProfile,
+                  isPro: Boolean(userProfile.isPro || forcedPro),
+                });
+              }
+              setLoading(false);
+            }).catch((error) => {
+              console.error('[AUTH] Error fetching from Firestore:', error);
+              setCurrentUser({
+                ...userProfile,
+                isPro: Boolean(userProfile.isPro || forcedPro),
+              });
+              setLoading(false);
+            });
+          } else {
+            // Evita depender de mutação no objeto do Firebase; salva no estado já com isPro explícito.
+            setCurrentUser({
+              ...userProfile,
+              isPro: Boolean(userProfile.isPro || forcedPro),
+            });
+            setLoading(false);
+          }
+        } else {
+          console.log('[AUTH] No user logged in');
+          setCurrentUser(null);
+          setLoading(false);
+        }
       },
-      () => {
+      (error) => {
         window.clearTimeout(failSafeTimeout);
+        console.error('[AUTH] Auth error:', error);
         setCurrentUser(null);
         setLoading(false);
       }

@@ -169,7 +169,9 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
       addNotification(transactionToEdit ? 'Lançamento atualizado!' : 'Lançamento adicionado!', 'success');
       onClose();
     } catch (error) {
-      addNotification('Erro ao salvar.', 'error');
+      const errorMsg = error instanceof Error ? error.message : 'Erro ao salvar.';
+      addNotification(errorMsg, 'error');
+      console.error('Erro ao salvar transação:', error);
     } finally {
       setLoading(false);
     }
