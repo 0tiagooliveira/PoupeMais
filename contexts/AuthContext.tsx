@@ -9,6 +9,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const buildUserProfile = (
+    user: UserProfile,
+    forcedPro: boolean,
+    displayNameOverride?: string
+  ): UserProfile => ({
+    ...user,
+    // Campos do Firebase Auth podem ser nao-enumeraveis; forca serializacao explicita.
+    uid: user.uid,
+    email: user.email ?? null,
+    displayName: displayNameOverride ?? user.displayName ?? '',
+    photoURL: user.photoURL ?? null,
+    isPro: Boolean(user.isPro || forcedPro),
+  } as UserProfile);
+
   const initializeUserWorkspace = async (uid: string, email: string, displayName: string) => {
     try {
       const userDocRef = db.collection('users').doc(uid);
@@ -80,33 +94,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const displayNameFromFirestore = firestoreData?.displayName || '';
                 console.log('[AUTH] displayName from Firestore:', displayNameFromFirestore);
 
-                setCurrentUser({
-                  ...userProfile,
-                  displayName: displayNameFromFirestore,
-                  isPro: Boolean(userProfile.isPro || forcedPro),
-                });
+                setCurrentUser(buildUserProfile(userProfile, forcedPro, displayNameFromFirestore));
               } else {
                 console.log('[AUTH] Firestore user document not found');
-                setCurrentUser({
-                  ...userProfile,
-                  isPro: Boolean(userProfile.isPro || forcedPro),
-                });
+                setCurrentUser(buildUserProfile(userProfile, forcedPro));
               }
               setLoading(false);
             }).catch((error) => {
               console.error('[AUTH] Error fetching from Firestore:', error);
-              setCurrentUser({
-                ...userProfile,
-                isPro: Boolean(userProfile.isPro || forcedPro),
-              });
+              setCurrentUser(buildUserProfile(userProfile, forcedPro));
               setLoading(false);
             });
           } else {
             // Evita depender de mutação no objeto do Firebase; salva no estado já com isPro explícito.
-            setCurrentUser({
-              ...userProfile,
-              isPro: Boolean(userProfile.isPro || forcedPro),
-            });
+            setCurrentUser(buildUserProfile(userProfile, forcedPro));
             setLoading(false);
           }
         } else {
