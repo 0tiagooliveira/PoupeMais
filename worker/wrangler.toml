@@ -1,0 +1,9 @@
+name = "poupemais-pierre"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Never store PIERRE_API_KEY or PIERRE_OWNER_UID in this file.
+# Add secrets using: npx wrangler secret put PIERRE_API_KEY
+# Add secrets using: npx wrangler secret put PIERRE_OWNER_UID
+[vars]
+FIREBASE_PROJECT_ID = "poupe-mais-6a07f"
