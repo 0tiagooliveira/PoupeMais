@@ -1,48 +1,60 @@
-# Integração Pierre → Poupe Mais
+# Pierre → Poupe Mais com Firebase Spark gratuito
 
-Status: **implementação preparada em branch de desenvolvimento; NÃO implantada**.
+## Situação
 
-A função `syncPierre` é uma Firebase callable Function em `southamerica-east1`.
-O frontend fica em `Configurações > Integração Pierre` na conta autorizada.
-A chave do Pierre **nunca deve ir para o frontend, variáveis VITE_, Firestore ou GitHub**.
+**Código preparado, NÃO implantado.** Esta versão não usa Firebase Functions nem exige upgrade do projeto Firebase.
+A ponte roda em **Cloudflare Workers (plano Free)** e utiliza o login Firebase do usuário. A chave do Pierre não vai para o GitHub nem para o navegador.
 
-## Dados e comportamento
+### Fluxo de dados
 
-- `preview`: consulta contas e até 12 meses de transações, não altera o Firestore.
-- `import`: grava contas, cartões e transações com IDs estáveis; não apaga automaticamente lançamentos antigos.
-- `cleanup`: disponível somente no backend, exige uma importação recente concluída; elimina registros sem `source: pierre` apenas das coleções `transactions`, `accounts` e `credit_cards`. **Não usar sem backup.**
-- A conta de login Firebase Auth não é eliminada nem modificada.
-- Saldos das contas vêm de `accountBalance` da API, sem incrementos na importação.
-- Pagamentos de fatura identificados são marcados como ignorados nos relatórios para reduzir dupla contagem. Conferir manualmente.
-- Transações sem associação inequívoca de conta, sem ID, em moedas diferentes de BRL ou com dados inválidos bloqueiam a importação.
-- Os dados do Pierre podem demorar a refletir mudanças nos bancos; o timestamp da importação não representa o momento de atualização do banco.
+1. O usuário faz login no Poupe Mais e abre Configurações → Integração Pierre.
+2. O frontend envia seu Firebase ID token para o Worker via HTTPS.
+3. O Worker valida a assinatura do JWT com chaves públicas oficiais do Firebase, a audiência, o emissor e o UID autorizado.
+4. O Worker usa um segredo privado `PIERRE_API_KEY` para consultar `get-accounts` e `get-transactions` em `format=raw`.
+5. O Worker normaliza dados e retorna ao usuário autenticado. Nenhum segredo é retornado.
+6. Uma prévia mostra contagens e registros não associados. Após confirmação, o frontend grava dados no Firestore usando o token normal do usuário e as **Firestore Security Rules existentes**.
 
-## Preparação para implantação (administrador)
+**Sem limpeza automática.** Não apagar registros antigos antes de conferir que a importação está correta.
+IDs gerados têm prefixo `pierre_`, e um segundo processamento grava os mesmos documentos sem duplicações.
 
-1. **Revogar** qualquer chave previamente compartilhada, gerar uma nova no Pierre e não colá-la em chats ou repositórios.
-2. Confirmar o UID Firebase Auth correto da conta autorizada; o e-mail sozinho não serve como identificador estável.
-3. Confirmar que o projeto Firebase `poupe-mais-6a07f` tem funções habilitadas, permissões IAM e plano necessário para deploy.
-4. Na máquina/ambiente de implantação com Firebase CLI autenticado, dentro do projeto correto:
-   ```bash
-   firebase use poupe-mais-6a07f
-   firebase functions:secrets:set PIERRE_API_KEY
-   firebase functions:secrets:set PIERRE_OWNER_UID
-   npm --prefix functions install
-   npm install
-   npm run build
-   firebase deploy --only functions:syncPierre,hosting --project poupe-mais-6a07f
-   ```
-   Os comandos de `secrets:set` solicitam valores no terminal; nunca incluí-los em texto do comando, histórico do shell ou logs.
-5. Testar a prévia, comparar 5-10 transações, conferir nomes/saldos das contas, cartão e faturas, **antes** de importar. Fazer backup do Firestore antes de qualquer limpeza.
-6. Somente após validação end-to-end considerar a branch pronta para a `main` e o deploy em produção.
+## Ativação (uma vez)
 
-## Cuidados para revisão
+1. Criar uma conta grátis em https://dash.cloudflare.com/ e escolher Workers & Pages → Create Worker.
+2. A partir de um computador com Node.js e acesso ao repositório nesta branch (a CLI é o caminho recomendado):
+    ```sh
+    cd worker
+    npm install
+    npx wrangler login
+    npx wrangler secret put PIERRE_API_KEY
+    npx wrangler secret put PIERRE_OWNER_UID
+    npx wrangler deploy
+    ```
+   - `PIERRE_API_KEY`: **nova** chave do Pierre, gerada após revogar a antiga chave exposta na conversa.
+   - `PIERRE_OWNER_UID`: UID do usuário no Firebase Authentication, localizado em Firebase Console → Authentication → Usuários. **Não confundir com e-mail.**
+   - Os valores são inseridos no prompt do Wrangler, não em arquivos rastreados.
+3. Copiar a URL HTTPS do Worker publicada, por exemplo `https://<nome>.<conta>.workers.dev`.
+4. No frontend configurar `VITE_PIERRE_WORKER_URL` com a URL do Worker; rebuild e deploy SOMENTE do Hosting.
+    ```sh
+    VITE_PIERRE_WORKER_URL="https://SEU-WORKER.workers.dev" npm run build
+    firebase deploy --only hosting --project poupe-mais-6a07f
+    ```
+5. Conferir a prévia, validar saldos e amostra de transações e **somente então confirmar importação**.
 
-- Esta integração assume o schema publicado em `https://docs.pierre.finance/api-reference/rest/get-accounts` e `.../get-transactions`. Não foi testada com dados reais.
-- A API de transações `raw` não fornece `accountId` no exemplo; o vínculo exige correspondência inequívoca por tipo e nome. Alguns lançamentos podem ser bloqueados.
-- Não trata investimentos como uma tela específica nem importa faturas parceladas com fidelidade completa. Esses módulos exigem implementação e validação adicionais.
-- O `firebase.json` passou a incluir o diretório `functions`, enquanto `hosting` e regras existentes foram preservados.
-- O deploy das Functions geralmente requer faturamento habilitado (plano Blaze).
-- O projeto ainda possui chamadas de IA a partir do frontend (escopo distinto); auditar exposição de credenciais antes de publicar uma revisão geral.
+Para ambientes Windows/PowerShell, use um arquivo `.env.local` não versionado com `VITE_PIERRE_WORKER_URL=...` e execute `npm run build` normalmente.
 
-Documentação do provedor: https://docs.pierre.finance/api-reference/introduction
+## Segurança e limites
+
+- Worker aceita solicitações apenas de `poupe-mais-6a07f.web.app`, `poupe-mais-6a07f.firebaseapp.com` e `localhost:3000`, mas a autenticação por JWT e a validação do UID são a proteção real.
+- Não usar `VITE_PIERRE_API_KEY`, variáveis no frontend ou autenticação apenas por CORS.
+- Cloudflare Free atualmente possui limite de 100 mil requests/dia e 10 ms de CPU por requisição. Uma importação grande pode ultrapassar os limites: começar com 3 meses e conferir os resultados.
+- O Firebase Spark mantém suas cotas de Firestore. Mais de 10 mil documentos na prévia bloqueiam a importação nesta UI para diminuir risco de consumo excessivo.
+- Contas do tipo CREDIT são cartões; BANK, INVESTMENT e LOAN são contas no layout existente.
+- A API do Pierre atualmente não apresenta `accountId` para cada transação no exemplo `raw`. Quando o vínculo não é inequívoco, a transação é ignorada na prévia e **a importação inteira é bloqueada**.
+- O módulo atual ainda não importa faturas em aberto como entidades próprias, nem cobre investimentos detalhadamente. Conferir débitos de fatura e transferências para evitar dupla contagem.
+- O Firebase Hosting usa `dist` e continua no plano Spark; `firebase.json` permanece sem Functions.
+- O backend **não foi testado com a chave real** e requer verificação em ambiente de teste antes do deploy final.
+
+Documentação: 
+- Pierre API: https://docs.pierre.finance/api-reference/rest/get-accounts e https://docs.pierre.finance/api-reference/rest/get-transactions
+- Cloudflare Workers secrets: https://developers.cloudflare.com/workers/configuration/secrets/
+- Firebase ID token verification: https://firebase.google.com/docs/auth/admin/verify-id-tokens
