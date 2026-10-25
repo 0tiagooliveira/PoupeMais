@@ -1,11 +1,11 @@
-name: Pierre integration checks
+name: Pierre bridge checks
 on:
   push:
     branches:
       - feature/pierre-financial-sync-20261025
   pull_request:
     paths:
-      - 'functions/**'
+      - 'worker/**'
       - 'features/settings/PierreIntegrationPage.tsx'
       - 'features/settings/SettingsPage.tsx'
       - 'App.tsx'
@@ -23,9 +23,9 @@ jobs:
           cache: npm
       - name: Install app dependencies
         run: npm ci
-      - name: Build frontend
+      - name: Build app
         run: npm run build
-      - name: Check Functions syntax
-        run: node --check functions/index.js
-      - name: Install Functions dependencies
-        run: npm --prefix functions install --no-audit --no-fund
+      - name: Check Worker syntax
+        run: node --check worker/src/index.js
+      - name: Install Worker dependencies
+        run: npm install --prefix worker --no-audit --no-fund
