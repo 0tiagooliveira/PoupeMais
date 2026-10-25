@@ -1,0 +1,31 @@
+name: Pierre integration checks
+on:
+  push:
+    branches:
+      - feature/pierre-financial-sync-20261025
+  pull_request:
+    paths:
+      - 'functions/**'
+      - 'features/settings/PierreIntegrationPage.tsx'
+      - 'features/settings/SettingsPage.tsx'
+      - 'App.tsx'
+      - 'firebase.json'
+      - 'package.json'
+      - 'package-lock.json'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install app dependencies
+        run: npm ci
+      - name: Build frontend
+        run: npm run build
+      - name: Check Functions syntax
+        run: node --check functions/index.js
+      - name: Install Functions dependencies
+        run: npm --prefix functions install --no-audit --no-fund
