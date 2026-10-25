@@ -221,8 +221,8 @@ exports.syncPierre = onCall({
   const monthsInput = Number(request.data?.months);
   const months = Number.isInteger(monthsInput) ? Math.min(12, Math.max(1, monthsInput)) : 6;
   const accounts = await fetchPierre('get-accounts');
-  if (!accounts.length || accounts.some((account) => !account.accountId || !account.accountType)) {
-    throw new HttpsError('failed-precondition', 'Não há contas válidas disponíveis no Pierre. Nada foi alterado.');
+  if (!accounts.length || accounts.some((account) => !account.accountId || !account.accountType || account.accountCurrencyCode !== 'BRL')) {
+    throw new HttpsError('failed-precondition', 'Não há contas válidas em BRL disponíveis no Pierre. Nada foi alterado.');
   }
 
   const txById = new Map();
@@ -245,8 +245,8 @@ exports.syncPierre = onCall({
     months,
   };
   if (mode === 'preview') return preview;
-  if (!transactions.length) {
-    throw new HttpsError('failed-precondition', 'Nenhuma transação válida encontrada. Os dados antigos foram preservados.');
+  if (!transactions.length || skipped > 0) {
+    throw new HttpsError('failed-precondition', 'Há transações sem conta identificada ou dados válidos. A importação foi bloqueada para evitar histórico incompleto.');
   }
 
   // Contas recebem saldo informado pelo Pierre, nunca incrementos calculados da importação.
