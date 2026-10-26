@@ -353,4 +353,4 @@ export default {
 };
 
 // Exportado para testes offline sem credenciais financeiras reais.
-export { buildSnapshot };
+export { buildSnapshot, periodWindows };
