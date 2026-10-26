@@ -184,15 +184,16 @@ function buildSnapshot(accounts, transactions) {
       issues.otherCurrency++;
       continue;
     }
+    const isCard = normalized(account.accountType) === 'credit';
     const balanceValue = account.accountBalance;
     const parsedBalance = Number(balanceValue);
-    if (balanceValue == null || balanceValue === '' || !Number.isFinite(parsedBalance)) {
+    // Saldo é obrigatório para conta bancária; cartões não o utilizam neste modelo.
+    if (!isCard && (balanceValue == null || balanceValue === '' || !Number.isFinite(parsedBalance))) {
       issues.invalidBalance++;
       continue;
     }
     validAccountIds.add(accountId);
     accountCurrencies.set(accountId, currency);
-    const isCard = normalized(account.accountType) === 'credit';
     const collection = isCard ? 'credit_cards' : 'accounts';
     const id = idFor(isCard ? 'card' : 'account', accountId);
     const name = String(account.accountMarketingName || account.accountName ||
@@ -300,3 +301,6 @@ export default {
     }
   },
 };
+
+// Exportado para testes offline sem credenciais financeiras reais.
+export { buildSnapshot };
