@@ -116,6 +116,11 @@ async function getPierre(env, endpoint, params = {}) {
   if (!body || body.success !== true || !Array.isArray(body.data)) {
     throw new Error('Pierre retornou dados em um formato inesperado.');
   }
+  // Pierre documents count as the number of returned records. A mismatch means we cannot
+  // claim the whole month was loaded, even if the HTTP request succeeded.
+  if (!Number.isSafeInteger(body.count) || body.count < 0 || body.count !== body.data.length) {
+    throw new Error('O Pierre não confirmou a contagem completa deste período. Importação não validada.');
+  }
   return body.data;
 }
 
@@ -266,6 +271,32 @@ function buildSnapshot(accounts, transactions) {
   return { counts, accountIssues: issues, documents: docs, fetchedAt: now };
 }
 
+
+/**
+ * Calendar-aligned windows cover a ROLLING 12 months inclusive of today.
+ * E.g. 2025-10-26..2026-10-26 yields 13 partially/full calendar months.
+ * Each authenticated request covers only one month, protecting the Workers Free CPU cap.
+ */
+function periodWindows(asOf) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return null;
+  const target = new Date(asOf + 'T12:00:00.000Z');
+  if (Number.isNaN(target.valueOf()) || fmt(target) !== asOf) return null;
+  const now = Date.now();
+  if (Math.abs(target.valueOf() - now) > 2 * 86400000) return null;
+  const monthLastDay = new Date(Date.UTC(target.getUTCFullYear() - 1, target.getUTCMonth() + 1, 0)).getUTCDate();
+  const from = new Date(Date.UTC(target.getUTCFullYear() - 1, target.getUTCMonth(),
+    Math.min(target.getUTCDate(), monthLastDay)));
+  const windows = [];
+  let cursor = from;
+  while (cursor.getTime() <= target.getTime()) {
+    const last = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+    const end = last.getTime() < target.getTime() ? last : target;
+    windows.push({ from: fmt(cursor), to: fmt(end), month: fmt(cursor).slice(0, 7) });
+    cursor = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate() + 1));
+  }
+  return windows;
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin');
@@ -284,17 +315,36 @@ export default {
     try {
       await authorize(request, env);
       const payload = await request.json().catch(() => ({}));
-      const months = Number(payload.months);
-      if (![3, 6, 12].includes(months)) return json({ error: 'Período inválido.' }, 400, cors);
-      const now = new Date();
-      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months + 1, 1));
+      if (payload.months !== 12) return json({ error: 'Esta integração exige exatamente 12 meses.' }, 400, cors);
+      const windows = periodWindows(String(payload.asOf || ''));
+      const periodIndex = Number(payload.periodIndex);
+      if (!windows || !Number.isInteger(periodIndex) || periodIndex < 0 || periodIndex >= windows.length) {
+        return json({ error: 'Período de histórico inválido.' }, 400, cors);
+      }
+      const window = windows[periodIndex];
       const [accounts, transactions] = await Promise.all([
         getPierre(env, 'get-accounts'),
-        getPierre(env, 'get-transactions', { startDate: fmt(start), endDate: fmt(now), format: 'raw' }),
+        getPierre(env, 'get-transactions',
+          { startDate: window.from, endDate: window.to, format: 'raw' }),
       ]);
       if (!accounts.length) throw new Error('O Pierre não retornou contas válidas.');
-      if (transactions.length > 15000) throw new Error('Histórico muito grande para esta importação. Selecione um período menor.');
-      return json({ ...buildSnapshot(accounts, transactions), months }, 200, cors);
+      if (transactions.length > 2000) throw new Error('Muitas transações neste mês. Revisar limite seguro antes de importar.');
+      if (transactions.some(tx => {
+        const d = String(tx.date || '');
+        return d < window.from || d > window.to;
+      })) {
+        throw new Error('O Pierre retornou transações fora do mês solicitado. Histórico não validado.');
+      }
+      return json({
+        ...buildSnapshot(accounts, transactions),
+        months: 12,
+        periodIndex,
+        totalPeriods: windows.length,
+        from: window.from,
+        to: window.to,
+        asOf: payload.asOf,
+        providerCount: transactions.length,
+      }, 200, cors);
     } catch (error) {
       return json({ error: error?.message || 'Não foi possível obter os dados do Pierre.' },
         error?.status || 502, cors);
