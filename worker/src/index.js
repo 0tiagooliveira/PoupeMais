@@ -1,9 +1,55 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+// Browser-editor compatible: Firebase RS256 JWT verification using WebCrypto only.
+// This file does not import packages; it can be pasted into Cloudflare Quick Edit.
+const FIREBASE_KEYS = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+let cachedKeys = null;
+let cacheExpires = 0;
+
+function fromBase64Url(input) {
+  if (typeof input !== 'string' || !/^[A-Za-z0-9_-]+$/.test(input)) throw new Error('JWT inválido');
+  const b64 = input.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, '='));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function getFirebaseKeys() {
+  if (cachedKeys && Date.now() < cacheExpires) return cachedKeys;
+  const response = await fetch(FIREBASE_KEYS, { signal: AbortSignal.timeout(10000) });
+  if (!response.ok) throw new Error('Não foi possível validar o login Firebase.');
+  const body = await response.json();
+  if (!Array.isArray(body?.keys) || !body.keys.length) throw new Error('Certificados Firebase inválidos.');
+  cachedKeys = body.keys;
+  cacheExpires = Date.now() + 30 * 60 * 1000;
+  return cachedKeys;
+}
+
+async function verifyFirebaseToken(token, projectId) {
+  if (!projectId || !token || token.length > 16000) throw new Error('Login inválido.');
+  const pieces = token.split('.');
+  if (pieces.length !== 3) throw new Error('Token malformado');
+  const header = JSON.parse(new TextDecoder().decode(fromBase64Url(pieces[0])));
+  const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(pieces[1])));
+  const now = Math.floor(Date.now() / 1000);
+  if (header.alg !== 'RS256' || !header.kid || payload.aud !== projectId ||
+      payload.iss !== 'https://securetoken.google.com/' + projectId ||
+      typeof payload.sub !== 'string' || !payload.sub ||
+      typeof payload.exp !== 'number' || payload.exp <= now ||
+      typeof payload.iat !== 'number' || payload.iat > now ||
+      typeof payload.auth_time !== 'number' || payload.auth_time > now) {
+    throw new Error('Token Firebase inválido.');
+  }
+  const jwk = (await getFirebaseKeys()).find((key) => key.kid === header.kid &&
+    key.kty === 'RSA' && (!key.alg || key.alg === 'RS256'));
+  if (!jwk) throw new Error('Certificado do token Firebase não encontrado.');
+  const key = await crypto.subtle.importKey('jwk', jwk, {
+    name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256',
+  }, false, ['verify']);
+  const signatureOk = await crypto.subtle.verify('RSASSA-PKCS1-v1_5',
+    key, fromBase64Url(pieces[2]), new TextEncoder().encode(pieces[0] + '.' + pieces[1]));
+  if (!signatureOk) throw new Error('Assinatura do token Firebase inválida.');
+  return payload;
+}
 
 // A chave do Pierre e o UID autorizado ficam apenas nos secrets do Worker.
-const JWKS = createRemoteJWKSet(new URL(
-  'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
-));
 const PIERRE = 'https://www.pierre.finance/tools/api';
 const ORIGINS = new Set([
   'https://poupe-mais-6a07f.web.app',
@@ -82,12 +128,8 @@ async function authorize(request, env) {
     throw Object.assign(new Error('Faça login no Poupe Mais.'), { status: 401 });
   }
   try {
-    const { payload, protectedHeader } = await jwtVerify(header.slice(7), JWKS, {
-      algorithms: ['RS256'],
-      audience: env.FIREBASE_PROJECT_ID,
-      issuer: 'https://securetoken.google.com/' + env.FIREBASE_PROJECT_ID,
-    });
-    if (protectedHeader.alg !== 'RS256' || !payload.sub || payload.sub !== env.PIERRE_OWNER_UID) {
+    const payload = await verifyFirebaseToken(header.slice(7), env.FIREBASE_PROJECT_ID);
+    if (!payload.sub || payload.sub !== env.PIERRE_OWNER_UID) {
       throw new Error('Conta não autorizada');
     }
     const authTime = Number(payload.auth_time);
