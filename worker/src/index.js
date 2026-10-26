@@ -144,22 +144,67 @@ async function authorize(request, env) {
 function buildSnapshot(accounts, transactions) {
   const now = new Date().toISOString();
   const docs = [];
+  const accountCurrencies = new Map();
+  const observed = new Map();
+  const issues = { missingId: 0, missingType: 0, unknownCurrency: 0, otherCurrency: 0, invalidBalance: 0 };
+  const validAccountIds = new Set();
+
+  // Infer a missing account currency ONLY from unambiguously matched transaction currencies.
+  // Never assume BRL merely because the user lives in Brazil.
+  for (const tx of transactions) {
+    const account = resolveAccount(tx, accounts);
+    const currency = String(tx.currency_code ?? tx.currencyCode ?? '').trim().toUpperCase();
+    if (!account || !account.accountId || !currency) continue;
+    const key = String(account.accountId);
+    if (!observed.has(key)) observed.set(key, new Set());
+    observed.get(key).add(currency);
+  }
+
   for (const account of accounts) {
-    if (!account.accountId || !account.accountType || account.accountCurrencyCode !== 'BRL') {
-      throw new Error('O Pierre retornou uma conta incompleta ou em outra moeda.');
+    if (!account || account.accountId === null || account.accountId === undefined ||
+        String(account.accountId).trim() === '') {
+      issues.missingId++;
+      continue;
     }
+    if (!account.accountType || !String(account.accountType).trim()) {
+      issues.missingType++;
+      continue;
+    }
+    const accountId = String(account.accountId);
+    const rawCurrency = account.accountCurrencyCode ?? account.currencyCode ?? account.currency_code;
+    let currency = rawCurrency == null ? '' : String(rawCurrency).trim().toUpperCase();
+    if (!currency && observed.get(accountId)?.size === 1) {
+      currency = [...observed.get(accountId)][0];
+    }
+    if (!currency) {
+      issues.unknownCurrency++;
+      continue;
+    }
+    if (currency !== 'BRL') {
+      issues.otherCurrency++;
+      continue;
+    }
+    const balanceValue = account.accountBalance;
+    const parsedBalance = Number(balanceValue);
+    if (balanceValue == null || balanceValue === '' || !Number.isFinite(parsedBalance)) {
+      issues.invalidBalance++;
+      continue;
+    }
+    validAccountIds.add(accountId);
+    accountCurrencies.set(accountId, currency);
     const isCard = normalized(account.accountType) === 'credit';
     const collection = isCard ? 'credit_cards' : 'accounts';
-    const id = idFor(isCard ? 'card' : 'account', account.accountId);
-    const name = String(account.accountMarketingName || account.accountName || 'Conta Pierre').slice(0, 120);
+    const id = idFor(isCard ? 'card' : 'account', accountId);
+    const name = String(account.accountMarketingName || account.accountName ||
+      (isCard ? 'Cartão Pierre' : 'Conta Pierre')).slice(0, 120);
     const common = { name, color: '#16a34a', source: 'pierre',
-      sourceAccountId: String(account.accountId), createdAt: now, updatedAt: now };
+      sourceAccountId: accountId, currency, createdAt: now, updatedAt: now };
     const data = isCard
       ? { ...common, limit: Number(account.creditData?.creditLimit) || 0,
         closingDay: dateDay(account.creditData?.balanceCloseDate, 1),
         dueDay: dateDay(account.creditData?.balanceDueDate, 10) }
       : { ...common, type: String(account.accountSubtype || account.accountType),
-        balance: Number(account.accountBalance) || 0, initialBalance: 0 };
+        balance: parsedBalance, initialBalance: 0 };
     docs.push({ collection, id, data });
   }
 
@@ -169,18 +214,20 @@ function buildSnapshot(accounts, transactions) {
     const account = resolveAccount(transaction, accounts);
     const date = String(transaction.date || '');
     const amount = Number(transaction.amount);
-    const currency = String(transaction.currency_code || '');
-    if (!account || !transaction.id || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-        !Number.isFinite(amount) || currency !== 'BRL') {
+    const accountId = account?.accountId == null ? '' : String(account.accountId);
+    const currency = String(
+      transaction.currency_code ?? transaction.currencyCode ?? accountCurrencies.get(accountId) ?? ''
+    ).trim().toUpperCase();
+    if (!account || !validAccountIds.has(accountId) || !transaction.id ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(amount) || currency !== 'BRL') {
       skipped++;
       continue;
     }
-    const id = idFor('transaction', String(account.accountId) + ':' + String(transaction.id));
+    const id = idFor('transaction', accountId + ':' + String(transaction.id));
     if (id.length > 1000 || seen.has(id)) {
       skipped++;
       continue;
     }
-    seen.add(id);
     const card = normalized(account.accountType) === 'credit';
     const description = String(transaction.description || 'Movimentação Pierre').slice(0, 400);
     const category = String(transaction.category || 'Sem categoria').slice(0, 120);
@@ -189,28 +236,33 @@ function buildSnapshot(accounts, transactions) {
       skipped++;
       continue;
     }
+    seen.add(id);
     const text = normalized(description + ' ' + category);
     docs.push({ collection: 'transactions', id, data: {
       description, category, amount: Math.abs(amount),
       type: kind === 'credit' ? 'income' : 'expense',
       status: normalized(transaction.status) === 'pending' ? 'pending' : 'completed',
-      accountId: idFor(card ? 'card' : 'account', account.accountId),
+      accountId: idFor(card ? 'card' : 'account', accountId),
       accountName: String(account.accountMarketingName || account.accountName || ''),
       date: date + 'T12:00:00.000Z',
       isFixed: false, isRecurring: false,
       isIgnored: !card && text.includes('pagamento') && text.includes('fatura'),
       bankTransactionId: String(transaction.id),
-      source: 'pierre', sourceAccountId: String(account.accountId),
+      source: 'pierre', sourceAccountId: accountId,
       createdAt: now, updatedAt: now,
     }});
   }
+  const skippedAccounts = Object.values(issues).reduce((total, count) => total + count, 0);
   const counts = {
     accounts: docs.filter((item) => item.collection === 'accounts').length,
     cards: docs.filter((item) => item.collection === 'credit_cards').length,
     transactions: docs.filter((item) => item.collection === 'transactions').length,
     skipped,
+    skippedAccounts,
   };
-  return { counts, documents: docs, fetchedAt: now };
+  // Only aggregate validation results leave the Worker. Never log personal transactions, credentials,
+  // raw balances, descriptions, account IDs or financial institution names.
+  return { counts, accountIssues: issues, documents: docs, fetchedAt: now };
 }
 
 export default {
