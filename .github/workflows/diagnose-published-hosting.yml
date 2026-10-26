@@ -1,8 +1,6 @@
 name: Diagnose live Poupe Mais hosting
 on:
-  push:
-    branches:
-      - feature/pierre-financial-sync-20261025
+  pull_request:
     paths:
       - '.github/workflows/diagnose-published-hosting.yml'
 jobs:
