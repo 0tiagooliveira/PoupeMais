@@ -9,6 +9,7 @@ type Summary = {
   cards: number;
   transactions: number;
   skipped: number;
+  skippedAccounts?: number;
 };
 
 type PierreDocument = {
@@ -19,6 +20,13 @@ type PierreDocument = {
 
 type Snapshot = {
   counts: Summary;
+  accountIssues?: {
+    missingId: number;
+    missingType: number;
+    unknownCurrency: number;
+    otherCurrency: number;
+    invalidBalance: number;
+  };
   documents: PierreDocument[];
   fetchedAt: string;
   months: number;
@@ -87,7 +95,7 @@ export const PierreIntegrationPage: React.FC = () => {
   };
 
   const importData = async () => {
-    if (!snapshot || snapshot.counts.skipped || !snapshot.counts.transactions || !currentUser?.uid ||
+    if (!snapshot || snapshot.counts.skipped || snapshot.counts.skippedAccounts || !snapshot.counts.transactions || !currentUser?.uid ||
       busy || snapshot.documents.length > 10000) return;
     const user = auth.currentUser;
     if (!user || user.uid !== currentUser.uid) return;
@@ -142,7 +150,7 @@ export const PierreIntegrationPage: React.FC = () => {
 
   const counts = snapshot?.counts;
   const canImport = Boolean(counts && counts.transactions > 0 && counts.accounts + counts.cards > 0 &&
-    counts.skipped === 0 && (snapshot?.documents.length || 0) <= 10000);
+    counts.skipped === 0 && (counts.skippedAccounts || 0) === 0 && (snapshot?.documents.length || 0) <= 10000);
 
   return (
     <div className="mx-auto max-w-2xl pb-28 space-y-6 animate-in fade-in duration-500">
@@ -190,12 +198,14 @@ export const PierreIntegrationPage: React.FC = () => {
           <Stat label="Contas" value={counts.accounts} />
           <Stat label="Cartões" value={counts.cards} />
           <Stat label="Transações" value={counts.transactions} />
-          <Stat label="Não identificadas" value={counts.skipped} />
+          <Stat label="Transações para revisar" value={counts.skipped} />
+          <Stat label="Contas para revisar" value={counts.skippedAccounts || 0} />
         </div>
-        {counts.skipped > 0 &&
-          <p role="alert" className="rounded-xl p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-sm">
-            Algumas transações não têm conta identificada. Para não perder registros, a importação está bloqueada.
-          </p>}
+        {(counts.skipped > 0 || (counts.skippedAccounts || 0) > 0) &&
+          <div role="alert" className="rounded-xl p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-sm space-y-2">
+            <p>O Pierre retornou alguns registros incompletos, com moeda diferente ou sem vínculo seguro. A prévia já mostra o que foi encontrado; a importação só será liberada quando os dados estiverem consistentes.</p>
+            {snapshot?.accountIssues && <p className="text-xs">Contas: sem identificação {snapshot.accountIssues.missingId}, sem tipo {snapshot.accountIssues.missingType}, sem moeda verificável {snapshot.accountIssues.unknownCurrency}, moeda diferente de BRL {snapshot.accountIssues.otherCurrency}, sem saldo válido {snapshot.accountIssues.invalidBalance}.</p>}
+          </div>}
         {snapshot && snapshot.documents.length > 10000 &&
           <ErrorMessage message="Esse período excede 10 mil registros. Selecione um período menor para respeitar a cota gratuita do Firebase." />}
         <p className="text-xs text-slate-500 dark:text-slate-400">
