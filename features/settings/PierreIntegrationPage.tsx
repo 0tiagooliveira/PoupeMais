@@ -24,7 +24,9 @@ type Snapshot = {
   months: number;
 };
 
-const WORKER_URL = String(import.meta.env.VITE_PIERRE_WORKER_URL || '').replace(/\/+$/, '');
+// Public endpoint of the Worker created for this project. API keys remain server-side.
+const DEFAULT_WORKER_URL = 'https://poup-mais.tiago336699.workers.dev';
+const WORKER_URL = String(import.meta.env.VITE_PIERRE_WORKER_URL || DEFAULT_WORKER_URL).replace(/\/+$/, '');
 const configured = /^https:\/\/[a-zA-Z0-9.-]+(?:\/[^?]*)?$/.test(WORKER_URL);
 
 const ErrorMessage = ({ message }: { message: string }) =>
