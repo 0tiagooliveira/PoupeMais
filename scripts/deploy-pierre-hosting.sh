@@ -2,6 +2,12 @@
 # Publica SOMENTE o frontend no Firebase Hosting gratuito (sem Functions).
 set -Eeuo pipefail
 
+echo "PUBLICAÇÃO BLOQUEADA: este frontend substitui a interface moderna do Poupe Mais por um design antigo." >&2
+echo "Restaure a versão anterior pelo Firebase Hosting → Histórico de implantação → Reverter." >&2
+echo "A integração Pierre deverá ser portada à base visual mais recente antes de qualquer novo deploy." >&2
+exit 1
+
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
