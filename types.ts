@@ -42,6 +42,9 @@ export interface Transaction {
   installmentNumber?: number; 
   totalInstallments?: number; 
   bankTransactionId?: string;
+  source?: 'pierre' | string;
+  sourceAccountId?: string;
+  updatedAt?: string;
   createdAt: string;
 }
 
