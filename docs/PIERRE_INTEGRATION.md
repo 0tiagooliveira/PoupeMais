@@ -17,6 +17,21 @@ A ponte roda em **Cloudflare Workers (plano Free)** e utiliza o login Firebase d
 **Sem limpeza automática.** Não apagar registros antigos antes de conferir que a importação está correta.
 IDs gerados têm prefixo `pierre_`, e um segundo processamento grava os mesmos documentos sem duplicações.
 
+## Instalação pelo editor web da Cloudflare (celular)
+
+O arquivo `worker/src/index.js` não depende mais de bibliotecas externas. Pode ser copiado integralmente de
+[worker/src/index.js](https://github.com/0tiagooliveira/PoupeMais/blob/feature/pierre-financial-sync-20261025/worker/src/index.js)
+para `worker.js` no editor do Worker. Substitua totalmente o código `Hello World` e implante.
+
+No **Cloudflare → Worker → Settings → Variables and Secrets**, configurar:
+- `PIERRE_API_KEY` (Secret): chave NOVA, jamais enviada pelo chat;
+- `PIERRE_OWNER_UID` (Secret): UID Firebase Auth da conta proprietária;
+- `FIREBASE_PROJECT_ID` (Text): `poupe-mais-6a07f`.
+
+O código só consulta Pierre com token Firebase RS256 verificado, UID autorizado, e `Origin` do Poupe Mais.
+O Worker não pode ser testado por abrir sua URL numa aba, pois exige POST autenticado.
+Para integrar ao site, construir o frontend com `VITE_PIERRE_WORKER_URL` apontando para a URL Workers e publicar apenas o Firebase Hosting. Configuração ainda pendente.
+
 ## Ativação (uma vez)
 
 1. Criar uma conta grátis em https://dash.cloudflare.com/ e escolher Workers & Pages → Create Worker.
