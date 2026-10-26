@@ -187,20 +187,31 @@ export const PierreIntegrationPage: React.FC = () => {
         await batch.commit();
         saved += count;
       }
-      const transactions = history.documents.filter(d => d.collection === 'transactions');
-      for (const period of history.periods) {
-        const sample = transactions.find(d => {
-          const date = String(d.data.date || '').slice(0, 10);
-          return date >= period.from && date <= period.to;
-        });
-        if (!sample && period.count) throw new Error('Verificação do período falhou.');
-        if (sample) {
-          const stored = await user.collection('transactions').doc(sample.id).get();
-          if (!stored.exists || stored.data()?.bankTransactionId !== sample.data.bankTransactionId ||
-              stored.data()?.amount !== sample.data.amount) {
-            throw new Error('Falha na verificação do histórico gravado no Firestore.');
+      // Verify every expected document was actually stored. Firestore's single-field
+      // 'source' index is enough; no paid backend and no custom composite index needed.
+      // This consumes up to one Firestore read per imported document, inside Spark quotas.
+      for (const collection of ['accounts', 'credit_cards', 'transactions'] as const) {
+        const expectedDocs = history.documents.filter(d => d.collection === collection);
+        if (!expectedDocs.length) continue;
+        setProgress('Verificando os registros salvos em ' + collection + '...');
+        const storedQuery = await user.collection(collection).where('source', '==', 'pierre').get();
+        const stored = new Map(storedQuery.docs.map(d => [d.id, d.data()]));
+        for (const expected of expectedDocs) {
+          const actual = stored.get(expected.id);
+          if (!actual || actual.source !== 'pierre') {
+            throw new Error('Um lançamento não foi encontrado no Firestore. Importação incompleta.');
+          }
+          for (const field of ['sourceAccountId', 'amount', 'date', 'bankTransactionId',
+            'accountId', 'balance', 'type', 'limit']) {
+            if (Object.prototype.hasOwnProperty.call(expected.data, field) &&
+                actual[field] !== expected.data[field]) {
+              throw new Error('Um lançamento foi salvo com valores divergentes. Importação incompleta.');
+            }
           }
         }
+      }
+      if (saved !== history.documents.length) {
+        throw new Error('A quantidade gravada não confere com a prévia.');
       }
       const completedAt = new Date().toISOString();
       await meta.set({
@@ -231,7 +242,8 @@ export const PierreIntegrationPage: React.FC = () => {
   const counts = history?.counts;
   const blocked = !!counts && (counts.skipped > 0 || counts.skippedAccounts > 0);
   const allowed = !!history && !blocked && history.periods.length >= 12 &&
-    history.documents.length <= 10000;
+    history.documents.length <= 10000 && history.counts.transactions > 0 &&
+    (history.counts.accounts + history.counts.cards) > 0;
 
   return <div className="mx-auto max-w-2xl pb-28 space-y-6 animate-in fade-in duration-500">
     <div className="flex items-center gap-4">
