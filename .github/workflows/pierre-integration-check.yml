@@ -27,5 +27,7 @@ jobs:
         run: npm run build
       - name: Check Worker syntax
         run: node --check worker/src/index.js
+      - name: Check Cloud Shell deploy script
+        run: bash -n scripts/deploy-pierre-hosting.sh
       - name: Install Worker dependencies
         run: npm install --prefix worker --no-audit --no-fund
