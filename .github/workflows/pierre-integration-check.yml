@@ -27,6 +27,8 @@ jobs:
         run: npm run build
       - name: Check Worker syntax
         run: node --check worker/src/index.js
+      - name: Validate complete 12-month date coverage
+        run: node --test worker/test/history.test.mjs
       - name: Check Cloud Shell deploy script
         run: bash -n scripts/deploy-pierre-hosting.sh
       - name: Install Worker dependencies
