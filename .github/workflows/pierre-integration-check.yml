@@ -46,8 +46,11 @@ jobs:
           s.loader.exec_module(m)
           changed = m.changes()
           assert set(changed) == {'/index.html','/assets/app.js','/assets/chunks/chunk-ZRRIDQRF.js',
-                                 '/pierre.html','/pierre-import.js','/pierre-nav.js'}
+                                 '/pierre.html','/pierre-import.js','/pierre-nav.js',
+                                 '/assets/chunks/chunk-GX4UVSAK.js'}
           assert b'if(S.source==="pierre")' in changed['/assets/app.js']
-          print('Modern UI patch signatures validated; no production writes executed.')
+          assert b'gen-lang-client-0689136674' not in changed['/assets/chunks/chunk-GX4UVSAK.js']
+          assert b'poupe-mais-6a07f' in changed['/assets/chunks/chunk-GX4UVSAK.js']
+          print('Modern UI + correct Firebase project validated; no production writes executed.')
           PY
 
