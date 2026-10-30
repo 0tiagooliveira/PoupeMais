@@ -35,6 +35,11 @@ jobs:
         run: npm install --prefix worker --no-audit --no-fund
       - name: Validate isolated modern-page import syntax
         run: node --check modern-overlay/pierre-import.js
+      - name: Validate Firebase browser CDN used by importer
+        run: |
+          for module in app auth firestore; do
+            curl -fsSI --retry 2 "https://www.gstatic.com/firebasejs/12.8.0/firebase-$module.js" >/dev/null
+          done
       - name: Validate safe Hosting REST patch syntax
         run: python3 -m py_compile modern-overlay/deploy-modern-pierre-rest.py
       - name: Confirm live modern UI matches exact six-file patch
