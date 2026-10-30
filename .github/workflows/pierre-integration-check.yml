@@ -42,6 +42,8 @@ jobs:
           done
       - name: Validate safe Hosting REST patch syntax
         run: python3 -m py_compile modern-overlay/deploy-modern-pierre-rest.py
+      - name: Test dry-run and rollback-safe Hosting publication
+        run: python3 -m unittest discover -s modern-overlay -p test_safe_patch.py -v
       - name: Confirm live modern UI matches exact six-file patch
         run: |
           python3 - <<'PY'
