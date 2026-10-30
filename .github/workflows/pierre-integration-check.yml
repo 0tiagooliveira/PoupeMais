@@ -33,3 +33,21 @@ jobs:
         run: bash -n scripts/deploy-pierre-hosting.sh
       - name: Install Worker dependencies
         run: npm install --prefix worker --no-audit --no-fund
+      - name: Validate isolated modern-page import syntax
+        run: node --check modern-overlay/pierre-import.js
+      - name: Validate safe Hosting REST patch syntax
+        run: python3 -m py_compile modern-overlay/deploy-modern-pierre-rest.py
+      - name: Confirm live modern UI matches exact six-file patch
+        run: |
+          python3 - <<'PY'
+          import importlib.util
+          s = importlib.util.spec_from_file_location('patch','modern-overlay/deploy-modern-pierre-rest.py')
+          m = importlib.util.module_from_spec(s)
+          s.loader.exec_module(m)
+          changed = m.changes()
+          assert set(changed) == {'/index.html','/assets/app.js','/assets/chunks/chunk-ZRRIDQRF.js',
+                                 '/pierre.html','/pierre-import.js','/pierre-nav.js'}
+          assert b'if(S.source==="pierre")' in changed['/assets/app.js']
+          print('Modern UI patch signatures validated; no production writes executed.')
+          PY
+
