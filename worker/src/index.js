@@ -203,7 +203,8 @@ function buildSnapshot(accounts, transactions) {
     const id = idFor(isCard ? 'card' : 'account', accountId);
     const name = String(account.accountMarketingName || account.accountName ||
       (isCard ? 'Cartão Pierre' : 'Conta Pierre')).slice(0, 120);
-    const common = { name, color: '#16a34a', source: 'pierre',
+    const common = { name, color: '#16a34a', source: 'pierre', provider: 'pierre',
+      readOnly: true,
       sourceAccountId: accountId, currency, createdAt: now, updatedAt: now };
     const data = isCard
       ? { ...common, limit: Number(account.creditData?.creditLimit) || 0,
@@ -254,7 +255,8 @@ function buildSnapshot(accounts, transactions) {
       isFixed: false, isRecurring: false,
       isIgnored: !card && text.includes('pagamento') && text.includes('fatura'),
       bankTransactionId: String(transaction.id),
-      source: 'pierre', sourceAccountId: accountId,
+      source: 'pierre', importSource: 'pierre',
+      sourceType: card ? 'card' : 'account', sourceAccountId: accountId,
       createdAt: now, updatedAt: now,
     }});
   }
