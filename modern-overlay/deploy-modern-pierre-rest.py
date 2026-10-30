@@ -81,6 +81,7 @@ def changes():
     index=public('/index.html').decode('utf-8')
     script=public('/assets/app.js?v=20260913-5').decode('utf-8')
     transactions=public('/assets/chunks/chunk-ZRRIDQRF.js').decode('utf-8')
+    modern_firebase=public('/assets/chunks/chunk-GX4UVSAK.js').decode('utf-8')
     if '/assets/app.js?v=20260913-5' not in index or 'Poup+' not in index:
         raise APIError('O site público não é a versão moderna esperada. Abortando.')
     index=replace_once(index,'</body>', '<script defer src="/pierre-nav.js"></script></body>','HTML principal')
@@ -96,11 +97,28 @@ def changes():
         'if(g.type!=="expense"||!g.description||!x(g.description))return;',
         'if(g.source==="pierre"||g.type!=="expense"||!g.description||!x(g.description))return;',
         'proteção de saldo de conta')
+    # The restored modern UI used a different Firebase project as its bundled default.
+    # Repoint it to the owner's known Poupe Mais Firebase project. We change no data;
+    # this prevents the Pierre import from going to an unrelated database.
+    firebase_swaps = [
+        ('AIzaSyCnDH_HX1Z7MRPuVITRF-4zEeoUP7i-CPY', 'AIzaSyB8_TagbRuyEZ1puNUrn9UnyptHOOMZong', 1),
+        ('gen-lang-client-0689136674', 'poupe-mais-6a07f', 3),
+        ('54360289428', '451102060352', 2),
+        ('1:54360289428:web:39dc880705c77a9de90481', '1:451102060352:web:1d9bb2a53494db04f814a5', 1),
+    ]
+    # Replace the appId first so that the messaging sender replacement does not change its signature.
+    for original, updated, count in [firebase_swaps[3], firebase_swaps[0], firebase_swaps[1],
+                                     ('messagingSenderId:Ra.VITE_FIREBASE_MESSAGING_SENDER_ID||"54360289428"',
+                                      'messagingSenderId:Ra.VITE_FIREBASE_MESSAGING_SENDER_ID||"451102060352"', 1)]:
+        if modern_firebase.count(original) != count:
+            raise APIError('O frontend público usa uma configuração Firebase inesperada. Não publicar.')
+        modern_firebase=modern_firebase.replace(original,updated)
     navigation=r'''(()=>{function mount(){const path=location.hash||'';let link=document.getElementById('pierre-action-link');const show=/^#\/(?:settings|connected-banks)(?:\/|$|\?)/.test(path);if(!show){link?.remove();return}if(!link){link=document.createElement('a');link.id='pierre-action-link';link.href='/pierre.html';link.textContent='Importar Pierre';link.setAttribute('aria-label','Importar 12 meses do Pierre');Object.assign(link.style,{position:'fixed',right:'16px',bottom:'92px',padding:'12px 16px',borderRadius:'15px',background:'var(--primary,#16a34a)',color:'var(--on-primary,#fff)',font:'700 13px system-ui',zIndex:'110',boxShadow:'0 6px 24px #0002',textDecoration:'none'});document.body.appendChild(link)}}window.addEventListener('hashchange',mount);document.addEventListener('DOMContentLoaded',mount);mount()})();'''
     return {
         '/index.html':index.encode(),
         '/assets/app.js':script.encode(),
         '/assets/chunks/chunk-ZRRIDQRF.js':transactions.encode(),
+        '/assets/chunks/chunk-GX4UVSAK.js':modern_firebase.encode(),
         '/pierre.html':(HERE/'pierre.html').read_bytes(),
         '/pierre-import.js':(HERE/'pierre-import.js').read_bytes(),
         '/pierre-nav.js':navigation.encode(),
