@@ -44,7 +44,7 @@ jobs:
         run: python3 -m py_compile modern-overlay/deploy-modern-pierre-rest.py
       - name: Test dry-run and rollback-safe Hosting publication
         run: python3 -m unittest discover -s modern-overlay -p test_safe_patch.py -v
-      - name: Confirm live modern UI matches exact six-file patch
+      - name: Confirm live modern UI matches exact seven-file patch
         run: |
           python3 - <<'PY'
           import importlib.util
