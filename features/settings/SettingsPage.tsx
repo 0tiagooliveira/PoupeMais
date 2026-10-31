@@ -157,6 +157,9 @@ export const SettingsPage: React.FC = () => {
                     onClick={() => navigate('/import-statement')} 
                     pro
                 />
+                {currentUser?.email?.toLowerCase() === 'tiago336699@gmail.com' && (
+                  <SettingItem icon="sync_alt" label="Integração Pierre" description="Importar contas, cartões e transações com segurança" onClick={() => navigate('/settings/pierre')} />
+                )}
                 <SettingItem icon="download" label="Exportar Relatório" description="Baixar histórico em CSV" onClick={handleExportData} />
             </div>
         </div>

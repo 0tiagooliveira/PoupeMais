@@ -107,6 +107,8 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
       // Corrige automaticamente transações importadas como despesa que, pela descrição,
       // são transferências recebidas (receita).
       const misclassifiedIncome = rawData.filter((t) => {
+        // Pierre é fonte de verdade: nunca reclassifique silenciosamente dados importados.
+        if (t.source === 'pierre') return false;
         if (t.type !== 'expense') return false;
         if (!t.description || !shouldForceIncomeByDescription(t.description)) return false;
         if (autoFixingIdsRef.current.has(t.id)) return false;
@@ -130,6 +132,7 @@ export const useTransactions = (currentDate: Date, viewMode: 'month' | 'year' = 
                 if (!latestTransDoc.exists) return;
 
                 const latest = latestTransDoc.data() as Transaction;
+                if (latest.source === 'pierre') return;
                 if (latest.type !== 'expense') return;
                 if (!latest.description || !shouldForceIncomeByDescription(latest.description)) return;
 

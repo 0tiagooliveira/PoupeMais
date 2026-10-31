@@ -1,0 +1,43 @@
+name: Diagnose blank production UI (read only)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnose-live-ui.yml'
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install temporary browser tools for public-page test
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Diagnose production public landing page without logging in
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true,args:['--no-sandbox']});
+          const page = await browser.newPage({viewport:{width:390,height:844}});
+          const errors = [];
+          page.on('pageerror',error=>errors.push({kind:'pageerror',message:error.message.slice(0,400)}));
+          page.on('console',msg=>{
+            if (msg.type()==='error') errors.push({kind:'console',message:msg.text().slice(0,400)});
+          });
+          page.on('response',response=>{
+            if (response.status()>=400 && response.url().startsWith('https://poupe-mais-6a07f.web.app/')) {
+              errors.push({kind:'http',status:response.status(),url:new URL(response.url()).pathname});
+            }
+          });
+          const response = await page.goto('https://poupe-mais-6a07f.web.app/', {waitUntil:'domcontentloaded',timeout:40000});
+          await page.waitForTimeout(6000);
+          const app = await page.evaluate(()=>({title:document.title, rootCount:document.querySelector('#root')?.children.length,
+            bodyText:(document.body.innerText||'').slice(0,500), scripts:[...document.scripts].map(x=>x.src).filter(Boolean)}));
+          console.log('HTTP_STATUS', response?.status());
+          console.log('PUBLIC_APP',JSON.stringify(app));
+          console.log('ERRORS',JSON.stringify(errors.slice(0,18)));
+          await browser.close();
+          JS

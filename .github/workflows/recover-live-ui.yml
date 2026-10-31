@@ -1,0 +1,31 @@
+name: Recover publicly deployed modern UI for safe integration
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/recover-live-ui.yml'
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Download public static assets without auth
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p live-ui/assets
+          curl -fsSL --retry 3 https://poupe-mais-6a07f.web.app/ -o live-ui/index.html
+          curl -fsSL --retry 3 'https://poupe-mais-6a07f.web.app/assets/app.js?v=20260913-5' -o live-ui/assets/app.js
+          curl -fsSL --retry 3 'https://poupe-mais-6a07f.web.app/styles.css?v=20260913-5' -o live-ui/styles.css
+          curl -fsSL --retry 3 'https://poupe-mais-6a07f.web.app/manifest.webmanifest' -o live-ui/manifest.webmanifest
+          python3 - <<'PY'
+          from pathlib import Path
+          for p in Path('live-ui').rglob('*'):
+              if p.is_file(): print('PUBLIC_FILE',p,p.stat().st_size)
+          PY
+      - name: Store public app for local analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: poupe-mais-public-ui-20260913
+          path: live-ui/
+          retention-days: 3

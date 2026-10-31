@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Cloudflare Worker secrets (do not commit)
+worker/.dev.vars
+worker/.dev.vars.*
+worker/.env
+worker/.env.*
+!worker/.env.example

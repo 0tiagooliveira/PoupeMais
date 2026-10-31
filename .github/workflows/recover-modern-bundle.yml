@@ -1,0 +1,63 @@
+name: Recover modern UI dependency graph (public assets only)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/recover-modern-bundle.yml'
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    permissions:
+      contents: read
+    steps:
+      - name: Crawl only same-origin public static files from restored site
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request, urllib.parse, pathlib, re, collections, json
+          host='https://poupe-mais-6a07f.web.app'
+          dest=pathlib.Path('modern-site')
+          dest.mkdir()
+          queue=collections.deque(['/','/assets/app.js?v=20260913-5','/styles.css?v=20260913-5','/manifest.webmanifest'])
+          known=set()
+          saved=[]
+          while queue and len(saved)<230:
+              ref=queue.popleft()
+              url=urllib.parse.urljoin(host+'/',ref)
+              parsed=urllib.parse.urlparse(url)
+              if parsed.netloc!='poupe-mais-6a07f.web.app' or url in known: continue
+              known.add(url)
+              path=parsed.path
+              if path.endswith('/'): path='/index.html'
+              if not re.fullmatch(r'/[a-zA-Z0-9_./-]+',path) or '..' in path: continue
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'PublicSiteCompatibilityAudit/1.0'})
+                  with urllib.request.urlopen(req,timeout=20) as res:
+                      data=res.read(3000000)
+                      mime=res.headers.get('Content-Type','')
+                  suffix=path.rsplit('.',1)[-1].lower()
+                  if suffix in {'js','css','json','webmanifest'} and 'html' in mime.lower(): continue
+                  if len(data)>2800000: continue
+                  destpath=dest/path.lstrip('/')
+                  destpath.parent.mkdir(parents=True,exist_ok=True)
+                  destpath.write_bytes(data)
+                  saved.append({'path':path,'bytes':len(data),'mime':mime})
+                  if suffix not in {'js','css','html','webmanifest'}:continue
+                  text=data.decode('utf-8','replace')
+                  # Look for static chunks imported from the local origin and lazy imports.
+                  deps=set(re.findall(r'["\x27]((?:\./|\.\./|/)[^"\x27\s]+?\.(?:js|css|json|png|jpg|svg|webp|woff2?))(?:\?[^"\x27]*)?["\x27]',text))
+                  for dep in deps:
+                      abs_url=urllib.parse.urljoin(url,dep)
+                      if urllib.parse.urlparse(abs_url).netloc=='poupe-mais-6a07f.web.app':
+                          queue.append(abs_url)
+              except Exception as exc:
+                  print('FETCH_FAILED',path,type(exc).__name__)
+          (dest/'_public_inventory.json').write_text(json.dumps(saved,indent=2),encoding='utf-8')
+          print('RECOVERED_PUBLIC_FILES',len(saved),'BYTES',sum(x['bytes'] for x in saved))
+          print('CHUNKS',sum('/chunks/' in x['path'] for x in saved))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: poupe-mais-modern-public-dependencies
+          path: modern-site/
+          retention-days: 3

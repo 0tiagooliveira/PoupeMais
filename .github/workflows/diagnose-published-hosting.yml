@@ -1,0 +1,37 @@
+name: Diagnose live Poupe Mais hosting
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnose-published-hosting.yml'
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public site HTML and asset routes, no credentials
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request, urllib.error, re, html
+          ROOT="https://poupe-mais-6a07f.web.app"
+          def fetch(path):
+              try:
+                  req=urllib.request.Request(ROOT+path,headers={"User-Agent":"PoupeMaisPublicHostingCheck/1.0","Cache-Control":"no-cache"})
+                  with urllib.request.urlopen(req,timeout=20) as resp:
+                      return resp.status, resp.headers.get('Content-Type',''), resp.read(1500000).decode('utf-8','replace')
+              except urllib.error.HTTPError as exc:
+                  return exc.code,exc.headers.get('Content-Type',''),exc.read(500).decode('utf-8','replace')
+              except Exception as exc:
+                  return 'request-error','',str(type(exc).__name__)
+          status,ct,body=fetch('/?diagnostic=1')
+          print('INDEX:',status,ct,'bytes',len(body))
+          title=re.findall(r'<title[^>]*>(.*?)</title>',body,re.I|re.S)
+          print('TITLE:',title[:1])
+          refs=re.findall(r'<script\b[^>]*\bsrc=["\x27]([^"\x27]+)',body,re.I)
+          links=re.findall(r'<link\b[^>]*\bhref=["\x27]([^"\x27]+)',body,re.I)
+          print('SCRIPT_SRCS:',refs[:20])
+          print('LOCAL_STYLES:',[x for x in links if x.startswith('/')][:15])
+          print('HAS_IMPORTMAP:', '<script type="importmap">' in body or 'type="importmap"' in body)
+          for path in [x for x in refs+links if x.startswith('/')][:15]+['/index.tsx']:
+              status,ct,content=fetch(path)
+              print('ASSET:',path,'STATUS:',status,'TYPE:',ct,'SIZE:',len(content),'HTML_FALLBACK:', '<html' in content[:400].lower())
+          PY

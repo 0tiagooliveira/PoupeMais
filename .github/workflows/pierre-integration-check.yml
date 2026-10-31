@@ -1,0 +1,63 @@
+name: Pierre bridge checks
+on:
+  push:
+    branches:
+      - feature/pierre-financial-sync-20261025
+  pull_request:
+    paths:
+      - 'worker/**'
+      - 'features/settings/PierreIntegrationPage.tsx'
+      - 'features/settings/SettingsPage.tsx'
+      - 'App.tsx'
+      - 'firebase.json'
+      - 'package.json'
+      - 'package-lock.json'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install app dependencies
+        run: npm ci
+      - name: Build app
+        run: npm run build
+      - name: Check Worker syntax
+        run: node --check worker/src/index.js
+      - name: Validate complete 12-month date coverage
+        run: node --test worker/test/history.test.mjs
+      - name: Check Cloud Shell deploy script
+        run: bash -n scripts/deploy-pierre-hosting.sh
+      - name: Install Worker dependencies
+        run: npm install --prefix worker --no-audit --no-fund
+      - name: Validate isolated modern-page import syntax
+        run: node --check modern-overlay/pierre-import.js
+      - name: Validate Firebase browser CDN used by importer
+        run: |
+          for module in app auth firestore; do
+            curl -fsSI --retry 2 "https://www.gstatic.com/firebasejs/12.8.0/firebase-$module.js" >/dev/null
+          done
+      - name: Validate safe Hosting REST patch syntax
+        run: python3 -m py_compile modern-overlay/deploy-modern-pierre-rest.py
+      - name: Test dry-run and rollback-safe Hosting publication
+        run: python3 -m unittest discover -s modern-overlay -p test_safe_patch.py -v
+      - name: Confirm live modern UI matches exact seven-file patch
+        run: |
+          python3 - <<'PY'
+          import importlib.util
+          s = importlib.util.spec_from_file_location('patch','modern-overlay/deploy-modern-pierre-rest.py')
+          m = importlib.util.module_from_spec(s)
+          s.loader.exec_module(m)
+          changed = m.changes()
+          assert set(changed) == {'/index.html','/assets/app.js','/assets/chunks/chunk-ZRRIDQRF.js',
+                                 '/pierre.html','/pierre-import.js','/pierre-nav.js',
+                                 '/assets/chunks/chunk-GX4UVSAK.js'}
+          assert b'if(S.source==="pierre")' in changed['/assets/app.js']
+          assert b'gen-lang-client-0689136674' not in changed['/assets/chunks/chunk-GX4UVSAK.js']
+          assert b'poupe-mais-6a07f' in changed['/assets/chunks/chunk-GX4UVSAK.js']
+          print('Modern UI + correct Firebase project validated; no production writes executed.')
+          PY
+

@@ -12,6 +12,7 @@ import { Dashboard } from './features/dashboard/Dashboard';
 import { TransactionsPage } from './features/transactions/TransactionsPage';
 import { ChartsPage } from './features/charts/ChartsPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { PierreIntegrationPage } from './features/settings/PierreIntegrationPage';
 import { CategoriesPage } from './features/categories/CategoriesPage';
 import { CreditCardsPage } from './features/credit-cards/CreditCardsPage';
 import { AIAnalysisPage } from './features/ai/AIAnalysisPage';
@@ -42,6 +43,7 @@ const App: React.FC = () => {
                       <Route path="/ai-analysis" element={<AIAnalysisPage />} />
                       <Route path="/categories" element={<CategoriesPage />} />
                       <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/settings/pierre" element={<PierreIntegrationPage />} />
                       <Route path="/credit-cards" element={<CreditCardsPage />} />
                       <Route path="/pricing" element={<PricingPage />} />
                       <Route path="/import-statement" element={<StatementImportPage />} />
