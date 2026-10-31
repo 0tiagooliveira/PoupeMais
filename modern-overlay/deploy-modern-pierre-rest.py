@@ -89,8 +89,8 @@ def replace_once_or_already(data, before, after, label):
 
 
 def clean_existing_page_scripts(index):
-    """Keep modern navigation singular and remove an obsolete duplicate only if bytes match."""
-    nav_count = len(re.findall(r'<script\\b[^>]*\\bsrc=["\\\']/?pierre-nav\\.js["\\\']', index, re.I))
+    """Keep one navigation link and remove an obsolete script only with matching bytes."""
+    nav_count = index.count('pierre-nav.js')
     if nav_count > 1:
         raise APIError('A versão atual já tem scripts de navegação duplicados; revisar antes de publicar.')
     if nav_count == 0:
@@ -101,12 +101,12 @@ def clean_existing_page_scripts(index):
     if old in index and new in index:
         if public('/pierre-insights.js?v=20261030-4') != public('/pierre-insights.js?v=20261030-5'):
             raise APIError('As duas versões de insights diferem. Não remover o script antigo automaticamente.')
-        pattern = r'<script\\b[^>]*\\bsrc=["\\\']/?pierre-insights\\.js\\?v=20261030-4["\\\'][^>]*>\\s*</script>'
-        index, removed = re.subn(pattern, '', index, flags=re.I)
-        if removed != 1:
-            raise APIError('Não foi possível remover com segurança o script de insights duplicado.')
+        tags = re.findall('<script[^>]*>.*?</script>', index, flags=re.I | re.S)
+        obsolete = [tag for tag in tags if old in tag.split('>')[0]]
+        if len(obsolete) != 1:
+            raise APIError('Não foi possível identificar com segurança o script de insights duplicado.')
+        index = index.replace(obsolete[0], '', 1)
     return index
-
 
 def changes():
     index=public('/index.html').decode('utf-8')
