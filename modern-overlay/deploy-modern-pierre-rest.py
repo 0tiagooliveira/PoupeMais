@@ -77,6 +77,17 @@ def replace_once(data, before, after, label):
         raise APIError('Assinatura inesperada no site moderno: '+label)
     return data.replace(before,after,1)
 
+def replace_once_or_already(data, before, after, label):
+    """Idempotent, fail-closed patch: neither duplicate nor silently skip unknown code."""
+    old_count = data.count(before)
+    new_count = data.count(after)
+    if old_count == 1 and new_count == 0:
+        return data.replace(before, after, 1)
+    if old_count == 0 and new_count == 1:
+        return data
+    raise APIError('Assinatura inesperada ou ambígua no site moderno: ' + label)
+
+
 def clean_existing_page_scripts(index):
     """Keep modern navigation singular and remove an obsolete duplicate only if bytes match."""
     nav_count = len(re.findall(r'<script\\b[^>]*\\bsrc=["\\\']/?pierre-nav\\.js["\\\']', index, re.I))
@@ -105,15 +116,15 @@ def changes():
     if '/assets/app.js?v=20260913-5' not in index or 'Poup+' not in index:
         raise APIError('O site público não é a versão moderna esperada. Abortando.')
     index=clean_existing_page_scripts(index)
-    script=replace_once(script,
+    script=replace_once_or_already(script,
         'y=i.docs.map(d=>{let S=d.data(),p={id:d.id,...S},z=',
         'y=i.docs.map(d=>{let S=d.data();if(S.source==="pierre")return{doc:d,transaction:{id:d.id,...S},patch:null};let p={id:d.id,...S},z=',
         'revisão automática de saldos')
-    transactions=replace_once(transactions,
+    transactions=replace_once_or_already(transactions,
         's=u.filter(r=>!(r.type!=="expense"||!r.description||!x(r.description)||N.current.has(r.id)));',
         's=u.filter(r=>!(r.source==="pierre"||r.type!=="expense"||!r.description||!x(r.description)||N.current.has(r.id)));',
         'classificação de transações')
-    transactions=replace_once(transactions,
+    transactions=replace_once_or_already(transactions,
         'if(g.type!=="expense"||!g.description||!x(g.description))return;',
         'if(g.source==="pierre"||g.type!=="expense"||!g.description||!x(g.description))return;',
         'proteção de saldo de conta')
@@ -127,12 +138,20 @@ def changes():
         ('1:54360289428:web:39dc880705c77a9de90481', '1:451102060352:web:1d9bb2a53494db04f814a5', 1),
     ]
     # Replace the appId first so that the messaging sender replacement does not change its signature.
-    for original, updated, count in [firebase_swaps[3], firebase_swaps[0], firebase_swaps[1],
-                                     ('messagingSenderId:Ra.VITE_FIREBASE_MESSAGING_SENDER_ID||"54360289428"',
-                                      'messagingSenderId:Ra.VITE_FIREBASE_MESSAGING_SENDER_ID||"451102060352"', 1)]:
-        if modern_firebase.count(original) != count:
-            raise APIError('O frontend público usa uma configuração Firebase inesperada. Não publicar.')
-        modern_firebase=modern_firebase.replace(original,updated)
+    # The public site may already have the new Firebase config from an earlier partial patch.
+    if 'gen-lang-client-0689136674' in modern_firebase:
+        for original, updated, count in [firebase_swaps[3], firebase_swaps[0], firebase_swaps[1],
+                                         ('messagingSenderId:Ra.VITE_FIREBASE_MESSAGING_SENDER_ID||"54360289428"',
+                                          'messagingSenderId:Ra.VITE_FIREBASE_MESSAGING_SENDER_ID||"451102060352"', 1)]:
+            if modern_firebase.count(original) != count:
+                raise APIError('O frontend público usa uma configuração Firebase inesperada. Não publicar.')
+            modern_firebase=modern_firebase.replace(original,updated)
+    else:
+        for required in ('poupe-mais-6a07f', '451102060352',
+                         '1:451102060352:web:1d9bb2a53494db04f814a5',
+                         'AIzaSyB8_TagbRuyEZ1puNUrn9UnyptHOOMZong'):
+            if required not in modern_firebase:
+                raise APIError('A configuração Firebase atual não corresponde ao projeto esperado.')
     navigation=r'''(()=>{function mount(){const path=location.hash||'';let link=document.getElementById('pierre-action-link');const show=/^#\/(?:settings|connected-banks)(?:\/|$|\?)/.test(path);if(!show){link?.remove();return}if(!link){link=document.createElement('a');link.id='pierre-action-link';link.href='/pierre.html';link.textContent='Importar Pierre';link.setAttribute('aria-label','Importar 12 meses do Pierre');Object.assign(link.style,{position:'fixed',right:'16px',bottom:'92px',padding:'12px 16px',borderRadius:'15px',background:'var(--primary,#16a34a)',color:'var(--on-primary,#fff)',font:'700 13px system-ui',zIndex:'110',boxShadow:'0 6px 24px #0002',textDecoration:'none'});document.body.appendChild(link)}}window.addEventListener('hashchange',mount);document.addEventListener('DOMContentLoaded',mount);mount()})();'''
     return {
         '/index.html':index.encode(),
