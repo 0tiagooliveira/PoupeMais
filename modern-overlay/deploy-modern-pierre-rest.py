@@ -77,6 +77,26 @@ def replace_once(data, before, after, label):
         raise APIError('Assinatura inesperada no site moderno: '+label)
     return data.replace(before,after,1)
 
+def clean_existing_page_scripts(index):
+    """Keep modern navigation singular and remove an obsolete duplicate only if bytes match."""
+    nav_count = len(re.findall(r'<script\\b[^>]*\\bsrc=["\\\']/?pierre-nav\\.js["\\\']', index, re.I))
+    if nav_count > 1:
+        raise APIError('A versão atual já tem scripts de navegação duplicados; revisar antes de publicar.')
+    if nav_count == 0:
+        index = replace_once(index, '</body>',
+                             '<script defer src="/pierre-nav.js"></script></body>', 'HTML principal')
+    old = 'pierre-insights.js?v=20261030-4'
+    new = 'pierre-insights.js?v=20261030-5'
+    if old in index and new in index:
+        if public('/pierre-insights.js?v=20261030-4') != public('/pierre-insights.js?v=20261030-5'):
+            raise APIError('As duas versões de insights diferem. Não remover o script antigo automaticamente.')
+        pattern = r'<script\\b[^>]*\\bsrc=["\\\']/?pierre-insights\\.js\\?v=20261030-4["\\\'][^>]*>\\s*</script>'
+        index, removed = re.subn(pattern, '', index, flags=re.I)
+        if removed != 1:
+            raise APIError('Não foi possível remover com segurança o script de insights duplicado.')
+    return index
+
+
 def changes():
     index=public('/index.html').decode('utf-8')
     script=public('/assets/app.js?v=20260913-5').decode('utf-8')
@@ -84,7 +104,7 @@ def changes():
     modern_firebase=public('/assets/chunks/chunk-GX4UVSAK.js').decode('utf-8')
     if '/assets/app.js?v=20260913-5' not in index or 'Poup+' not in index:
         raise APIError('O site público não é a versão moderna esperada. Abortando.')
-    index=replace_once(index,'</body>', '<script defer src="/pierre-nav.js"></script></body>','HTML principal')
+    index=clean_existing_page_scripts(index)
     script=replace_once(script,
         'y=i.docs.map(d=>{let S=d.data(),p={id:d.id,...S},z=',
         'y=i.docs.map(d=>{let S=d.data();if(S.source==="pierre")return{doc:d,transaction:{id:d.id,...S},patch:null};let p={id:d.id,...S},z=',
