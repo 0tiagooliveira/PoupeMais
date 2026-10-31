@@ -7,7 +7,7 @@ test('rolling year has no uncovered days or duplicate days', () => {
   for (const asOf of dates) {
     const windows = periodWindows(asOf);
     assert.ok(windows);
-    assert.ok(windows.length >= 12 && windows.length <= 14);
+    assert.equal(windows.length, 13);
     assert.equal(windows[windows.length - 1].to, asOf);
     for (let i = 1; i < windows.length; i++) {
       const before = new Date(windows[i - 1].to + 'T12:00:00Z');

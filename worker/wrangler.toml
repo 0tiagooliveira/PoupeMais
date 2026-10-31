@@ -1,4 +1,5 @@
-name = "poupemais-pierre"
+# Must match the existing Worker that owns the configured secrets and production URL.
+name = "poup-mais"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 

@@ -296,7 +296,9 @@ function periodWindows(asOf) {
     windows.push({ from: fmt(cursor), to: fmt(end), month: fmt(cursor).slice(0, 7) });
     cursor = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate() + 1));
   }
-  return windows;
+  // A rolling 12-month date range always spans exactly 13 calendar-month
+  // windows: the first and last can be partial, while the middle 11 are full.
+  return windows.length === 13 ? windows : null;
 }
 
 export default {

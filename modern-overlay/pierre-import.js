@@ -53,13 +53,13 @@ el('read').addEventListener('click',async()=>{
   let total=null,lastTo='',rejected=0,rejectedAccounts=0,providerCount=0;
   try {
     const token=await currentUser.getIdToken();
-    for(let i=0;i<(total??14);i++){
-      status('Consultando período '+(i+1)+' de '+(total??'até 14')+'...');
+    for(let i=0;i<(total??13);i++){
+      status('Consultando período '+(i+1)+' de '+(total??13)+'...');
       const response=await fetch(WORKER+'/snapshot',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({months:12,asOf,periodIndex:i})});
       const part=await response.json().catch(()=>null);
       if(!response.ok)throw new Error(part?.error||'A ponte Pierre não está atualizada ou a consulta falhou.');
       if(!part||!Array.isArray(part.documents)||!part.counts||!part.accountIssues||part.months!==12||part.asOf!==asOf||part.periodIndex!==i||
-        !Number.isInteger(part.totalPeriods)||part.totalPeriods<12||part.totalPeriods>14||!Number.isInteger(part.providerCount)||
+        !Number.isInteger(part.totalPeriods)||part.totalPeriods!==13||!Number.isInteger(part.providerCount)||
         !/^\d{4}-\d{2}-\d{2}$/.test(part.from)||!/^\d{4}-\d{2}-\d{2}$/.test(part.to)||part.from>part.to)
         throw new Error('Uma consulta mensal retornou um formato incompleto ou incompatível.');
       if(total===null){total=part.totalPeriods;if(part.from!==monthsBefore(asOf))throw new Error('O histórico não começa 12 meses atrás.');}
