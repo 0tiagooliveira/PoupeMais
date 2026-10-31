@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js';
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js';
 import { getFirestore, doc, writeBatch, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 
 const cfg = Object.freeze({
@@ -16,6 +16,7 @@ const el = id => document.getElementById(id);
 const zeroCounts = () => ({accounts:0,cards:0,transactions:0,skipped:0,skippedAccounts:0});
 const issues = ['missingId','missingType','unknownCurrency','otherCurrency','invalidBalance'];
 let currentUser = null;
+let knownUid = null;
 let busy = false;
 let ready = null;
 const status = text => { el('progress').textContent = text || ''; };
@@ -29,10 +30,44 @@ function expectedRecord(doc){return doc&&['accounts','credit_cards','transaction
 function datesValid(item,from,to){const d=String(item.data?.date||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=from&&d<=to;}
 
 onAuthStateChanged(auth, user => {
-  currentUser=user;
-  el('loginState').textContent=user?'Conectado com '+(user.email||'Firebase'):'Entre com sua conta do Poupe Mais para consultar o Pierre.';
-  el('logIn').hidden=!!user;
-  el('read').disabled=!user||busy;
+  const nextUid = user?.uid || null;
+  if (knownUid !== nextUid) {
+    // Never carry a preview or stale authorization into a different login.
+    ready = null;
+    el('previewPanel').hidden = true;
+    el('import').disabled = true;
+    status('');
+  }
+  knownUid = nextUid;
+  currentUser = user;
+  el('loginState').textContent = user ? 'Conectado com ' + (user.email || 'Firebase') : 'Entre com sua conta do Poup+ para consultar o Pierre.';
+  el('logIn').hidden = !!user;
+  el('logOut').hidden = !user;
+  el('read').disabled = !user || busy;
+});
+el('emailSignIn').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (busy || currentUser) return;
+  const email = el('authEmail').value.trim();
+  const passwordField = el('authPassword');
+  const password = passwordField.value;
+  if (!email || !password) return;
+  clearMessage();
+  el('signInEmail').disabled = true;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    alertMessage('Não foi possível entrar com e-mail e senha: ' + (error?.code || 'verifique suas credenciais.'));
+  } finally {
+    passwordField.value = '';
+    el('signInEmail').disabled = false;
+  }
+});
+el('logOut').addEventListener('click', async () => {
+  if (busy) return;
+  clearMessage();
+  try { await signOut(auth); }
+  catch (error) { alertMessage('Não foi possível sair: ' + (error?.code || 'tente novamente.')); }
 });
 el('signIn').addEventListener('click',async()=>{
   clearMessage();
