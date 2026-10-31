@@ -72,5 +72,30 @@ class SafePatchTest(unittest.TestCase):
         self.assertTrue(all(m=='GET' for m,_,_,_ in self.calls))
 
 
+    def test_existing_navigation_is_not_injected_twice(self):
+        markup = '<html><body><script defer src="/pierre-nav.js"></script></body></html>'
+        with patch.object(MODULE, 'public', side_effect=AssertionError('Unexpected network request')):
+            output = MODULE.clean_existing_page_scripts(markup)
+        self.assertEqual(output.count('pierre-nav.js'), 1)
+
+    def test_identical_insights_scripts_are_deduplicated(self):
+        markup = ('<html><body><script src="/pierre-nav.js"></script>'
+                  '<script src="/pierre-insights.js?v=20261030-5"></script>'
+                  '<script src="/pierre-insights.js?v=20261030-4"></script></body></html>')
+        with patch.object(MODULE, 'public', return_value=b'identical JavaScript'):
+            output = MODULE.clean_existing_page_scripts(markup)
+        self.assertIn('pierre-insights.js?v=20261030-5', output)
+        self.assertNotIn('pierre-insights.js?v=20261030-4', output)
+        self.assertEqual(output.count('pierre-nav.js'), 1)
+
+    def test_different_insights_scripts_abort_without_modifying_site(self):
+        markup = ('<html><body><script src="/pierre-nav.js"></script>'
+                  '<script src="/pierre-insights.js?v=20261030-5"></script>'
+                  '<script src="/pierre-insights.js?v=20261030-4"></script></body></html>')
+        with patch.object(MODULE, 'public', side_effect=[b'old JS', b'new JS']):
+            with self.assertRaises(MODULE.APIError):
+                MODULE.clean_existing_page_scripts(markup)
+
+
 if __name__=='__main__':
     unittest.main(verbosity=2)
