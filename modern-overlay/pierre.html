@@ -18,14 +18,15 @@ button.secondary{border:1px solid var(--primary,#16a34a);background:transparent;
 .pierre-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
 .stat{border-radius:14px;background:#f1f5f9;color:#0f172a;padding:15px}.stat small{display:block;font-size:12px;color:#475569}.stat strong{display:block;font-size:25px;margin-top:8px}
 .pierre-periods{width:100%;border-collapse:collapse;font-size:13px}.pierre-periods td{padding:10px 3px;border-bottom:1px solid #e2e8f0}.pierre-periods td:last-child{text-align:right;font-weight:700}
-#progress{font-size:13px;color:var(--text-secondary,#475569);min-height:24px}#previewPanel[hidden],#logIn[hidden]{display:none}
+#progress{font-size:13px;color:var(--text-secondary,#475569);min-height:24px}#previewPanel[hidden],#logIn[hidden],#logOut[hidden]{display:none}
+.signin-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.signin-fields label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}.signin-fields input{box-sizing:border-box;width:100%;min-height:46px;border:1px solid var(--border-color,#cbd5e1);border-radius:12px;padding:11px;background:var(--surface-solid,#fff);color:inherit}.signin-fields button{grid-column:1/-1}.auth-actions{display:flex;gap:12px;align-items:center;margin-top:12px}.auth-actions button{width:auto}@media(max-width:520px){.signin-fields{grid-template-columns:1fr}}
 </style>
 </head>
 <body><main class="pierre-wrapper">
 <header class="pierre-header"><a class="pierre-logo" href="/">Poup+</a><a class="pierre-back" href="/">Voltar ao aplicativo</a></header>
 <section class="pierre-card"><h1>Importação do Pierre</h1><p class="muted">Vamos consultar cada mês, conferir os lançamentos e gravar seu histórico no Poupe Mais somente após validar todos os 12 meses. Nenhum dado anterior será apagado.</p>
 <div id="loginState" class="muted">Verificando sua conta do Firebase...</div>
-<div id="logIn" hidden><button type="button" id="signIn">Entrar com Google</button></div>
+<div id="logIn" hidden><button type="button" id="signIn">Entrar com Google</button><form id="emailSignIn" class="signin-fields" autocomplete="on"><div><label for="authEmail">E-mail do Poup+</label><input type="email" id="authEmail" name="email" autocomplete="username" required></div><div><label for="authPassword">Senha</label><input type="password" id="authPassword" name="password" autocomplete="current-password" required></div><button type="submit" class="secondary" id="signInEmail">Entrar com e-mail e senha</button></form><p class="muted">Use a mesma conta cadastrada no Firebase do Poup+. Sua senha é enviada somente ao Firebase Authentication.</p></div><div class="auth-actions"><button type="button" class="secondary" id="logOut" hidden>Sair ou trocar de conta</button></div>
 </section>
 <section class="pierre-card"><h2>Histórico de 12 meses</h2><button type="button" class="secondary" id="read" disabled>Consultar os últimos 12 meses</button><p role="status" id="progress" aria-live="polite"></p></section>
 <section class="pierre-card" id="previewPanel" hidden><h2>Conferência antes de importar</h2><div id="counts" class="pierre-grid"></div><p id="warnings" class="muted"></p><details><summary>Conferir os períodos consultados</summary><table class="pierre-periods"><tbody id="periodRows"></tbody></table></details><button type="button" id="import" disabled style="margin-top:22px">Importar e conferir no Firebase</button></section>
